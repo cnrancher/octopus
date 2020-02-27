@@ -1,0 +1,29 @@
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: brain
+  namespace: system
+spec:
+  template:
+    spec:
+      containers:
+        - name: octopus
+          args:
+            - brain
+            - --admission-webhook-addr=443
+            - --enable-leader-election
+          ports:
+            - containerPort: 443
+              name: webhook
+              protocol: TCP
+          volumeMounts:
+            - name: cert
+              mountPath: /tmp/k8s-webhook-server/serving-certs
+              readOnly: true
+      volumes:
+        - name: cert
+          secret:
+            defaultMode: 420
+            secretName: webhook-server-cert # this name should match the one appeared in ../certificate.yaml

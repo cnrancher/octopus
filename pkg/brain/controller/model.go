@@ -23,7 +23,7 @@ const (
 	ReconcilingModel = "edge.cattle.io/octopus-brain"
 )
 
-// ModelReconciler reconciles a Node object
+// ModelReconciler reconciles a CRD object
 type ModelReconciler struct {
 	client.Client
 
@@ -56,14 +56,14 @@ func (r *ModelReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			return ctrl.Result{Requeue: true}, nil
 		}
 
-		// move link NodeExisted condition to `False`
+		// move link ModelExisted condition to `False`
 		var links edgev1alpha1.DeviceLinkList
 		if err := r.List(ctx, &links, client.MatchingFields{index.DeviceLinkByModelField: model.Name}); err != nil {
 			log.Error(err, "unable to list related DeviceLink of Model")
 			return ctrl.Result{Requeue: true}, nil
 		}
 		for _, link := range links.Items {
-			if devicelink.GetNodeExistedStatus(&link.Status) == metav1.ConditionFalse {
+			if devicelink.GetModelExistedStatus(&link.Status) == metav1.ConditionFalse {
 				continue
 			}
 			devicelink.FailOnModelExisted(&link.Status, "model isn't existed")
@@ -90,7 +90,7 @@ func (r *ModelReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		}
 		model.Finalizers = append(model.Finalizers, ReconcilingModel)
 		if err := r.Update(ctx, &model); err != nil {
-			log.Error(err, "unable to add finalizer to Node")
+			log.Error(err, "unable to add finalizer to CRD")
 			return ctrl.Result{Requeue: true}, nil
 		}
 		// NB(thxCode) keeps going down, no need to reconcile again:

@@ -16,8 +16,8 @@ commonLabels:
 ## Images to overwrite the default images.
 images:
   - name: rancher/octopus-adaptor-dummy
-    newName: rancher/octopus-adaptor-dummy
-    newTag: latest
+    newName: maiwj/octopus-adaptor-dummy
+    newTag: dev-amd64
 
 bases:
   - ../../crd

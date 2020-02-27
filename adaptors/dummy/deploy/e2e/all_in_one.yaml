@@ -3,6 +3,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.2.5
+    devices.edge.cattle.io/enable: "true"
   creationTimestamp: null
   labels:
     app.kubernetes.io/name: octopus-adaptor-dummy
@@ -159,7 +160,7 @@ spec:
         app.kubernetes.io/version: 0.0.1
     spec:
       containers:
-      - image: rancher/octopus-adaptor-dummy:latest
+      - image: maiwj/octopus-adaptor-dummy:dev-amd64
         name: octopus
         volumeMounts:
         - mountPath: /var/lib/octopus/adaptors/

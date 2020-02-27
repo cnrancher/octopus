@@ -7,7 +7,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -126,21 +125,6 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		); err != nil {
 			if !apierrs.IsNotFound(err) {
 				log.Error(err, "unable to fetch the model of DeviceLink")
-				return ctrl.Result{Requeue: true}, nil
-			}
-		}
-
-		// delete the stale device
-		var device = model.NewInstanceOfTypeMeta(link.Spec.Model)
-		if err := r.Get(ctx, req.NamespacedName, &device); err != nil {
-			if !apierrs.IsNotFound(err) && !meta.IsNoMatchError(err) {
-				log.Error(err, "unable to fetch the stale device of DeviceLink")
-				return ctrl.Result{Requeue: true}, nil
-			}
-		}
-		if object.IsActivating(&device) {
-			if err := r.Delete(ctx, &device); err != nil {
-				log.Error(err, "unable to delete the stale device of DeviceLink")
 				return ctrl.Result{Requeue: true}, nil
 			}
 		}
