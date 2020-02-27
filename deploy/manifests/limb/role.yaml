@@ -1,0 +1,28 @@
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: octopus-limb
+rules:
+- apiGroups:
+  - edge.cattle.io
+  resources:
+  - devicelinks
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - edge.cattle.io
+  resources:
+  - devicelinks/status
+  verbs:
+  - get
+  - patch
+  - update

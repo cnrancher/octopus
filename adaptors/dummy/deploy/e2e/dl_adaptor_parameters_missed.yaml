@@ -1,0 +1,21 @@
+apiVersion: edge.cattle.io/v1alpha1
+kind: DeviceLink
+metadata:
+  name: adaptor-parameter-missed
+spec:
+  adaptor:
+    node: edge-worker
+    name: adaptors.edge.cattle.io/dummy
+    parameters:
+      # ip must be filled
+      ip: ""
+  model:
+    apiVersion: "devices.edge.cattle.io/v1alpha1"
+    kind: "DummyDevice"
+  template:
+    metadata:
+      labels:
+        device: adaptor-parameter-missed
+    spec:
+      gear: slow
+      "on": true

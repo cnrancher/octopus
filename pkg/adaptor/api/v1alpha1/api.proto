@@ -1,0 +1,52 @@
+syntax = 'proto3';
+
+package v1alpha1;
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+option (gogoproto.goproto_stringer_all) = false;
+option (gogoproto.stringer_all) = true;
+option (gogoproto.goproto_getters_all) = true;
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+option (gogoproto.goproto_unrecognized_all) = false;
+
+message Void {
+}
+
+// RegistrationService is the service advertised by the Limb,
+// any adaptor start its service until Limb approved this register request.
+service RegistrationService {
+    rpc Register (RegisterRequest) returns (Void) {
+    }
+}
+
+message RegisterRequest {
+    // Name of the adaptor in the form `adaptor-vendor.com/adaptor-vendor`
+    string name = 1;
+    // Version of the API the adaptor was built against
+    string version = 2;
+    // Name of the unix socket the adaptor is listening on, it's in the form `*.socket`
+    string endpoint = 3;
+}
+
+// AdaptorService is the service advertised by the adaptor.
+service AdaptorService {
+    rpc KeepAlive (stream Void) returns (Void) {
+    }
+    rpc Connect (stream ConnectionRequest) returns (stream ConnectionResponse) {
+    }
+}
+
+message ConnectionRequest {
+    // Parameters for the connection, it's in form JSON bytes
+    bytes parameters = 1;
+    // Desired device, it's in form JSON bytes
+    bytes device = 2;
+}
+
+message ConnectionResponse {
+    // Observed device, it's in form JSON bytes
+    bytes device = 1;
+}
