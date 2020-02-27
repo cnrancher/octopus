@@ -35,7 +35,7 @@ function generate() {
   octopus::controller_gen::generate \
     webhook \
     paths="${CURR_DIR}/api/..." \
-    output:webhook:dir="${CURR_DIR}/deploy/manifests/overlays/webhook"
+    output:webhook:dir="${CURR_DIR}/deploy/manifests/overlays/default"
   # generate rbac role
   octopus::controller_gen::generate \
     rbac:roleName=manager-role \
@@ -48,8 +48,11 @@ function generate() {
   fi
   kubectl kustomize "${CURR_DIR}/deploy/manifests/overlays/default" \
     >"${CURR_DIR}/deploy/e2e/all_in_one.yaml"
-  kubectl kustomize "${CURR_DIR}/deploy/manifests/overlays/webhook" \
-    >"${CURR_DIR}/deploy/e2e/all_in_one_with_wehbook.yaml"
+  kubectl kustomize "${CURR_DIR}/deploy/manifests/overlays/without_webhook" \
+    >"${CURR_DIR}/deploy/e2e/all_in_one_without_webhook.yaml"
+  # replace the admissionregistration version
+  sed "s#admissionregistration.k8s.io/v1beta1#admissionregistration.k8s.io/v1#g" "${CURR_DIR}/deploy/e2e/all_in_one.yaml" >/tmp/all_in_one.yaml
+  mv /tmp/all_in_one.yaml "${CURR_DIR}/deploy/e2e/all_in_one.yaml"
 
   octopus::log::info "...done"
 }

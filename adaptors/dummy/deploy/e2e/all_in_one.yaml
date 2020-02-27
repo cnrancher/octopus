@@ -3,6 +3,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.2.5
+    devices.edge.cattle.io/enable: "true"
   creationTimestamp: null
   labels:
     app.kubernetes.io/name: octopus-adaptor-dummy

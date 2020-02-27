@@ -46,24 +46,26 @@ help:
 	#   - adaptor {adaptor-name}  :  the named adaptor
 	#
 	# stage:
-	#   a "stage" consists of serval actions, actions follow the below workflow:
+	#   a "stage" consists of serval actions, actions follow as below:
 	#     - [dev]  :  generate -> mod -> lint -> build -> test -> verify
 	#     - [prd]  :                       \ = = = = = = = =  package  = = = = = = = = > e2e -> deploy
 	#                                         \ -> build -> test -> containerize -> /
-	#   for convenience, the name of the "action" also represents this "stage".
+	#   for convenience, the name of the "action" also represents the current "stage".
 	#   choosing to execute a certain "stage" will execute all actions in the previous sequence.
 	#
 	# actions:
-	#   - generate, gen, g  :  code generated.
-	#   -          lint, l  :  code validated, using `golangci-lint` first,
-	#                          roll back to `go fmt`, `go vet` if the installation fails.
-	#   -           mod, m  :  `go mod` code.
-	#   -         build, b  :  `go build` code.
+	#   - generate, gen, g  :  generate deployment manifests and code implementations via `controller-gen`,
+	#                          generate gPRC interfaces via `protoc`.
+	#   -           mod, m  :  download code dependencies.
+	#   -          lint, l  :  verify code via `golangci-lint`,
+	#                          roll back to `go fmt` and `go vet` if the installation fails.
+	#   -         build, b  :  compile code.
 	#   -          test, t  :  run unit tests.
 	#   -        verify, v  :  run integration tests.
-	#   -  package, pkg, p  :  `docker build` container.
+	#   -     containerize  :  package docker container.
+	#   -  package, pkg, p  :  use `dapper` to build, test and containerize.
 	#   -           e2e, e  :  run e2e tests.
-	#   -        deploy, d  :  `docker push` container.
+	#   -        deploy, d  :  push docker container.
 	#   only executing the corresponding "action" of a "stage" needs the `only` suffix.
 	#
 	# example:

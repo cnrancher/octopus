@@ -10,7 +10,6 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    cert-manager.io/inject-ca-from: system/serving-cert
     controller-gen.kubebuilder.io/version: v0.2.5
   creationTimestamp: null
   labels:
@@ -18,14 +17,6 @@ metadata:
     app.kubernetes.io/version: 0.0.1
   name: devicelinks.edge.cattle.io
 spec:
-  conversion:
-    strategy: Webhook
-    webhookClientConfig:
-      caBundle: Cg==
-      service:
-        name: webhook-service
-        namespace: system
-        path: /convert
   group: edge.cattle.io
   names:
     kind: DeviceLink
@@ -208,60 +199,6 @@ status:
   conditions: []
   storedVersions: []
 ---
-apiVersion: admissionregistration.k8s.io/v1beta1
-kind: MutatingWebhookConfiguration
-metadata:
-  annotations:
-    cert-manager.io/inject-ca-from: system/serving-cert
-  creationTimestamp: null
-  name: mutating-webhook-configuration
-webhooks:
-- clientConfig:
-    caBundle: Cg==
-    service:
-      name: webhook-service
-      namespace: system
-      path: /mutate-edge-cattle-io-v1alpha1-device
-  failurePolicy: Fail
-  name: mdevicelinks.edge.cattle.io
-  rules:
-  - apiGroups:
-    - edge.cattle.io
-    apiVersions:
-    - v1alpha1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - devicelinks
----
-apiVersion: admissionregistration.k8s.io/v1beta1
-kind: ValidatingWebhookConfiguration
-metadata:
-  annotations:
-    cert-manager.io/inject-ca-from: system/serving-cert
-  creationTimestamp: null
-  name: validating-webhook-configuration
-webhooks:
-- clientConfig:
-    caBundle: Cg==
-    service:
-      name: webhook-service
-      namespace: system
-      path: /validate-edge-cattle-io-v1alpha1-device
-  failurePolicy: Fail
-  name: vdevicelinks.edge.cattle.io
-  rules:
-  - apiGroups:
-    - edge.cattle.io
-    apiVersions:
-    - v1alpha1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - devicelinks
----
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -385,18 +322,6 @@ subjects:
   name: default
   namespace: octopus-system
 ---
-apiVersion: v1
-kind: Service
-metadata:
-  name: webhook-service
-  namespace: system
-spec:
-  ports:
-  - port: 443
-    targetPort: 9443
-  selector:
-    app.kubernetes.io/component: brain
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -405,7 +330,7 @@ metadata:
     app.kubernetes.io/name: octopus
     app.kubernetes.io/version: 0.0.1
   name: octopus-brain
-  namespace: system
+  namespace: octopus-system
 spec:
   replicas: 1
   selector:
@@ -424,24 +349,12 @@ spec:
       - args:
         - brain
         - --enable-leader-election
+        - --disable-admission-webhook
         image: rancher/octopus:latest
         name: octopus
-        ports:
-        - containerPort: 9443
-          name: webhook
-          protocol: TCP
-        volumeMounts:
-        - mountPath: /tmp/k8s-webhook-server/serving-certs
-          name: cert
-          readOnly: true
       nodeSelector:
         beta.kubernetes.io/os: linux
       terminationGracePeriodSeconds: 10
-      volumes:
-      - name: cert
-        secret:
-          defaultMode: 420
-          secretName: webhook-server-cert
 ---
 apiVersion: apps/v1
 kind: DaemonSet
@@ -485,25 +398,3 @@ spec:
           path: /var/lib/octopus/adaptors/
           type: DirectoryOrCreate
         name: sockets
----
-apiVersion: cert-manager.io/v1alpha2
-kind: Certificate
-metadata:
-  name: serving-cert
-  namespace: system
-spec:
-  dnsNames:
-  - webhook-service.system.svc
-  - webhook-service.system.svc.cluster.local
-  issuerRef:
-    kind: Issuer
-    name: selfsigned-issuer
-  secretName: webhook-server-cert
----
-apiVersion: cert-manager.io/v1alpha2
-kind: Issuer
-metadata:
-  name: selfsigned-issuer
-  namespace: system
-spec:
-  selfSigned: {}

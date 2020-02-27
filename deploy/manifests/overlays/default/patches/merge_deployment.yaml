@@ -12,9 +12,10 @@ spec:
         - name: octopus
           args:
             - brain
+            - --admission-webhook-addr=443
             - --enable-leader-election
           ports:
-            - containerPort: 9443
+            - containerPort: 443
               name: webhook
               protocol: TCP
           volumeMounts:

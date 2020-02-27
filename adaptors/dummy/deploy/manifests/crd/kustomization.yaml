@@ -1,2 +1,5 @@
+commonAnnotations:
+  devices.edge.cattle.io/enable: "true"
+
 resources:
   - base/devices.edge.cattle.io_dummydevices.yaml

@@ -51,7 +51,7 @@ function octopus::cluster_kind:configure_default() {
     octopus::log::info "using default cluster config"
     cat >"${CLUSTER_CONFIG}" <<EOF
 kind: Cluster
-apiVersion: kind.sigs.k8s.io/v1alpha3
+apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
   - role: control-plane
   - role: worker

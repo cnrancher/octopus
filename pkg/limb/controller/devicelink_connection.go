@@ -50,6 +50,7 @@ func (r *DeviceLinkReconciler) ReceiveConnectionStatus(req suctioncup.RequestCon
 	}
 	if !object.IsActivating(&target) {
 		devicelink.ToCheckDeviceCreated(&link.Status)
+		r.Eventf(&link, "Warning", "Recreating", "previous device instance is gone")
 		if err := r.Status().Update(ctx, &link); err != nil {
 			log.Error(err, "unable to change the status of DeviceLink")
 			return suctioncup.Response{Requeue: true}, nil
