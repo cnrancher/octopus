@@ -26,7 +26,7 @@ manifests:
 	$(CURR_DIR)/hack/make-rules/controller-gen.sh \
 		webhook \
 		paths="$(CURR_DIR)/api/..." \
-        output:webhook:dir=$(CURR_DIR)/deploy/manifests/crd
+        output:webhook:dir=$(CURR_DIR)/deploy/manifests/brain
 	$(CURR_DIR)/hack/make-rules/controller-gen.sh \
 		rbac:roleName=octopus-brain \
 		paths="$(CURR_DIR)/pkg/brain/..." \
