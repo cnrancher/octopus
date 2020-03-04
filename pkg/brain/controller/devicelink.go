@@ -7,6 +7,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -14,8 +15,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
-	"github.com/rancher/octopus/pkg/brain/model"
-	"github.com/rancher/octopus/pkg/status"
+	"github.com/rancher/octopus/pkg/status/devicelink"
+	"github.com/rancher/octopus/pkg/util/model"
 	"github.com/rancher/octopus/pkg/util/object"
 )
 
@@ -33,13 +34,8 @@ type DeviceLinkReconciler struct {
 // +kubebuilder:rbac:groups="",resources=nodes,verbs=get;list;watch
 
 func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	ctx := context.Background()
-	log := r.Log.WithValues("devicelink", req.NamespacedName)
-
-	defer func() {
-		log.V(0).Info("reconcile out")
-	}()
-	log.V(0).Info("reconcile in")
+	var ctx = context.Background()
+	var log = r.Log.WithValues("devicelink", req.NamespacedName)
 
 	// fetches link
 	var link edgev1alpha1.DeviceLink
@@ -57,10 +53,10 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	}
 
 	// validates node existing or not
-	switch status.GetNodeExistedStatus(&link.Status) {
+	switch devicelink.GetNodeExistedStatus(&link.Status) {
 	case metav1.ConditionFalse:
 		if link.Spec.Adaptor.Node != link.Status.Adaptor.Node {
-			status.ToCheckNodeExisted(&link.Status)
+			devicelink.ToCheckNodeExisted(&link.Status)
 			if err := r.Status().Update(ctx, &link); err != nil {
 				log.Error(err, "unable to change the status of DeviceLink")
 				return ctrl.Result{Requeue: true}, nil
@@ -69,7 +65,7 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		return ctrl.Result{}, nil
 	case metav1.ConditionTrue:
 		if link.Spec.Adaptor.Node != link.Status.Adaptor.Node {
-			status.ToCheckNodeExisted(&link.Status)
+			devicelink.ToCheckNodeExisted(&link.Status)
 			if err := r.Status().Update(ctx, &link); err != nil {
 				log.Error(err, "unable to change the status of DeviceLink")
 				return ctrl.Result{Requeue: true}, nil
@@ -85,10 +81,10 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			}
 		}
 		if object.IsActivating(&node) {
-			status.SuccessOnNodeExisted(&link.Status)
+			devicelink.SuccessOnNodeExisted(&link.Status)
 			r.Eventf(&link, "Normal", "Validated", "found the adaptor node")
 		} else {
-			status.FailOnNodeExisted(&link.Status, "adaptor node isn't existed")
+			devicelink.FailOnNodeExisted(&link.Status, "adaptor node isn't existed")
 			r.Eventf(&link, "Warning", "FailedValidate", "could not find the adaptor node")
 		}
 
@@ -101,10 +97,10 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	}
 
 	// validates model existing or not
-	switch status.GetModelExistedStatus(&link.Status) {
+	switch devicelink.GetModelExistedStatus(&link.Status) {
 	case metav1.ConditionFalse:
 		if link.Spec.Model != link.Status.Model {
-			status.ToCheckModelExisted(&link.Status)
+			devicelink.ToCheckModelExisted(&link.Status)
 			if err := r.Status().Update(ctx, &link); err != nil {
 				log.Error(err, "unable to change the status of DeviceLink")
 				return ctrl.Result{Requeue: true}, nil
@@ -113,7 +109,7 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		return ctrl.Result{}, nil
 	case metav1.ConditionTrue:
 		if link.Spec.Model != link.Status.Model {
-			status.ToCheckModelExisted(&link.Status)
+			devicelink.ToCheckModelExisted(&link.Status)
 			if err := r.Status().Update(ctx, &link); err != nil {
 				log.Error(err, "unable to change the status of DeviceLink")
 				return ctrl.Result{Requeue: true}, nil
@@ -134,6 +130,21 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			}
 		}
 
+		// delete the stale device
+		var device = model.NewInstanceOfTypeMeta(link.Spec.Model)
+		if err := r.Get(ctx, req.NamespacedName, &device); err != nil {
+			if !apierrs.IsNotFound(err) && !meta.IsNoMatchError(err) {
+				log.Error(err, "unable to fetch the stale device of DeviceLink")
+				return ctrl.Result{Requeue: true}, nil
+			}
+		}
+		if object.IsActivating(&device) {
+			if err := r.Delete(ctx, &device); err != nil {
+				log.Error(err, "unable to delete the stale device of DeviceLink")
+				return ctrl.Result{Requeue: true}, nil
+			}
+		}
+
 		link.Status.Model = link.Spec.Model
 		if object.IsActivating(&m) {
 			var versionServed bool
@@ -145,14 +156,14 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			}
 
 			if versionServed {
-				status.SuccessOnModelExisted(&link.Status)
+				devicelink.SuccessOnModelExisted(&link.Status)
 				r.Eventf(&link, "Normal", "Validated", "found the model")
 			} else {
-				status.FailOnModelExisted(&link.Status, "model version isn't served")
+				devicelink.FailOnModelExisted(&link.Status, "model version isn't served")
 				r.Eventf(&link, "Warning", "FailedValidate", "could not find the version of model")
 			}
 		} else {
-			status.FailOnModelExisted(&link.Status, "model isn't existed")
+			devicelink.FailOnModelExisted(&link.Status, "model isn't existed")
 			r.Eventf(&link, "Warning", "FailedValidate", "could not find the model")
 		}
 		if err := r.Status().Update(ctx, &link); err != nil {

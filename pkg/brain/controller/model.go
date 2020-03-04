@@ -13,7 +13,8 @@ import (
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
 	"github.com/rancher/octopus/pkg/brain/index"
 	"github.com/rancher/octopus/pkg/brain/predicate"
-	"github.com/rancher/octopus/pkg/status"
+	"github.com/rancher/octopus/pkg/status/crd"
+	"github.com/rancher/octopus/pkg/status/devicelink"
 	"github.com/rancher/octopus/pkg/util/collection"
 	"github.com/rancher/octopus/pkg/util/object"
 )
@@ -33,13 +34,8 @@ type ModelReconciler struct {
 // +kubebuilder:rbac:groups=edge.cattle.io,resources=devicelinks/status,verbs=get;update;patch
 
 func (r *ModelReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	ctx := context.Background()
-	log := r.Log.WithValues("crd", req.NamespacedName)
-
-	defer func() {
-		log.V(0).Info("reconcile out")
-	}()
-	log.V(0).Info("reconcile in")
+	var ctx = context.Background()
+	var log = r.Log.WithValues("crd", req.NamespacedName)
 
 	// fetch model
 	var model apiextensionsv1.CustomResourceDefinition
@@ -56,6 +52,9 @@ func (r *ModelReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		if !collection.StringSliceContain(model.Finalizers, ReconcilingModel) {
 			return ctrl.Result{}, nil
 		}
+		if crd.GetTerminating(&model.Status) != metav1.ConditionFalse {
+			return ctrl.Result{Requeue: true}, nil
+		}
 
 		// move link NodeExisted condition to `False`
 		var links edgev1alpha1.DeviceLinkList
@@ -64,10 +63,10 @@ func (r *ModelReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			return ctrl.Result{Requeue: true}, nil
 		}
 		for _, link := range links.Items {
-			if status.GetNodeExistedStatus(&link.Status) == metav1.ConditionFalse {
+			if devicelink.GetNodeExistedStatus(&link.Status) == metav1.ConditionFalse {
 				continue
 			}
-			status.FailOnModelExisted(&link.Status, "model isn't existed")
+			devicelink.FailOnModelExisted(&link.Status, "model isn't existed")
 			if err := r.Status().Update(ctx, &link); err != nil {
 				log.Error(err, "unable to change the status of DeviceLink")
 				return ctrl.Result{Requeue: true}, nil
@@ -86,11 +85,15 @@ func (r *ModelReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	// add finalizer if needed
 	if !collection.StringSliceContain(model.Finalizers, ReconcilingModel) {
+		if crd.GetEstablished(&model.Status) != metav1.ConditionTrue {
+			return ctrl.Result{Requeue: true}, nil
+		}
 		model.Finalizers = append(model.Finalizers, ReconcilingModel)
 		if err := r.Update(ctx, &model); err != nil {
 			log.Error(err, "unable to add finalizer to Node")
 			return ctrl.Result{Requeue: true}, nil
 		}
+		return ctrl.Result{}, nil
 	}
 
 	// move link ModelExisted condition from `False` to `True`
@@ -100,10 +103,10 @@ func (r *ModelReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{Requeue: true}, nil
 	}
 	for _, link := range links.Items {
-		if status.GetModelExistedStatus(&link.Status) != metav1.ConditionFalse {
+		if devicelink.GetModelExistedStatus(&link.Status) != metav1.ConditionFalse {
 			continue
 		}
-		status.ToCheckModelExisted(&link.Status)
+		devicelink.ToCheckModelExisted(&link.Status)
 		if err := r.Status().Update(ctx, &link); err != nil {
 			log.Error(err, "unable to change the status of DeviceLink")
 			return ctrl.Result{Requeue: true}, nil

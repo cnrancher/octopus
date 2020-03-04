@@ -58,3 +58,7 @@ type DummyDeviceList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []DummyDevice `json:"items"`
 }
+
+func init() {
+	SchemeBuilder.Register(&DummyDevice{}, &DummyDeviceList{})
+}

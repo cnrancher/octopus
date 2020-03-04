@@ -26,14 +26,6 @@ var _ webhook.Defaulter = &DeviceLink{}
 func (in *DeviceLink) Default() {
 	deviceWebhookLog.V(0).Info("default", "name", in.Name)
 
-	// only allow to specify the `labels` and `annotations` of `spec.template.metadata`
-	var template = in.Spec.Template
-	var srcTemplateObjectMeta = template.ObjectMeta.DeepCopy()
-	template.ObjectMeta = metav1.ObjectMeta{
-		Labels:      srcTemplateObjectMeta.Labels,
-		Annotations: srcTemplateObjectMeta.Annotations,
-	}
-
 	// fill `status.conditions` if it is empty
 	if len(in.Status.Conditions) == 0 {
 		in.Status.Conditions = []DeviceLinkCondition{
@@ -41,7 +33,7 @@ func (in *DeviceLink) Default() {
 				Type:           DeviceLinkNodeExisted,
 				Status:         metav1.ConditionUnknown,
 				LastUpdateTime: metav1.Time{Time: time.Now()},
-				Reason:         "ValidatingNode",
+				Reason:         "Confirming",
 				Message:        "verify if there is a suitable node to schedule",
 			},
 		}

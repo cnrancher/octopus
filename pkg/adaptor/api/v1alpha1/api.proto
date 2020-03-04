@@ -12,13 +12,13 @@ option (gogoproto.sizer_all) = true;
 option (gogoproto.unmarshaler_all) = true;
 option (gogoproto.goproto_unrecognized_all) = false;
 
-message Void {
+message Empty {
 }
 
-// RegistrationService is the service advertised by the Limb,
+// Registration is the service advertised by the Limb,
 // any adaptor start its service until Limb approved this register request.
-service RegistrationService {
-    rpc Register (RegisterRequest) returns (Void) {
+service Registration {
+    rpc Register (RegisterRequest) returns (Empty) {
     }
 }
 
@@ -31,22 +31,20 @@ message RegisterRequest {
     string endpoint = 3;
 }
 
-// AdaptorService is the service advertised by the adaptor.
-service AdaptorService {
-    rpc KeepAlive (stream Void) returns (Void) {
-    }
-    rpc Connect (stream ConnectionRequest) returns (stream ConnectionResponse) {
+// Connection is the service advertised by the adaptor.
+service Connection {
+    rpc Connect (stream ConnectRequest) returns (stream ConnectResponse) {
     }
 }
 
-message ConnectionRequest {
+message ConnectRequest {
     // Parameters for the connection, it's in form JSON bytes
     bytes parameters = 1;
     // Desired device, it's in form JSON bytes
     bytes device = 2;
 }
 
-message ConnectionResponse {
+message ConnectResponse {
     // Observed device, it's in form JSON bytes
     bytes device = 1;
 }

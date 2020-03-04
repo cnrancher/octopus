@@ -31,7 +31,7 @@ spec:
     - jsonPath: .status.conditions[-1].type
       name: PHASE
       type: string
-    - jsonPath: .status.conditions[-1].status
+    - jsonPath: .status.conditions[-1].reason
       name: STATUS
       type: string
     - jsonPath: .metadata.creationTimestamp
@@ -92,8 +92,14 @@ spec:
                 properties:
                   metadata:
                     description: Standard object's metadata.
+                    properties:
+                      labels:
+                        additionalProperties:
+                          type: string
+                        description: Map of string keys and values that can be used
+                          to organize and categorize (scope and select) objects.
+                        type: object
                     type: object
-                    x-kubernetes-preserve-unknown-fields: true
                   spec:
                     description: Specifies the desired behaviors of a device.
                     type: object
