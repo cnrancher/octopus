@@ -1,7 +1,6 @@
 package limb
 
 import (
-	"context"
 	"fmt"
 	"os"
 
@@ -13,8 +12,9 @@ import (
 
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
 	"github.com/rancher/octopus/cmd/limb/options"
-	"github.com/rancher/octopus/pkg/adaptor"
 	"github.com/rancher/octopus/pkg/limb/controller"
+	"github.com/rancher/octopus/pkg/suctioncup"
+	"github.com/rancher/octopus/pkg/util/critical"
 	"github.com/rancher/octopus/pkg/util/log/handler"
 
 	_ "github.com/rancher/octopus/pkg/util/log/handler"
@@ -55,12 +55,10 @@ func Run(name string, opts *options.Options) error {
 		return err
 	}
 
-	setupLog.V(0).Info("creating adaptor manager")
-	adaptorMgr, err := adaptor.NewManager(
-		adaptor.Options{},
-	)
+	setupLog.V(0).Info("creating suction cup manager")
+	suctionCupMgr, err := suctioncup.NewManager()
 	if err != nil {
-		setupLog.Error(err, "unable to start adaptor manager")
+		setupLog.Error(err, "unable to start suction cup manager")
 		return err
 	}
 
@@ -70,21 +68,22 @@ func Run(name string, opts *options.Options) error {
 		EventRecorder: controllerMgr.GetEventRecorderFor(name),
 		Scheme:        controllerMgr.GetScheme(),
 		Log:           ctrl.Log.WithName("controller").WithName("DeviceLink"),
-		Adaptors:      adaptorMgr.GetPool(),
+		SuctionCup:    suctionCupMgr.GetNeurons(),
 		NodeName:      nodeName,
-	}).SetupWithManager(name, controllerMgr, adaptorMgr); err != nil {
+	}).SetupWithManager(name, controllerMgr, suctionCupMgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "DeviceLink")
 		return err
 	}
 
 	setupLog.Info("starting")
-	var ctx = spliceContext(ctrl.SetupSignalHandler(), nil)
-	eg, ctx := errgroup.WithContext(ctx)
+	var stop = ctrl.SetupSignalHandler()
+	var eg, ctx = errgroup.WithContext(critical.Context(stop))
+	stop = ctx.Done()
 	eg.Go(func() error {
-		return controllerMgr.Start(ctx.Done())
+		return suctionCupMgr.Start(stop)
 	})
 	eg.Go(func() error {
-		return adaptorMgr.Start(ctx.Done())
+		return controllerMgr.Start(stop)
 	})
 	if err = eg.Wait(); err != nil {
 		setupLog.Error(err, "problem running")
@@ -98,24 +97,4 @@ func RegisterScheme(scheme *k8sruntime.Scheme) error {
 		return err
 	}
 	return nil
-}
-
-func spliceContext(previousC <-chan struct{}, previousFn func()) context.Context {
-	var ctx, cancel = context.WithCancel(context.Background())
-	closeContext := func() {
-		if previousFn != nil {
-			previousFn()
-		}
-		cancel()
-	}
-	go func() {
-		for {
-			select {
-			case <-previousC:
-				closeContext()
-				return
-			}
-		}
-	}()
-	return ctx
 }

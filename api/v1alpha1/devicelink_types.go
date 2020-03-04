@@ -21,12 +21,19 @@ type DeviceAdaptor struct {
 	Parameters *runtime.RawExtension `json:"parameters,omitempty"`
 }
 
+// DeviceMeta defines the metadata of device
+type DeviceMeta struct {
+	// Map of string keys and values that can be used to organize and categorize
+	// (scope and select) objects.
+	// +optional
+	Labels map[string]string `json:"labels,omitempty"`
+}
+
 // DeviceTemplateSpec defines the device desired state
 type DeviceTemplateSpec struct {
 	// Standard object's metadata.
-	// +kubebuilder:validation:XPreserveUnknownFields
 	// +optional
-	metav1.ObjectMeta `json:"metadata,omitempty"`
+	DeviceMeta `json:"metadata,omitempty"`
 
 	// Specifies the desired behaviors of a device.
 	// +kubebuilder:validation:XPreserveUnknownFields
@@ -39,18 +46,22 @@ type DeviceLinkConditionType string
 // These are valid conditions of a device
 const (
 	// NodeExisted means that if the node was existed,
-	// it is ready for model validation.
+	// it is ready for validating model.
 	DeviceLinkNodeExisted DeviceLinkConditionType = "NodeExisted"
 
 	// ModelExisted means that if the CRD of the model was existed,
-	// it is ready for adaptor validation.
+	// it is ready for validating adaptor.
 	DeviceLinkModelExisted DeviceLinkConditionType = "ModelExisted"
 
 	// AdaptorExisted means that if the adaptor was existed,
-	// it is ready for device instance connection.
+	// it is ready for validating device.
 	DeviceLinkAdaptorExisted DeviceLinkConditionType = "AdaptorExisted"
 
-	// DeviceConnected means the device has been connected or not.
+	// DeviceCreated means that if the device was created,
+	// it is ready for connecting device.
+	DeviceLinkDeviceCreated DeviceLinkConditionType = "DeviceCreated"
+
+	// DeviceConnected means the connection of device is healthy.
 	DeviceLinkDeviceConnected DeviceLinkConditionType = "DeviceConnected"
 )
 
@@ -113,7 +124,7 @@ type DeviceLinkStatus struct {
 // +kubebuilder:printcolumn:name="NODE",type=string,JSONPath=`.spec.adaptor.node`
 // +kubebuilder:printcolumn:name="ADAPTOR",type=string,JSONPath=`.spec.adaptor.name`
 // +kubebuilder:printcolumn:name="PHASE",type=string,JSONPath=`.status.conditions[-1].type`
-// +kubebuilder:printcolumn:name="STATUS",type=string,JSONPath=`.status.conditions[-1].status`
+// +kubebuilder:printcolumn:name="STATUS",type=string,JSONPath=`.status.conditions[-1].reason`
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 // DeviceLink is the Schema for the devicelinks API
 type DeviceLink struct {

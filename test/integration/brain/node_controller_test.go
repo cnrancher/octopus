@@ -11,7 +11,7 @@ import (
 
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
 	"github.com/rancher/octopus/pkg/brain/controller"
-	"github.com/rancher/octopus/pkg/status"
+	"github.com/rancher/octopus/pkg/status/devicelink"
 	"github.com/rancher/octopus/pkg/util/collection"
 	"github.com/rancher/octopus/pkg/util/object"
 	"github.com/rancher/octopus/test/util/content"
@@ -67,7 +67,7 @@ var _ = Describe("Node controller", func() {
 						APIVersion: "devices.edge.cattle.io/v1alpha1",
 					},
 					Template: edgev1alpha1.DeviceTemplateSpec{
-						ObjectMeta: metav1.ObjectMeta{
+						DeviceMeta: edgev1alpha1.DeviceMeta{
 							Labels: map[string]string{
 								"l1": "v1",
 							},
@@ -100,7 +100,7 @@ var _ = Describe("Node controller", func() {
 				if !object.IsActivating(&item) {
 					return errors.Errorf("%s link isn't activated", key)
 				}
-				if status.GetNodeExistedStatus(&item.Status) != metav1.ConditionTrue {
+				if devicelink.GetNodeExistedStatus(&item.Status) != metav1.ConditionTrue {
 					return errors.Errorf("could not find the corresponding node of %s link", key)
 				}
 				return nil
@@ -128,7 +128,7 @@ var _ = Describe("Node controller", func() {
 				if !object.IsActivating(&item) {
 					return errors.Errorf("%s link isn't activated", key)
 				}
-				if status.GetNodeExistedStatus(&item.Status) != metav1.ConditionFalse {
+				if devicelink.GetNodeExistedStatus(&item.Status) != metav1.ConditionFalse {
 					return errors.Errorf("should not find the corresponding node of %s link", key)
 				}
 				return nil

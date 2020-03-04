@@ -13,7 +13,7 @@ import (
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
 	"github.com/rancher/octopus/pkg/brain/index"
 	"github.com/rancher/octopus/pkg/brain/predicate"
-	"github.com/rancher/octopus/pkg/status"
+	"github.com/rancher/octopus/pkg/status/devicelink"
 	"github.com/rancher/octopus/pkg/util/collection"
 	"github.com/rancher/octopus/pkg/util/object"
 )
@@ -33,13 +33,8 @@ type NodeReconciler struct {
 // +kubebuilder:rbac:groups=edge.cattle.io,resources=devicelinks/status,verbs=get;update;patch
 
 func (r *NodeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	ctx := context.Background()
-	log := r.Log.WithValues("node", req.NamespacedName)
-
-	defer func() {
-		log.V(0).Info("reconcile out")
-	}()
-	log.V(0).Info("reconcile in")
+	var ctx = context.Background()
+	var log = r.Log.WithValues("node", req.NamespacedName)
 
 	// fetch node
 	var node corev1.Node
@@ -64,10 +59,10 @@ func (r *NodeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			return ctrl.Result{Requeue: true}, nil
 		}
 		for _, link := range links.Items {
-			if status.GetNodeExistedStatus(&link.Status) == metav1.ConditionFalse {
+			if devicelink.GetNodeExistedStatus(&link.Status) == metav1.ConditionFalse {
 				continue
 			}
-			status.FailOnNodeExisted(&link.Status, "adaptor node isn't existed")
+			devicelink.FailOnNodeExisted(&link.Status, "adaptor node isn't existed")
 			if err := r.Status().Update(ctx, &link); err != nil {
 				log.Error(err, "unable to change the status of DeviceLink")
 				return ctrl.Result{Requeue: true}, nil
@@ -91,6 +86,7 @@ func (r *NodeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			log.Error(err, "unable to add finalizer to Node")
 			return ctrl.Result{Requeue: true}, nil
 		}
+		return ctrl.Result{}, nil
 	}
 
 	// move link NodeExisted condition from `False` to `True`
@@ -100,10 +96,10 @@ func (r *NodeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{Requeue: true}, nil
 	}
 	for _, link := range links.Items {
-		if status.GetNodeExistedStatus(&link.Status) != metav1.ConditionFalse {
+		if devicelink.GetNodeExistedStatus(&link.Status) != metav1.ConditionFalse {
 			continue
 		}
-		status.ToCheckNodeExisted(&link.Status)
+		devicelink.ToCheckNodeExisted(&link.Status)
 		if err := r.Status().Update(ctx, &link); err != nil {
 			log.Error(err, "unable to change the status of DeviceLink")
 			return ctrl.Result{Requeue: true}, nil
