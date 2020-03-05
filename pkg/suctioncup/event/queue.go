@@ -16,7 +16,7 @@ type Queue interface {
 	GetConnectionNotifier() ConnectionNotifier
 }
 
-func NewQueue(name string) *queue {
+func NewQueue(name string) Queue {
 	var q = workqueue.NewNamedRateLimitingQueue(
 		workqueue.DefaultControllerRateLimiter(),
 		name,

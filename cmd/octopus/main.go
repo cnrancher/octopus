@@ -8,6 +8,8 @@ import (
 
 	"github.com/rancher/octopus/cmd/brain"
 	"github.com/rancher/octopus/cmd/limb"
+	_ "github.com/rancher/octopus/pkg/util/log/handler"
+	"github.com/rancher/octopus/pkg/util/version/verflag"
 )
 
 const (
@@ -25,6 +27,8 @@ func main() {
 		Use:  name,
 		Long: description,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			verflag.PrintAndExitIfRequested()
+
 			var (
 				basename  = filepath.Base(os.Args[0])
 				targetCmd *cobra.Command
@@ -48,6 +52,7 @@ func main() {
 		},
 	}
 	c.AddCommand(allCommands...)
+	verflag.AddFlags(c.Flags())
 
 	if err := c.Execute(); err != nil {
 		os.Exit(1)

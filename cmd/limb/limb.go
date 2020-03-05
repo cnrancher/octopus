@@ -16,9 +16,9 @@ const (
 )
 
 func NewCommand() *cobra.Command {
-	opts := options.NewOptions()
+	var opts = options.NewOptions()
 
-	c := &cobra.Command{
+	var c = &cobra.Command{
 		Use:  name,
 		Long: description,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -29,7 +29,7 @@ func NewCommand() *cobra.Command {
 		},
 	}
 
-	nfs := opts.Flags(name)
+	var nfs = opts.Flags(name)
 	verflag.AddFlags(nfs.FlagSet("global"))
 	logflag.AddFlags(nfs.FlagSet("global"))
 

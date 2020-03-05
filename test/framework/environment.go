@@ -16,10 +16,10 @@ const (
 
 var testEmbeddedCluster EmbeddedCluster
 
-func StartEnv(testEnv *envtest.Environment, writer io.Writer) (cfg *rest.Config, err error) {
+func StartEnv(rootDir string, testEnv *envtest.Environment, writer io.Writer) (cfg *rest.Config, err error) {
 	if !isUsingExistingCluster() {
 		testEmbeddedCluster = NewEmbeddedCluster(KindCluster)
-		if err := testEmbeddedCluster.Start(writer); err != nil {
+		if err := testEmbeddedCluster.Start(rootDir, writer); err != nil {
 			return nil, err
 		}
 	}
@@ -33,7 +33,7 @@ func StartEnv(testEnv *envtest.Environment, writer io.Writer) (cfg *rest.Config,
 	return nil, errors.New("test environment is nil")
 }
 
-func StopEnv(testEnv *envtest.Environment, writer io.Writer) error {
+func StopEnv(rootDir string, testEnv *envtest.Environment, writer io.Writer) error {
 	if testEnv != nil {
 		if err := testEnv.Stop(); err != nil {
 			return err
@@ -41,7 +41,7 @@ func StopEnv(testEnv *envtest.Environment, writer io.Writer) error {
 	}
 	if !isUsingExistingCluster() {
 		if testEmbeddedCluster != nil {
-			if err := testEmbeddedCluster.Stop(writer); err != nil {
+			if err := testEmbeddedCluster.Stop(rootDir, writer); err != nil {
 				return err
 			}
 		}

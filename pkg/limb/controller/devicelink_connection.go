@@ -15,6 +15,9 @@ import (
 	"github.com/rancher/octopus/pkg/util/object"
 )
 
+// +kubebuilder:rbac:groups=edge.cattle.io,resources=devicelinks,verbs=list
+// +kubebuilder:rbac:groups=edge.cattle.io,resources=devicelinks/status,verbs=get;update;patch
+
 func (r *DeviceLinkReconciler) ReceiveConnectionStatus(req suctioncup.RequestConnectionStatus) (suctioncup.Response, error) {
 	var ctx = context.Background()
 	var log = r.Log.WithName("ReceiveConnectionStatus").WithValues("adaptor", req.AdaptorName, "devicelink", req.Name)

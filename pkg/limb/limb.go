@@ -16,9 +16,6 @@ import (
 	"github.com/rancher/octopus/pkg/suctioncup"
 	"github.com/rancher/octopus/pkg/util/critical"
 	"github.com/rancher/octopus/pkg/util/log/handler"
-
-	_ "github.com/rancher/octopus/pkg/util/log/handler"
-	_ "github.com/rancher/octopus/pkg/util/version/metric"
 )
 
 func Run(name string, opts *options.Options) error {
@@ -41,6 +38,7 @@ func Run(name string, opts *options.Options) error {
 	if nodeName == "" {
 		return errors.New("node name could not be blank")
 	}
+	setupLog.Info("landing on", "node", nodeName)
 
 	setupLog.V(0).Info("creating controller manager")
 	var controllerMgr, err = ctrl.NewManager(

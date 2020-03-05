@@ -35,7 +35,7 @@ type Service struct {
 	scheme *k8sruntime.Scheme
 }
 
-func (s *Service) toJson(in metav1.Object) []byte {
+func (s *Service) toJSON(in metav1.Object) []byte {
 	var out = unstructured.Unstructured{Object: make(map[string]interface{})}
 	// NB(thxCode) scheme conversion can keep the typemeta of an object,
 	// provided that the object type has been registered in scheme first.
@@ -87,7 +87,7 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 				resp.Status = status
 
 				// convert device to json bytes
-				var respBytes = s.toJson(&resp)
+				var respBytes = s.toJSON(&resp)
 
 				// send device
 				if err := server.Send(&api.ConnectResponse{Device: respBytes}); err != nil {

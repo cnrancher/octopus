@@ -124,15 +124,15 @@ func (d *device) mockPhysicalWatching(gear v1alpha1.DummyDeviceGear, stop <-chan
 			switch d.status.Gear {
 			case v1alpha1.Fast:
 				if d.status.RotatingSpeed < 300 {
-					d.status.RotatingSpeed += 1
+					d.status.RotatingSpeed++
 				}
 			case v1alpha1.Middle:
 				if d.status.RotatingSpeed < 200 {
-					d.status.RotatingSpeed += 1
+					d.status.RotatingSpeed++
 				}
 			case v1alpha1.Slow:
 				if d.status.RotatingSpeed < 100 {
-					d.status.RotatingSpeed += 1
+					d.status.RotatingSpeed++
 				}
 			}
 			d.handler(d.name, d.status)

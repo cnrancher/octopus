@@ -5,8 +5,17 @@
 *.dll
 *.so
 *.dylib
+.dapper
+
+# Output of the dapper
+.dapper*
+
+# Directories
 bin
 dist
+.vagrant
+.cache
+.docker
 
 # Test binary, build with `go test -c`
 *.test
@@ -14,14 +23,12 @@ dist
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
-# Kubernetes Generated files - skip generated files, except for vendored files
-
-!vendor/**/zz_generated.*
-
-# editor and IDE paraphernalia
+# Editor and IDE paraphernalia
 .idea
 *.swp
 *.swo
 *~
-
 .DS_Store
+
+# Kubernetes Generated files - skip generated files, except for vendored files
+!vendor/**/zz_generated.*

@@ -4,12 +4,12 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   creationTimestamp: null
-  name: octopus-limb
+  name: manager-role
 rules:
 - apiGroups:
-  - edge.cattle.io
+  - adaptors.edge.cattle.io
   resources:
-  - devicelinks
+  - dummydevices
   verbs:
   - create
   - delete
@@ -19,9 +19,9 @@ rules:
   - update
   - watch
 - apiGroups:
-  - edge.cattle.io
+  - adaptors.edge.cattle.io
   resources:
-  - devicelinks/status
+  - dummydevices/status
   verbs:
   - get
   - patch

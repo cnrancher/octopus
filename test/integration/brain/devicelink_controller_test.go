@@ -9,6 +9,7 @@ import (
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
 	"github.com/rancher/octopus/pkg/status/devicelink"
@@ -27,6 +28,10 @@ var _ = Describe("DeviceLink controller", func() {
 		var err error
 		validNode, err = node.GetValidWorker(ctx, k8sCli)
 		Expect(err).ShouldNot(HaveOccurred())
+	})
+
+	AfterEach(func() {
+		_ = k8sCli.DeleteAllOf(ctx, &edgev1alpha1.DeviceLink{}, client.InNamespace(namespace))
 	})
 
 	Context("DeviceLink instance", func() {

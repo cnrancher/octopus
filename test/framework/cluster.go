@@ -7,8 +7,6 @@ import (
 	"os/exec"
 
 	"github.com/pkg/errors"
-
-	"github.com/rancher/octopus/test/util/rootdir"
 )
 
 type ClusterKind string
@@ -19,37 +17,35 @@ const (
 )
 
 type EmbeddedCluster interface {
-	Start(writer io.Writer) error
-	Stop(writer io.Writer) error
+	Start(rootDir string, writer io.Writer) error
+	Stop(rootDir string, writer io.Writer) error
 }
 
 type embeddedCluster struct {
 	kind ClusterKind
 }
 
-func (c *embeddedCluster) Start(writer io.Writer) error {
-	var dir = rootdir.Get()
-	var path = fmt.Sprintf("%s/hack/cluster-%s-startup.sh", dir, c.kind)
+func (c *embeddedCluster) Start(rootDir string, writer io.Writer) error {
+	var path = fmt.Sprintf("%s/hack/cluster-%s-startup.sh", rootDir, c.kind)
 	if !isScriptExisted(path) {
 		return errors.Errorf("%s cluster startup script isn't existed in %s", c.kind, path)
 	}
 
 	var cmd = exec.Command("/usr/bin/env", "bash", path)
-	cmd.Dir = dir
+	cmd.Dir = rootDir
 	cmd.Stdout = writer
 	cmd.Stderr = writer
 	return cmd.Run()
 }
 
-func (c *embeddedCluster) Stop(writer io.Writer) error {
-	var dir = rootdir.Get()
-	var path = fmt.Sprintf("%s/hack/cluster-%s-cleanup.sh", dir, c.kind)
+func (c *embeddedCluster) Stop(rootDir string, writer io.Writer) error {
+	var path = fmt.Sprintf("%s/hack/cluster-%s-cleanup.sh", rootDir, c.kind)
 	if !isScriptExisted(path) {
 		return errors.Errorf("%s cluster cleanup script isn't existed in %s", c.kind, path)
 	}
 
 	var cmd = exec.Command("/usr/bin/env", "bash", path)
-	cmd.Dir = dir
+	cmd.Dir = rootDir
 	cmd.Stdout = writer
 	cmd.Stderr = writer
 	return cmd.Run()
