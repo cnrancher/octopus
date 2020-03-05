@@ -22,6 +22,6 @@ func (in *Options) Flags(fsName string) (nfs cliflag.NamedFlagSets) {
 
 func NewOptions() *Options {
 	return &Options{
-		MetricsAddr: 8090,
+		MetricsAddr: 8080,
 	}
 }

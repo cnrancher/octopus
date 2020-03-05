@@ -14,6 +14,9 @@ import (
 	"github.com/rancher/octopus/pkg/util/log/handler"
 )
 
+// +kubebuilder:rbac:groups=edge.cattle.io,resources=devicelinks,verbs=list
+// +kubebuilder:rbac:groups=edge.cattle.io,resources=devicelinks/status,verbs=get;update;patch
+
 func (r *DeviceLinkReconciler) ReceiveAdaptorStatus(req suctioncup.RequestAdaptorStatus) (suctioncup.Response, error) {
 	var ctx = context.Background()
 	var log = r.Log.WithName("ReceiveAdaptorStatus").WithValues("adaptor", req.Name)
@@ -26,6 +29,12 @@ func (r *DeviceLinkReconciler) ReceiveAdaptorStatus(req suctioncup.RequestAdapto
 		return suctioncup.Response{Requeue: true}, nil
 	}
 
+	if req.Registered {
+		log.Info("adaptor is registered")
+	} else {
+		log.Info("adaptor is unregistered")
+	}
+
 	for _, link := range links.Items {
 		// filter out the corresponding links
 		if link.Spec.Adaptor.Node != r.NodeName {
@@ -35,10 +44,12 @@ func (r *DeviceLinkReconciler) ReceiveAdaptorStatus(req suctioncup.RequestAdapto
 		if req.Registered {
 			if devicelink.GetAdaptorExistedStatus(&link.Status) == metav1.ConditionFalse {
 				devicelink.SuccessOnAdaptorExisted(&link.Status)
+				r.Eventf(&link, "Normal", "Validated", "found the adaptor")
 			}
 		} else {
 			if devicelink.GetAdaptorExistedStatus(&link.Status) != metav1.ConditionFalse {
 				devicelink.FailOnAdaptorExisted(&link.Status, "the adaptor is unregistered")
+				r.Eventf(&link, "Warning", "FailedValidate", "the adaptor is unregistered")
 			}
 		}
 		if err := r.Status().Update(ctx, &link); err != nil {

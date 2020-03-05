@@ -29,8 +29,8 @@ type NodeReconciler struct {
 	Log logr.Logger
 }
 
-// +kubebuilder:rbac:groups="",resources=nodes,verbs=get;list;watch
 // +kubebuilder:rbac:groups=edge.cattle.io,resources=devicelinks/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups="",resources=nodes,verbs=get;list;watch;update;patch
 
 func (r *NodeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	var ctx = context.Background()
@@ -86,7 +86,9 @@ func (r *NodeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			log.Error(err, "unable to add finalizer to Node")
 			return ctrl.Result{Requeue: true}, nil
 		}
-		return ctrl.Result{}, nil
+		// NB(thxCode) keeps going down, no need to reconcile again:
+		//     `return ctrl.Result{}, nil`,
+		// the predication will prevent the updated reconciling.
 	}
 
 	// move link NodeExisted condition from `False` to `True`

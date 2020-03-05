@@ -20,9 +20,8 @@ var NodeChangedFuncs = predicate.Funcs{
 			nodeChangedPredicateLog.Error(nil, "received GenericEvent without runtime object", "event", e)
 			return false
 		}
-		// ignores all generic events of Node
 		if object.IsNodeObject(e.Object) {
-			nodeChangedPredicateLog.V(0).Info("ignore GenericEvent")
+			// NB(thxCode) ignores all generic events of Node
 			return false
 		}
 		return true
@@ -36,13 +35,14 @@ var NodeChangedFuncs = predicate.Funcs{
 			nodeChangedPredicateLog.Error(nil, "received UpdateEvent without old runtime object", "event", e)
 			return false
 		}
-		// ignores the update event of Node when:
-		// - the node is existed
 		if object.IsNodeObject(e.ObjectOld) {
+			// NB(thxCode) ignores the update event of Node when:
+			// - the node is existed
 			if e.MetaOld.GetDeletionTimestamp().IsZero() {
-				nodeChangedPredicateLog.V(0).Info("ignore UpdateEvent")
 				return false
 			}
+			nodeChangedPredicateLog.V(0).Info("accept UpdateEvent", "key", object.GetNamespacedName(e.MetaOld))
+			return true
 		}
 		return true
 	},
@@ -55,13 +55,14 @@ var NodeChangedFuncs = predicate.Funcs{
 			nodeChangedPredicateLog.Error(nil, "received DeleteEvent without runtime object", "event", e)
 			return false
 		}
-		// ignores the delete event of Node when:
-		// - the node isn't existed
 		if object.IsNodeObject(e.Object) {
+			// ignores the delete event of Node when:
+			// - the node isn't existed
 			if !e.Meta.GetDeletionTimestamp().IsZero() {
-				nodeChangedPredicateLog.V(0).Info("ignore DeleteEvent")
 				return false
 			}
+			nodeChangedPredicateLog.V(0).Info("accept DeleteEvent", "key", object.GetNamespacedName(e.Meta))
+			return true
 		}
 		return true
 	},

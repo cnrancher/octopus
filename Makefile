@@ -1,45 +1,90 @@
+SHELL := /bin/bash
+
 # Borrowed from https://stackoverflow.com/questions/18136918/how-to-get-current-relative-directory-of-your-makefile
 CURR_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 
-all: protos generate manifests fmt vet
+# Borrowed from https://stackoverflow.com/questions/2214575/passing-arguments-to-make-run
+CMD_CNT := $(words $(MAKECMDGOALS))
+FIS_CMD := $(firstword $(MAKECMDGOALS))
+LST_CMD := $(lastword $(MAKECMDGOALS))
+ifeq (octopus, $(FIS_CMD))
+    ifeq (help, $(LST_CMD))
+        RUN_ARGS := $(wordlist 2, $(shell expr $(CMD_CNT) - 1), $(MAKECMDGOALS))
+    else
+        RUN_ARGS := $(wordlist 2, $(CMD_CNT), $(MAKECMDGOALS))
+    endif
+    $(eval $(RUN_ARGS):;@:)
+else ifeq (adaptor, $(FIS_CMD))
+    ifeq (help, $(LST_CMD))
+        RUN_ARGS := $(wordlist 2, $(shell expr $(CMD_CNT) - 1), $(MAKECMDGOALS))
+    else
+        RUN_ARGS := $(wordlist 2, $(CMD_CNT), $(MAKECMDGOALS))
+    endif
+    $(eval $(RUN_ARGS):;@:)
+    ADAPTOR_MKFILE := $(CURR_DIR)/adaptors/$(word 1, $(RUN_ARGS))/Makefile
+else ifneq (help, $(FIR_CMD))
+    RUN_ARGS := $(wordlist 2, $(CMD_CNT), $(MAKECMDGOALS))
+    $(eval $(RUN_ARGS):;@:)
+    # print usage information
+.PHONY: $(FIS_CMD)
+$(FIS_CMD): help
+	@echo "please follow the usage above !!!"
+endif
 
-.PHNOY: fmt
-fmt:
-	go fmt ./...
+.PHONY: all
+all: help
 
-.PHNOY: vet
-vet:
-	go vet ./...
+.PHONY: help
+help:
+	# building process.
+	#
+	# usage:
+	#   make <component {-}> stage [only]
+	#
+	# component:
+	#   -                octopus  :  the octopus core
+	#   - adaptor {adaptor-name}  :  the named adaptor
+	#
+	# stage:
+	#   a "stage" consists of serval actions, actions follow the below workflow:
+	#     - [dev]  :  generate -> mod -> lint -> build -> test -> verify
+	#     - [prd]  :                       \ = = = = = = = =  package  = = = = = = = = > e2e -> deploy
+	#                                         \ -> build -> test -> containerize -> /
+	#   for convenience, the name of the "action" also represents this "stage".
+	#   choosing to execute a certain "stage" will execute all actions in the previous sequence.
+	#
+	# actions:
+	#   - generate, gen, g  :  code generated.
+	#   -          lint, l  :  code validated, using `golangci-lint` first,
+	#                          roll back to `go fmt`, `go vet` if the installation fails.
+	#   -           mod, m  :  `go mod` code.
+	#   -         build, b  :  `go build` code.
+	#   -          test, t  :  run unit tests.
+	#   -        verify, v  :  run integration tests.
+	#   -  package, pkg, p  :  `docker build` container.
+	#   -           e2e, e  :  run e2e tests.
+	#   -        deploy, d  :  `docker push` container.
+	#   only executing the corresponding "action" of a "stage" needs the `only` suffix.
+	#
+	# example:
+	#   -                  make octopus  :  execute `build` stage for octopus.
+	#   -         make octopus generate  :  execute `generate` stage for octopus.
+	#   -            make adaptor dummy  :  execute `build` stage for "dummy" adaptor.
+	#   -       make adaptor dummy test  :  execute `test` stage for "dummy" adaptor.
+	#   - make adaptor dummy build only  :  execute `build` action for "dummy" adaptor.
+	@echo
 
-.PHNOY: generate
-generate:
-	$(CURR_DIR)/hack/make-rules/controller-gen.sh \
-		object:headerFile=$(CURR_DIR)/hack/boilerplate.go.txt \
-		paths="$(CURR_DIR)/api/..."
+.PHONY: octopus
+octopus:
+	@$(CURR_DIR)/hack/make-rules/octopus.sh $(RUN_ARGS)
 
-.PHNOY: manifests
-manifests:
-	$(CURR_DIR)/hack/make-rules/controller-gen.sh \
-		crd:crdVersions=v1 \
-		paths="$(CURR_DIR)/api/..." \
-		output:crd:dir=$(CURR_DIR)/deploy/manifests/crd
-	$(CURR_DIR)/hack/make-rules/controller-gen.sh \
-		webhook \
-		paths="$(CURR_DIR)/api/..." \
-        output:webhook:dir=$(CURR_DIR)/deploy/manifests/brain
-	$(CURR_DIR)/hack/make-rules/controller-gen.sh \
-		rbac:roleName=octopus-brain \
-		paths="$(CURR_DIR)/pkg/brain/..." \
-		output:rbac:dir=$(CURR_DIR)/deploy/manifests/brain
-	$(CURR_DIR)/hack/make-rules/controller-gen.sh \
-		rbac:roleName=octopus-limb \
-		paths="$(CURR_DIR)/pkg/limb/..." \
-		output:rbac:dir=$(CURR_DIR)/deploy/manifests/limb
+.PHONY: adaptor
+ifeq ($(ADAPTOR_MKFILE), $(wildcard $(ADAPTOR_MKFILE)))
+adaptor:
+	@make -se -f $(ADAPTOR_MKFILE) adaptor $(RUN_ARGS)
+else
+adaptor:
+	@echo "Does not exist '$(word 1, $(RUN_ARGS))' adaptor !!!"
+endif
 
-.PHONY: protos
-protos:
-	$(CURR_DIR)/hack/make-rules/protoc.sh $(CURR_DIR)/pkg/adaptor/api/v1alpha1
-
-.PHONY: adaptors
-adaptors:
-	make -f $(CURR_DIR)/adaptors/Makefile
+.PHONY: test deploy pkg

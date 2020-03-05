@@ -4,53 +4,46 @@
 # Kind cluster variables helpers. These functions need the
 # following variables:
 #
-#    OS_ARCH - The arch for the localhost OS, default is amd64.
-#    OS_TYPE - The type for the localhost OS, default is automatically discovered.
-#    CLUSTER_NAME - The name for the cluster, default is octopus-test.
-#    CLUSTER_VERSION - The Kubernetes version for the cluster, default is v1.16.3.
-#    CLUSTER_CONFIG - The bootstrap configuration path for the cluster, if needed.
+#    OS_TYPE         -  The type for the localhost OS, default is automatically discovered.
+#    OS_ARCH         -  The arch for the localhost OS, default is automatically discovered.
+#    KIND_VERSION    -  The Kind version for running, default is v0.7.0.
+#    K8S_VERSION     -  The Kubernetes version for the cluster, default is v1.17.2.
+#    CLUSTER_NAME    -  The name for the cluster, default is octopus-test.
+#    CLUSTER_CONFIG  -  The bootstrap configuration path for the cluster, if needed.
 
-OS_ARCH=${OS_ARCH:-"amd64"}
-OS_TYPE=${OS_TYPE:-}
-if [[ "${OS_TYPE}x" == "x" ]]; then
-  OS_TYPE=$(uname -s | tr '[:upper:]' '[:lower:]')
-fi
+OS_TYPE=${OS_TYPE:-"$(uname -s)"}
+OS_ARCH=${OS_ARCH:-"$(uname -m)"}
+KIND_VERSION=${KIND_VERSION:-"v0.7.0"}
+K8S_VERSION=${K8S_VERSION:-"v1.17.2"}
 CLUSTER_NAME=${CLUSTER_NAME:-"edge"}
-CLUSTER_VERSION=${CLUSTER_VERSION:-"v1.17.2"}
 CLUSTER_CONFIG=${CLUSTER_CONFIG:-}
-if [[ "${CLUSTER_CONFIG}x" == "x" ]]; then
+if [[ -z "${CLUSTER_CONFIG}" ]]; then
   CLUSTER_CONFIG="/tmp/default-cluster-config.yaml"
 fi
-KIND_VERSION=${KIND_VERSION:-"v0.7.0"}
-
-function octopus::cluster_kind::install_docker() {
-  if ! command -v docker >/dev/null 2>&1; then
-    octopus::log::warn "installing docker"
-    curl -L "https://get.docker.com" | sh
-  fi
-
-  docker_version="$(docker version --format '{{.Server.Version}}' 2>&1)"
-  octopus::log::info "docker: ${docker_version}"
-}
-
-function octopus::cluster_kind::install_kubectl() {
-  if ! command -v kubectl >/dev/null 2>&1; then
-    octopus::log::warn "installing kubectl"
-    local k8s_version
-    k8s_version=$(curl -s "https://storage.googleapis.com/kubernetes-release/release/stable.txt")
-    curl -L "https://storage.googleapis.com/kubernetes-release/release/${k8s_version}/bin/${OS_TYPE}/${OS_ARCH}/kubectl" >/tmp/kubectl
-    chmod +x /tmp/kubectl && sudo mv /tmp/kubectl /usr/local/bin/kubectl
-  fi
-  octopus::log::info "kubectl: $(kubectl version --short --client)"
-}
 
 function octopus::cluster_kind::install() {
-  if ! command -v kind >/dev/null 2>&1; then
-    octopus::log::warn "installing kind"
-    curl -L "https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-${OS_TYPE}-${OS_ARCH}" >/tmp/kind
-    chmod +x /tmp/kind && sudo mv /tmp/kind /usr/local/bin/kind
+  local os_type, os_arch
+  os_type=$(echo -n "${OS_TYPE}" | tr '[:upper:]' '[:lower:]')
+  os_arch=${OS_ARCH:-"amd64"}
+  if [[ "${os_arch}" == "x86_64" ]]; then
+    os_arch="amd64"
   fi
-  octopus::log::info "kind: $(kind --version 2>&1 | awk '{print $NF}')"
+  curl -L "https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-${os_type}-${os_arch}" >/tmp/kind
+  chmod +x /tmp/kind && mv /tmp/kind /usr/local/bin/kind
+}
+
+function octopus::cluster_kind::validate() {
+  if [[ -n "$(command -v kind)" ]]; then
+    return 0
+  fi
+
+  octopus::log::info "installing kind (version: ${KIND_VERSION}, os: ${OS_TYPE}-${OS_ARCH})"
+  if octopus::cluster_kind::install; then
+    octopus::log::info "kind: $(kind --version 2>&1 | awk '{print $NF}')"
+    return 0
+  fi
+  octopus::log::error "no kind available"
+  return 1
 }
 
 function octopus::cluster_kind:configure_default() {
@@ -69,13 +62,19 @@ EOF
 }
 
 function octopus::cluster_kind::startup() {
-  octopus::cluster_kind::install_docker
-  octopus::cluster_kind::install_kubectl
-  octopus::cluster_kind::install
+  if ! octopus::docker::validate; then
+    octopus::log::fatal "docker hasn't been installed"
+  fi
+  if ! octopus::kubectl::validate; then
+    octopus::log::fatal "kubectl hasn't been installed"
+  fi
+  if ! octopus::cluster_kind::validate; then
+    octopus::log::fatal "kind hasn't been installed"
+  fi
 
-  octopus::log::info "creating ${CLUSTER_NAME} cluster with ${CLUSTER_VERSION}"
+  octopus::log::info "creating ${CLUSTER_NAME} cluster with ${K8S_VERSION}"
   octopus::cluster_kind:configure_default
-  kind create cluster --name "${CLUSTER_NAME}" --config "${CLUSTER_CONFIG}" --image="kindest/node:${CLUSTER_VERSION}" --wait 5m
+  kind create cluster --name "${CLUSTER_NAME}" --config "${CLUSTER_CONFIG}" --image="kindest/node:${K8S_VERSION}" --wait 5m
 
   local kubconfig="/tmp/kubeconfig-${CLUSTER_NAME}.yaml"
   octopus::log::info "exporting ${CLUSTER_NAME} cluster's kubeconfig to ${kubconfig}"

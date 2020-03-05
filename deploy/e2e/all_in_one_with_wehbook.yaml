@@ -1,0 +1,509 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    app.kubernetes.io/name: octopus
+    app.kubernetes.io/version: 0.0.1
+  name: octopus-system
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    cert-manager.io/inject-ca-from: system/serving-cert
+    controller-gen.kubebuilder.io/version: v0.2.5
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/name: octopus
+    app.kubernetes.io/version: 0.0.1
+  name: devicelinks.edge.cattle.io
+spec:
+  conversion:
+    strategy: Webhook
+    webhookClientConfig:
+      caBundle: Cg==
+      service:
+        name: webhook-service
+        namespace: system
+        path: /convert
+  group: edge.cattle.io
+  names:
+    kind: DeviceLink
+    listKind: DeviceLinkList
+    plural: devicelinks
+    shortNames:
+    - dl
+    singular: devicelink
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.model.kind
+      name: KIND
+      type: string
+    - jsonPath: .spec.adaptor.node
+      name: NODE
+      type: string
+    - jsonPath: .spec.adaptor.name
+      name: ADAPTOR
+      type: string
+    - jsonPath: .status.conditions[-1].type
+      name: PHASE
+      type: string
+    - jsonPath: .status.conditions[-1].reason
+      name: STATUS
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: AGE
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: DeviceLink is the Schema for the devicelinks API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: DeviceLinkSpec defines the desired state of DeviceLink
+            properties:
+              adaptor:
+                description: Specifies the desired adaptor of a device
+                properties:
+                  name:
+                    description: Specifies the name of adaptor to be used.
+                    type: string
+                  node:
+                    description: Specifies the node of adaptor to be matched.
+                    type: string
+                  parameters:
+                    description: Specifies the parameter of adaptor to be used.
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                type: object
+              model:
+                description: Specifies the desired model of a device.
+                properties:
+                  apiVersion:
+                    description: 'APIVersion defines the versioned schema of this
+                      representation of an object. Servers should convert recognized
+                      schemas to the latest internal value, and may reject unrecognized
+                      values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+                    type: string
+                  kind:
+                    description: 'Kind is a string value representing the REST resource
+                      this object represents. Servers may infer this from the endpoint
+                      the client submits requests to. Cannot be updated. In CamelCase.
+                      More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+                    type: string
+                type: object
+              template:
+                description: Describe the device that will be created.
+                properties:
+                  metadata:
+                    description: Standard object's metadata.
+                    properties:
+                      labels:
+                        additionalProperties:
+                          type: string
+                        description: Map of string keys and values that can be used
+                          to organize and categorize (scope and select) objects.
+                        type: object
+                    type: object
+                  spec:
+                    description: Specifies the desired behaviors of a device.
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                type: object
+            required:
+            - adaptor
+            - model
+            - template
+            type: object
+          status:
+            description: DeviceLinkStatus defines the observed state of DeviceLink
+            properties:
+              adaptor:
+                description: Represents the observed adaptor of the device
+                properties:
+                  name:
+                    description: Specifies the name of adaptor to be used.
+                    type: string
+                  node:
+                    description: Specifies the node of adaptor to be matched.
+                    type: string
+                  parameters:
+                    description: Specifies the parameter of adaptor to be used.
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                type: object
+              conditions:
+                description: Represents the latest available observations of the device's
+                  current state.
+                items:
+                  description: DeviceLinkCondition describes the state of a device
+                    at a certain point.
+                  properties:
+                    lastTransitionTime:
+                      description: Last time the condition transitioned from one status
+                        to another.
+                      format: date-time
+                      type: string
+                    lastUpdateTime:
+                      description: The last time this condition was updated.
+                      format: date-time
+                      type: string
+                    message:
+                      description: A human readable message indicating details about
+                        the transition.
+                      type: string
+                    reason:
+                      description: The reason for the condition's last transition.
+                      type: string
+                    status:
+                      description: Status of the condition, one of True, False, Unknown.
+                      type: string
+                    type:
+                      description: Type of device condition.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
+              model:
+                description: Represents the observed model of the device
+                properties:
+                  apiVersion:
+                    description: 'APIVersion defines the versioned schema of this
+                      representation of an object. Servers should convert recognized
+                      schemas to the latest internal value, and may reject unrecognized
+                      values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+                    type: string
+                  kind:
+                    description: 'Kind is a string value representing the REST resource
+                      this object represents. Servers may infer this from the endpoint
+                      the client submits requests to. Cannot be updated. In CamelCase.
+                      More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+                    type: string
+                type: object
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  annotations:
+    cert-manager.io/inject-ca-from: system/serving-cert
+  creationTimestamp: null
+  name: mutating-webhook-configuration
+webhooks:
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-edge-cattle-io-v1alpha1-device
+  failurePolicy: Fail
+  name: mdevicelinks.edge.cattle.io
+  rules:
+  - apiGroups:
+    - edge.cattle.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - devicelinks
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  annotations:
+    cert-manager.io/inject-ca-from: system/serving-cert
+  creationTimestamp: null
+  name: validating-webhook-configuration
+webhooks:
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-edge-cattle-io-v1alpha1-device
+  failurePolicy: Fail
+  name: vdevicelinks.edge.cattle.io
+  rules:
+  - apiGroups:
+    - edge.cattle.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - devicelinks
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/name: octopus
+    app.kubernetes.io/version: 0.0.1
+  name: octopus-leader-election-role
+  namespace: octopus-system
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - configmaps/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/name: octopus
+    app.kubernetes.io/version: 0.0.1
+  name: octopus-manager-role
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apiextensions.k8s.io
+  resources:
+  - customresourcedefinitions
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - edge.cattle.io
+  resources:
+  - devicelinks
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - edge.cattle.io
+  resources:
+  - devicelinks/status
+  verbs:
+  - get
+  - patch
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/name: octopus
+    app.kubernetes.io/version: 0.0.1
+  name: octopus-leader-election-rolebinding
+  namespace: octopus-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: octopus-leader-election-role
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: octopus-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/name: octopus
+    app.kubernetes.io/version: 0.0.1
+  name: octopus-manager-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: octopus-manager-role
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: octopus-system
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: webhook-service
+  namespace: system
+spec:
+  ports:
+  - port: 443
+    targetPort: 9443
+  selector:
+    app.kubernetes.io/component: brain
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: brain
+    app.kubernetes.io/name: octopus
+    app.kubernetes.io/version: 0.0.1
+  name: octopus-brain
+  namespace: system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: brain
+      app.kubernetes.io/name: octopus
+      app.kubernetes.io/version: 0.0.1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: brain
+        app.kubernetes.io/name: octopus
+        app.kubernetes.io/version: 0.0.1
+    spec:
+      containers:
+      - args:
+        - brain
+        - --enable-leader-election
+        image: rancher/octopus:latest
+        name: octopus
+        ports:
+        - containerPort: 9443
+          name: webhook
+          protocol: TCP
+        volumeMounts:
+        - mountPath: /tmp/k8s-webhook-server/serving-certs
+          name: cert
+          readOnly: true
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+      terminationGracePeriodSeconds: 10
+      volumes:
+      - name: cert
+        secret:
+          defaultMode: 420
+          secretName: webhook-server-cert
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app.kubernetes.io/component: limb
+    app.kubernetes.io/name: octopus
+    app.kubernetes.io/version: 0.0.1
+  name: octopus-limb
+  namespace: octopus-system
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: limb
+      app.kubernetes.io/name: octopus
+      app.kubernetes.io/version: 0.0.1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: limb
+        app.kubernetes.io/name: octopus
+        app.kubernetes.io/version: 0.0.1
+    spec:
+      containers:
+      - args:
+        - limb
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        image: rancher/octopus:latest
+        name: octopus
+        volumeMounts:
+        - mountPath: /var/lib/octopus/adaptors/
+          name: sockets
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+      volumes:
+      - hostPath:
+          path: /var/lib/octopus/adaptors/
+          type: DirectoryOrCreate
+        name: sockets
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: serving-cert
+  namespace: system
+spec:
+  dnsNames:
+  - webhook-service.system.svc
+  - webhook-service.system.svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: selfsigned-issuer
+  secretName: webhook-server-cert
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Issuer
+metadata:
+  name: selfsigned-issuer
+  namespace: system
+spec:
+  selfSigned: {}

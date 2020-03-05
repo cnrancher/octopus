@@ -13,9 +13,6 @@ import (
 	"github.com/rancher/octopus/cmd/brain/options"
 	"github.com/rancher/octopus/pkg/brain/controller"
 	"github.com/rancher/octopus/pkg/util/log/handler"
-
-	_ "github.com/rancher/octopus/pkg/util/log/handler"
-	_ "github.com/rancher/octopus/pkg/util/version/metric"
 )
 
 func Run(name string, opts *options.Options) error {

@@ -9,13 +9,13 @@ import (
 )
 
 func Wrap(c *cobra.Command, nfs cliflag.NamedFlagSets) *cobra.Command {
-	fs := c.Flags()
+	var fs = c.Flags()
 	for _, f := range nfs.FlagSets {
 		fs.AddFlagSet(f)
 	}
 
-	usageFmt := "Usage:\n  %s\n"
-	cols, _, _ := term.TerminalSize(c.OutOrStdout())
+	var usageFmt = "Usage:\n  %s\n"
+	var cols, _, _ = term.TerminalSize(c.OutOrStdout())
 	c.SetUsageFunc(func(cmd *cobra.Command) error {
 		fmt.Fprintf(cmd.OutOrStderr(), usageFmt, cmd.UseLine())
 		cliflag.PrintSections(cmd.OutOrStderr(), nfs, cols)

@@ -1,0 +1,14 @@
+FROM golang:1.13.8 as builder
+RUN curl -sSfL "https://get.docker.com" | sh
+
+ARG DAPPER_HOST_ARCH
+ENV HOST_ARCH=${DAPPER_HOST_ARCH}
+
+ENV DAPPER_ENV REPO TAG ARCH IMAGE_NAME
+ENV DAPPER_SOURCE /go/src/github.com/rancher/octopus/
+ENV DAPPER_OUTPUT ./bin ./dist
+ENV DAPPER_DOCKER_SOCKET true
+ENV HOME ${DAPPER_SOURCE}
+
+WORKDIR ${DAPPER_SOURCE}
+CMD ["make", "-se", "octopus", "containerize"]

@@ -1,0 +1,21 @@
+{
+	"linters": {
+		"disable-all": true,
+		"enable": [
+			"govet",
+			"golint",
+			"goimports",
+			"misspell",
+			"ineffassign",
+			"gofmt"
+		]
+	},
+	"run": {
+		"skip-files": [
+			"/zz_generated",
+			"api\\.pb\\.go"
+		],
+		"deadline": "5m",
+		"tests": true
+	}
+}

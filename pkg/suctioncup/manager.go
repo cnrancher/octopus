@@ -17,7 +17,7 @@ import (
 
 var log = ctrl.Log.WithName("suctioncup").WithName("manager")
 
-func NewManager() (*manager, error) {
+func NewManager() (Manager, error) {
 	var adaptors = adaptor.NewAdaptors()
 	var queue = event.NewQueue("adaptor.manager")
 	var regSrv, err = registration.NewServer(api.LimbSocket, adaptors, queue)

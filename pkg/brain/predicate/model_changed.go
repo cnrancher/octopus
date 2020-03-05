@@ -20,9 +20,8 @@ var ModelChangedFuncs = predicate.Funcs{
 			modelChangedPredicateLog.Error(nil, "received GenericEvent without runtime object", "event", e)
 			return false
 		}
-		// ignores all generic events of CRD
 		if object.IsCustomResourceDefinitionObject(e.Object) {
-			modelChangedPredicateLog.V(0).Info("ignore GenericEvent")
+			// NB(thxCode) ignores all generic events of CRD
 			return false
 		}
 		return true
@@ -36,14 +35,15 @@ var ModelChangedFuncs = predicate.Funcs{
 			modelChangedPredicateLog.Error(nil, "received UpdateEvent without old runtime object", "event", e)
 			return false
 		}
-		// ignores all generic events of CRD when:
-		// - the CRD is existed and ... TODO verify version
 		if object.IsCustomResourceDefinitionObject(e.ObjectOld) {
+			// NB(thxCode) ignores all generic events of CRD when:
+			// - the CRD is existed
+			// - TODO verify version
 			if e.MetaOld.GetDeletionTimestamp().IsZero() {
-				// TODO verify version
-				modelChangedPredicateLog.V(0).Info("ignore UpdateEvent")
 				return false
 			}
+			modelChangedPredicateLog.V(0).Info("accept UpdateEvent", "key", object.GetNamespacedName(e.MetaOld))
+			return true
 		}
 		return true
 	},
@@ -56,13 +56,14 @@ var ModelChangedFuncs = predicate.Funcs{
 			modelChangedPredicateLog.Error(nil, "received DeleteEvent without runtime object", "event", e)
 			return false
 		}
-		// ignores the delete event of CRD when:
-		// - the CRD isn't existed
 		if object.IsCustomResourceDefinitionObject(e.Object) {
+			// NB(thxCode) ignores the delete event of CRD when:
+			// - the CRD isn't existed
 			if !e.Meta.GetDeletionTimestamp().IsZero() {
-				modelChangedPredicateLog.V(0).Info("ignore DeleteEvent")
 				return false
 			}
+			modelChangedPredicateLog.V(0).Info("accept DeleteEvent", "key", object.GetNamespacedName(e.Meta))
+			return true
 		}
 		return true
 	},

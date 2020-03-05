@@ -10,6 +10,7 @@ import (
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
@@ -31,6 +32,10 @@ var _ = Describe("Model controller", func() {
 		var err error
 		validNode, err = node.GetValidWorker(ctx, k8sCli)
 		Expect(err).ShouldNot(HaveOccurred())
+	})
+
+	AfterEach(func() {
+		_ = k8sCli.DeleteAllOf(ctx, &edgev1alpha1.DeviceLink{}, client.InNamespace(namespace))
 	})
 
 	Context("CRD instance", func() {
@@ -119,7 +124,7 @@ var _ = Describe("Model controller", func() {
 			Eventually(func() error {
 				return envtest.UninstallCRDs(k8sCfg, envtest.CRDInstallOptions{
 					Paths: []string{
-						filepath.Join(rootDir, "adaptors", "dummy", "deploy", "manifests", "crd"),
+						filepath.Join(rootDir, "adaptors", "dummy", "deploy", "manifests", "crd", "base"),
 					},
 				})
 			}, 30, 1).Should(Succeed())
@@ -205,7 +210,7 @@ var _ = Describe("Model controller", func() {
 			Eventually(func() error {
 				var _, err = envtest.InstallCRDs(k8sCfg, envtest.CRDInstallOptions{
 					Paths: []string{
-						filepath.Join(rootDir, "adaptors", "dummy", "deploy", "manifests", "crd"),
+						filepath.Join(rootDir, "adaptors", "dummy", "deploy", "manifests", "crd", "base"),
 					},
 				})
 				return err

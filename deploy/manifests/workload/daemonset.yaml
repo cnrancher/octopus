@@ -1,0 +1,38 @@
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app.kubernetes.io/component: "limb"
+  name: limb
+  namespace: system
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: "limb"
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: "limb"
+    spec:
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+      containers:
+        - name: octopus
+          args:
+            - limb
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          image: rancher/octopus:latest
+          volumeMounts:
+            - mountPath: /var/lib/octopus/adaptors/
+              name: sockets
+      volumes:
+        - name: sockets
+          hostPath:
+            path: /var/lib/octopus/adaptors/
+            type: DirectoryOrCreate

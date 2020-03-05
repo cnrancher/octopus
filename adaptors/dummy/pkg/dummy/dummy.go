@@ -17,6 +17,9 @@ const (
 	Endpoint = "dummy.socket"
 )
 
+// +kubebuilder:rbac:groups=adaptors.edge.cattle.io,resources=dummydevices,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=adaptors.edge.cattle.io,resources=dummydevices/status,verbs=get;update;patch
+
 func Run() error {
 	var stop = ctrl.SetupSignalHandler()
 	var ctx = critical.Context(stop)

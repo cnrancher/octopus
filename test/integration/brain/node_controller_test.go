@@ -8,6 +8,7 @@ import (
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
 	"github.com/rancher/octopus/pkg/brain/controller"
@@ -20,6 +21,10 @@ import (
 
 var _ = Describe("Node controller", func() {
 	var namespace = "default"
+
+	AfterEach(func() {
+		_ = k8sCli.DeleteAllOf(ctx, &edgev1alpha1.DeviceLink{}, client.InNamespace(namespace))
+	})
 
 	Context("Node instance", func() {
 

@@ -21,17 +21,16 @@ import (
 	"github.com/rancher/octopus/pkg/brain"
 	"github.com/rancher/octopus/pkg/brain/controller"
 	"github.com/rancher/octopus/test/framework"
-	"github.com/rancher/octopus/test/util/rootdir"
 )
 
 var (
+	rootDir    string
 	ctx        context.Context
 	cancelFunc context.CancelFunc
 	k8sCfg     *rest.Config
 	k8sCli     client.Client
 	ctrlMgr    ctrl.Manager
 	testEnv    *envtest.Environment
-	rootDir    = rootdir.Get()
 )
 
 func TestAPIs(t *testing.T) {
@@ -55,12 +54,12 @@ var _ = BeforeSuite(func(done Done) {
 	testEnv = &envtest.Environment{
 		UseExistingCluster: pointer.BoolPtr(true),
 		CRDDirectoryPaths: []string{
-			filepath.Join(rootDir, "deploy", "manifests", "crd"),
-			filepath.Join(rootDir, "adaptors", "dummy", "deploy", "manifests", "crd"),
+			filepath.Join(rootDir, "deploy", "manifests", "crd", "base"),
+			filepath.Join(rootDir, "adaptors", "dummy", "deploy", "manifests", "crd", "base"),
 		},
 	}
 
-	k8sCfg, err = framework.StartEnv(testEnv, GinkgoWriter)
+	k8sCfg, err = framework.StartEnv(rootDir, testEnv, GinkgoWriter)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(k8sCfg).ToNot(BeNil())
 
@@ -115,10 +114,16 @@ var _ = BeforeSuite(func(done Done) {
 
 var _ = AfterSuite(func() {
 	By("tearing down test environment")
-	var err = framework.StopEnv(testEnv, GinkgoWriter)
+	var err = framework.StopEnv(rootDir, testEnv, GinkgoWriter)
 	Expect(err).ToNot(HaveOccurred())
 
 	if cancelFunc != nil {
 		cancelFunc()
 	}
 }, 600)
+
+func init() {
+	var currDir = filepath.Dir(".")
+	// calculate the project root dir of ${GOPATH}/github.com/rancher/octopus/test/integration/brain
+	rootDir, _ = filepath.Abs(filepath.Join(currDir, "..", "..", ".."))
+}
