@@ -190,13 +190,20 @@ function deploy() {
 
 function entry() {
   local adaptor
-  adaptor="${1}"
+  adaptor="${1:-}"
+  if [[ -z "${adaptor}" ]]; then
+    octopus::log::error "please indicate a specific adaptor !!!"
+    exit 0
+  elif [[ ! -d "${ROOT_DIR}/adaptors/${adaptor}" ]]; then
+    octopus::log::error "does not exist ${adaptor} adaptor !!!"
+    exit 0
+  fi
 
   local stage
-  stage="${2-:build}"
+  stage="${2:-package}"
 
   local subcmd
-  subcmd="${3-:}"
+  subcmd="${3:-}"
 
   case $stage in
   g | gen | generate)

@@ -53,7 +53,7 @@ help:
 	#   only executing the corresponding "action" of a "stage" needs the `only` suffix.
 	#
 	# example:
-	#   -            make adaptor dummy  :  execute `build` stage for "dummy" adaptor.
+	#   -            make adaptor dummy  :  execute `pacakge` stage for "dummy" adaptor.
 	#   -       make adaptor dummy test  :  execute `test` stage for "dummy" adaptor.
 	#   - make adaptor dummy build only  :  execute `build` action for "dummy" adaptor.
 	@echo

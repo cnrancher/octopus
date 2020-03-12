@@ -67,9 +67,9 @@ help:
 	#   only executing the corresponding "action" of a "stage" needs the `only` suffix.
 	#
 	# example:
-	#   -                  make octopus  :  execute `build` stage for octopus.
+	#   -                  make octopus  :  execute `pacakge` stage for octopus.
 	#   -         make octopus generate  :  execute `generate` stage for octopus.
-	#   -            make adaptor dummy  :  execute `build` stage for "dummy" adaptor.
+	#   -            make adaptor dummy  :  execute `pacakge` stage for "dummy" adaptor.
 	#   -       make adaptor dummy test  :  execute `test` stage for "dummy" adaptor.
 	#   - make adaptor dummy build only  :  execute `build` action for "dummy" adaptor.
 	@echo
@@ -84,7 +84,7 @@ adaptor:
 	@make -se -f $(ADAPTOR_MKFILE) adaptor $(RUN_ARGS)
 else
 adaptor:
-	@echo "Does not exist '$(word 1, $(RUN_ARGS))' adaptor !!!"
+	@echo "does not exist '$(word 1, $(RUN_ARGS))' adaptor !!!"
 endif
 
 .PHONY: test deploy pkg

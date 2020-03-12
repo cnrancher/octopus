@@ -34,6 +34,7 @@ func Run(name string, opts *options.Options) error {
 			MetricsBindAddress: fmt.Sprintf(":%d", opts.MetricsAddr),
 			Port:               opts.AdmissionWebhookAddr,
 			LeaderElection:     opts.EnableLeaderElection,
+			LeaderElectionID:   "octopus-brain-leader-election-id",
 		},
 	)
 	if err != nil {
