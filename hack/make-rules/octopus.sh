@@ -186,10 +186,10 @@ function deploy() {
 
 function entry() {
   local stage
-  stage="${1-:build}"
+  stage="${1:-package}"
 
   local subcmd
-  subcmd="${2-:}"
+  subcmd="${2:-}"
 
   case $stage in
   g | gen | generate)

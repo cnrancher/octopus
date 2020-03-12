@@ -7,7 +7,7 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
-  - adaptors.edge.cattle.io
+  - devices.edge.cattle.io
   resources:
   - dummydevices
   verbs:
@@ -19,7 +19,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - adaptors.edge.cattle.io
+  - devices.edge.cattle.io
   resources:
   - dummydevices/status
   verbs:
