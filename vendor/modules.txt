@@ -26,6 +26,10 @@ github.com/fsnotify/fsnotify
 github.com/go-logr/logr
 # github.com/go-logr/zapr v0.1.0
 github.com/go-logr/zapr
+# github.com/goburrow/modbus v0.1.0
+github.com/goburrow/modbus
+# github.com/goburrow/serial v0.1.0
+github.com/goburrow/serial
 # github.com/gogo/protobuf v1.3.1
 github.com/gogo/protobuf/gogoproto
 github.com/gogo/protobuf/proto
