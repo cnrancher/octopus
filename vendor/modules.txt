@@ -3,6 +3,16 @@ github.com/Azure/go-ansiterm
 github.com/Azure/go-ansiterm/winterm
 # github.com/beorn7/perks v1.0.0
 github.com/beorn7/perks/quantile
+# github.com/bettercap/gatt v0.0.0-20191018133023-569d3d9372bb
+github.com/bettercap/gatt
+github.com/bettercap/gatt/examples/option
+github.com/bettercap/gatt/linux
+github.com/bettercap/gatt/linux/cmd
+github.com/bettercap/gatt/linux/evt
+github.com/bettercap/gatt/linux/gioctl
+github.com/bettercap/gatt/linux/socket
+github.com/bettercap/gatt/linux/util
+github.com/bettercap/gatt/xpc
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
 # github.com/docker/docker v0.7.3-0.20190327010347-be7ac8be2ae0
@@ -58,8 +68,16 @@ github.com/inconshreveable/mousetrap
 github.com/json-iterator/go
 # github.com/konsorten/go-windows-terminal-sequences v1.0.1
 github.com/konsorten/go-windows-terminal-sequences
+# github.com/mattn/go-colorable v0.0.9
+github.com/mattn/go-colorable
+# github.com/mattn/go-isatty v0.0.4
+github.com/mattn/go-isatty
 # github.com/matttproud/golang_protobuf_extensions v1.0.1
 github.com/matttproud/golang_protobuf_extensions/pbutil
+# github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b
+github.com/mgutz/ansi
+# github.com/mgutz/logxi v0.0.0-20161027140823-aebf8a7d67ab
+github.com/mgutz/logxi/v1
 # github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd
 github.com/modern-go/concurrent
 # github.com/modern-go/reflect2 v1.0.1

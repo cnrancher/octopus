@@ -1,0 +1,27 @@
+apiVersion: edge.cattle.io/v1alpha1
+kind: DeviceLink
+metadata:
+  name: xiaomi-temp-rs2200
+spec:
+  adaptor:
+    node: ubuntu
+    name: adaptors.edge.cattle.io/ble
+    parameters:
+      syncInterval: 30
+      timeout: 60
+  model:
+    apiVersion: "devices.edge.cattle.io/v1alpha1"
+    kind: "BluetoothDevice"
+  template:
+    metadata:
+      labels:
+        device: xiaomi-temp-rs2200
+    spec:
+      name: "MJ_HT_V1"
+      # macAddress: ""
+      properties:
+      - name: data
+        description: XiaoMi temp sensor with temperature and humidity data
+        accessMode: NotifyOnly
+        visitor:
+          characteristicUUID: 226c000064764566756266734470666d

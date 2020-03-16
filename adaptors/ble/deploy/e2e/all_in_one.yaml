@@ -1,0 +1,219 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.2.5
+    devices.edge.cattle.io/enable: "true"
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/name: octopus-adaptor-ble
+    app.kubernetes.io/version: 0.0.1
+  name: bluetoothdevices.devices.edge.cattle.io
+spec:
+  group: devices.edge.cattle.io
+  names:
+    kind: BluetoothDevice
+    listKind: BluetoothDeviceList
+    plural: bluetoothdevices
+    shortNames:
+    - ble
+    singular: bluetoothdevice
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.name
+      name: Name
+      type: string
+    - jsonPath: .spec.macAddress
+      name: MacAddress
+      type: integer
+    - jsonPath: .metadata.creationTimestamp
+      name: AGE
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: BluetoothDevice is the Schema for the ble device API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: BluetoothDeviceSpec defines the desired state of BluetoothDevice
+            properties:
+              macAddress:
+                type: string
+              name:
+                type: string
+              properties:
+                items:
+                  description: DeviceProperty defines an individual ble device property
+                  properties:
+                    accessMode:
+                      description: The access mode for  a device property.
+                      type: string
+                    description:
+                      type: string
+                    name:
+                      type: string
+                    visitor:
+                      description: PropertyVisitor defines the specifics of accessing
+                        a particular device property
+                      properties:
+                        characteristicUUID:
+                          type: string
+                        dataConverter:
+                          description: BluetoothDataConverter defines the read data
+                            converting operation
+                          properties:
+                            endIndex:
+                              type: integer
+                            orderOfOperations:
+                              items:
+                                properties:
+                                  operationType:
+                                    type: string
+                                  operationValue:
+                                    type: string
+                                type: object
+                              type: array
+                            shiftLeft:
+                              type: integer
+                            shiftRight:
+                              type: integer
+                            startIndex:
+                              type: integer
+                          type: object
+                        dataWrite:
+                          additionalProperties:
+                            format: byte
+                            type: string
+                          type: object
+                        defaultValue:
+                          type: string
+                      type: object
+                  type: object
+                type: array
+            type: object
+          status:
+            description: BluetoothDeviceStatus defines the observed state of BluetoothDevice
+            properties:
+              properties:
+                items:
+                  properties:
+                    desired:
+                      type: string
+                    name:
+                      type: string
+                    reported:
+                      type: string
+                    updatedAt:
+                      format: date-time
+                      type: string
+                  type: object
+                type: array
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/name: octopus-adaptor-ble
+    app.kubernetes.io/version: 0.0.1
+  name: octopus-adaptor-ble-manager-role
+rules:
+- apiGroups:
+  - devices.edge.cattle.io
+  resources:
+  - bledevices
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - devices.edge.cattle.io
+  resources:
+  - bledevices/status
+  verbs:
+  - get
+  - patch
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/name: octopus-adaptor-ble
+    app.kubernetes.io/version: 0.0.1
+  name: octopus-adaptor-ble-manager-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: octopus-adaptor-ble-manager-role
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: octopus-system
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app.kubernetes.io/component: adaptor
+    app.kubernetes.io/name: octopus-adaptor-ble
+    app.kubernetes.io/version: 0.0.1
+  name: octopus-adaptor-ble-adaptor
+  namespace: octopus-system
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: adaptor
+      app.kubernetes.io/name: octopus-adaptor-ble
+      app.kubernetes.io/version: 0.0.1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: adaptor
+        app.kubernetes.io/name: octopus-adaptor-ble
+        app.kubernetes.io/version: 0.0.1
+    spec:
+      containers:
+      - image: rancher/octopus-adaptor-ble:latest
+        name: octopus
+        volumeMounts:
+        - mountPath: /var/lib/octopus/adaptors/
+          name: sockets
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+      volumes:
+      - hostPath:
+          path: /var/lib/octopus/adaptors/
+          type: DirectoryOrCreate
+        name: sockets
