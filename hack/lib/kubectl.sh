@@ -13,13 +13,13 @@ OS_ARCH=${OS_ARCH:-"$(uname -m)"}
 K8S_VERSION=${K8S_VERSION:-"v1.17.2"}
 
 function octopus::kubectl::install() {
-  local os_type, os_arch
+  local os_type
   os_type=$(echo -n "${OS_TYPE}" | tr '[:upper:]' '[:lower:]')
-  os_arch=${OS_ARCH:-"amd64"}
+  local os_arch=${OS_ARCH:-"amd64"}
   if [[ "${os_arch}" == "x86_64" ]]; then
     os_arch="amd64"
   fi
-  curl -sSfL "https://storage.googleapis.com/kubernetes-release/release/${K8S_VERSION}/bin/${os_type}/${os_arch}/kubectl" >/tmp/kubectl
+  curl -SfL "https://storage.googleapis.com/kubernetes-release/release/${K8S_VERSION}/bin/${os_type}/${os_arch}/kubectl" >/tmp/kubectl
   chmod +x /tmp/kubectl && sudo mv /tmp/kubectl /usr/local/bin/kubectl
 }
 

@@ -28,7 +28,7 @@ function octopus::cluster_kind::install() {
   if [[ "${os_arch}" == "x86_64" ]]; then
     os_arch="amd64"
   fi
-  curl -L "https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-${os_type}-${os_arch}" >/tmp/kind
+  curl -SfL "https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-${os_type}-${os_arch}" >/tmp/kind
   chmod +x /tmp/kind && mv /tmp/kind /usr/local/bin/kind
 }
 

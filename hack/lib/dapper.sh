@@ -13,7 +13,7 @@ OS_ARCH=${OS_ARCH:-"$(uname -m)"}
 DAPPER_VERSION=${DAPPER_VERSION:-"v0.4.2"}
 
 function octopus::dapper::install() {
-  curl -sSfL "https://releases.rancher.com/dapper/${DAPPER_VERSION}/dapper-${OS_TYPE}-${OS_ARCH}" >/tmp/dapper
+  curl -SfL "https://releases.rancher.com/dapper/${DAPPER_VERSION}/dapper-${OS_TYPE}-${OS_ARCH}" >/tmp/dapper
   chmod +x /tmp/dapper && mv /tmp/dapper /usr/local/bin/dapper
 }
 

@@ -8,10 +8,10 @@
 .dapper
 
 # Output of the dapper
-.dapper*
+**/*.dapper*
 
 # Directories
-bin
+dist
 .vagrant
 .cache
 .docker
