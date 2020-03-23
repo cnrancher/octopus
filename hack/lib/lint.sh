@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 function octopus::lint::install() {
-  curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b "${GOPATH}/bin" v1.23.8
+  curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b "$(go env GOPATH)/bin" v1.23.8
 }
 
 function octopus::lint::validate() {
@@ -11,7 +11,6 @@ function octopus::lint::validate() {
 
   octopus::log::info "installing golangci-lint"
   if octopus::lint::install; then
-    export PATH="$PATH:${GOPATH}/bin/golangci-lint"
     octopus::log::info "$(golangci-lint --version)"
     return 0
   fi

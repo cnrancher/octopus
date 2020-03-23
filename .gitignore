@@ -8,7 +8,7 @@
 .dapper
 
 # Output of the dapper
-.dapper*
+**/*.dapper*
 
 # Directories
 bin

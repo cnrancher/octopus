@@ -16,7 +16,6 @@ function octopus::controller_gen::validate() {
 
   octopus::log::info "installing controller-gen"
   if octopus::controller_gen::install; then
-    export PATH="$PATH:${GOPATH}/bin/controller-gen"
     octopus::log::info "controller-gen: $(controller_gen --version)"
     return 0
   fi

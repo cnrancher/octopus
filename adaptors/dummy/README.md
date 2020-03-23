@@ -14,6 +14,14 @@ This adaptor is for testing.
 |:---:|:---:|:---:|:---:|
 | `DeviceDummy` | `devices.edge.cattle.io` | `v1alpha1` | * |
 
+## Support Platform
+
+| OS | Arch |
+|:---:|:---|
+| `linux` | `amd64` |
+| `linux` | `arm` |
+| `linux` | `arm64` |
+
 ## Usage
 
 ```shell script

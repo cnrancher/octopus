@@ -8,6 +8,7 @@ CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 # The root of the octopus directory
 ROOT_DIR="${CURR_DIR}"
 source "${ROOT_DIR}/hack/lib/init.sh"
+source "${CURR_DIR}/hack/lib/constant.sh"
 
 function generate() {
   octopus::log::info "generating octopus..."
@@ -20,7 +21,7 @@ function generate() {
 
   octopus::log::info "generating protos"
   rm -f "${CURR_DIR}/pkg/adaptor/api/*/*.pb.go"
-  for d in $(octopus::find::subdirs "${CURR_DIR}/pkg/adaptor/api"); do
+  for d in $(octopus::util::find_subdirs "${CURR_DIR}/pkg/adaptor/api"); do
     octopus::protoc::generate \
       "${CURR_DIR}/pkg/adaptor/api/${d}"
   done
@@ -86,11 +87,9 @@ function lint() {
 }
 
 function build() {
-  if [[ "${CURR_DIR}" =~ "$(go env GOPATH)".* ]]; then
-    export GO111MODULE=off
-  fi
-
   octopus::log::info "building octopus..."
+
+  mkdir -p "${CURR_DIR}/bin"
 
   local version_flags="
     -X k8s.io/client-go/pkg/version.gitVersion=${OCTOPUS_GIT_VERSION}
@@ -101,27 +100,35 @@ function build() {
     -w -s"
   local ext_flags="
     -extldflags '-static'"
-  local os
-  os=$(go env GOOS)
-  local arch
-  arch=$(go env GOARCH)
 
-  mkdir -p "${CURR_DIR}/bin"
-  CGO_ENABLED=0 go build \
-    -ldflags "${version_flags} ${flags} ${ext_flags}" \
-    -o "${CURR_DIR}/bin/octopus_${os}_${arch}" \
-    "${CURR_DIR}/cmd/octopus/main.go"
-  mkdir -p "${CURR_DIR}/dist"
-  cp -f "${CURR_DIR}/bin/octopus_${os}_${arch}" "${CURR_DIR}/dist/octopus"
+  local platforms
+  if [[ "${CROSS:-false}" == "true" ]]; then
+    octopus::log::info "crossed building"
+    platforms=("${SUPPORTED_PLATFORMS[@]}")
+  else
+    local os="${OS:-$(go env GOOS)}"
+    local arch="${ARCH:-$(go env GOARCH)}"
+    platforms=("${os}/${arch}")
+  fi
+
+  for platform in "${platforms[@]}"; do
+    octopus::log::info "building ${platform}"
+
+    local os_arch
+    IFS="/" read -r -a os_arch <<<"${platform}"
+
+    local os=${os_arch[0]}
+    local arch=${os_arch[1]}
+    GOOS=${os} GOARCH=${arch} CGO_ENABLED=0 go build \
+      -ldflags "${version_flags} ${flags} ${ext_flags}" \
+      -o "${CURR_DIR}/bin/octopus_${os}_${arch}" \
+      "${CURR_DIR}/cmd/octopus/main.go"
+  done
 
   octopus::log::info "...done"
 }
 
 function test() {
-  if [[ "${CURR_DIR}" =~ "$(go env GOPATH)".* ]]; then
-    export GO111MODULE=off
-  fi
-
   octopus::log::info "running unit tests for octopus..."
 
   local unit_test_targets=(
@@ -129,24 +136,30 @@ function test() {
     "${CURR_DIR}/cmd/..."
     "${CURR_DIR}/pkg/..."
   )
-  local os
-  os=$(go env GOOS)
-  local arch
-  arch=$(go env GOARCH)
 
-  CGO_ENABLED=1 go test \
-    -race \
-    -cover -coverprofile "${CURR_DIR}/dist/coverage_${os}_${arch}.out" \
-    "${unit_test_targets[@]}"
+  if [[ "${CROSS:-false}" == "true" ]]; then
+    octopus::log::warn "crossed test is not supported"
+  fi
+
+  local os="${OS:-$(go env GOOS)}"
+  local arch="${ARCH:-$(go env GOARCH)}"
+  if [[ "${arch}" == "arm" ]]; then
+    # NB(thxCode): race detector doesn't support `arm` arch, ref to:
+    # - https://golang.org/doc/articles/race_detector.html#Supported_Systems
+    GOOS=${os} GOARCH=${arch} CGO_ENABLED=1 go test \
+      -cover -coverprofile "${CURR_DIR}/dist/coverage_${os}_${arch}.out" \
+      "${unit_test_targets[@]}"
+  else
+    GOOS=${os} GOARCH=${arch} CGO_ENABLED=1 go test \
+      -race \
+      -cover -coverprofile "${CURR_DIR}/dist/coverage_${os}_${arch}.out" \
+      "${unit_test_targets[@]}"
+  fi
 
   octopus::log::info "...done"
 }
 
 function verify() {
-  if [[ "${CURR_DIR}" =~ "$(go env GOPATH)".* ]]; then
-    export GO111MODULE=off
-  fi
-
   octopus::log::info "running integration tests for octopus..."
 
   CGO_ENABLED=1 go test \
@@ -158,24 +171,35 @@ function verify() {
 }
 
 function containerize() {
-  local suffix="-${ARCH:-$(go env GOARCH)}"
-  local tag=${TAG:-${OCTOPUS_GIT_VERSION}${suffix}}
+  octopus::log::info "containerizing octopus..."
+
   local repo=${REPO:-rancher}
   local image_name=${IMAGE_NAME:-octopus}
-  local image=${repo}/${image_name}:${tag}
+  local tag=${TAG:-${OCTOPUS_GIT_VERSION}}
 
-  octopus::log::info "containerizing octopus in ${image}"
+  local platforms
+  if [[ "${CROSS:-false}" == "true" ]]; then
+    octopus::log::info "crossed containerizing"
+    platforms=("${SUPPORTED_PLATFORMS[@]}")
+  else
+    local os="${OS:-$(go env GOOS)}"
+    local arch="${ARCH:-$(go env GOARCH)}"
+    platforms=("${os}/${arch}")
+  fi
 
-  docker build -t "${image}" -f "${CURR_DIR}/Dockerfile" .
+  pushd "${CURR_DIR}"
+  for platform in "${platforms[@]}"; do
+    octopus::log::info "containerizing ${platform}"
+    octopus::docker::build \
+      --platform "${platform}" \
+      -t "${repo}/${image_name}:${tag}-${platform////-}" .
+  done
+  popd
 
   octopus::log::info "...done"
 }
 
 function e2e() {
-  if [[ "${CURR_DIR}" =~ "$(go env GOPATH)".* ]]; then
-    export GO111MODULE=off
-  fi
-
   octopus::log::info "running E2E tests for octopus..."
 
   octopus::log::info "...done"
@@ -183,6 +207,36 @@ function e2e() {
 
 function deploy() {
   octopus::log::info "deploying octopus..."
+
+  local repo=${REPO:-rancher}
+  local image_name=${IMAGE_NAME:-octopus}
+  local tag=${TAG:-${OCTOPUS_GIT_VERSION}}
+  local images=()
+  for platform in "${SUPPORTED_PLATFORMS[@]}"; do
+    images+=("${repo}/${image_name}:${tag}-${platform////-}")
+  done
+
+  # docker login
+  if [[ -n ${DOCKER_USERNAME} ]] && [[ -n ${DOCKER_PASSWORD} ]]; then
+    docker login -u "${DOCKER_USERNAME}" -p "${DOCKER_PASSWORD}"
+  fi
+
+  # docker push
+  for image in "${images[@]}"; do
+    octopus::log::info "deploying image ${image}"
+    docker push "${image}"
+  done
+
+  # docker manifest
+  local targets=(
+    "${repo}/${image_name}:${tag}"
+    "${repo}/${image_name}:latest"
+  )
+  for target in "${targets[@]}"; do
+    octopus::log::info "deploying manifest image ${target}"
+    octopus::docker::manifest_create "${target}" "${images[@]}"
+    octopus::docker::manifest_push "${target}"
+  done
 
   octopus::log::info "...done"
 }
@@ -255,25 +309,19 @@ function entry() {
     ;;
   e | e2e)
     if [[ "${subcmd}" != "only" ]]; then
-      generate
-      mod
-      lint
       package
     fi
     e2e
     ;;
   d | deploy)
     if [[ "${subcmd}" != "only" ]]; then
-      generate
-      mod
-      lint
       package
       e2e
     fi
     deploy
     ;;
   *)
-    octopus::log::error "unknown action, select from (generate,mod,lint,build,test,verify,package,containerize,e2e,deploy) "
+    octopus::log::error "unknown action, select from (generate,mod,lint,build,test,verify,containerize,package,e2e,deploy) "
     ;;
   esac
 }

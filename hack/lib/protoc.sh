@@ -16,7 +16,6 @@ function octopus::protoc::validate_gen_gogfaster() {
 
   octopus::log::info "installing protoc-gen-gogofaster"
   if octopus::protoc::install_gen_gogofaster; then
-    export PATH="$PATH:${GOPATH}/bin/protoc-gen-gogofaster"
     octopus::log::info "installed protoc-gen-gogofaster"
     return 0
   fi

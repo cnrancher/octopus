@@ -47,10 +47,10 @@ help:
 	#   -         build, b  :  compile code.
 	#   -          test, t  :  run unit tests.
 	#   -        verify, v  :  run integration tests.
-	#   -     containerize  :  package docker container.
+	#   -     containerize  :  package docker image.
 	#   -  package, pkg, p  :  use `dapper` to build, test and containerize.
 	#   -           e2e, e  :  run e2e tests.
-	#   -        deploy, d  :  push docker container.
+	#   -        deploy, d  :  push docker image.
 	#   only executing the corresponding "action" of a "stage" needs the `only` suffix.
 	#
 	# example:
