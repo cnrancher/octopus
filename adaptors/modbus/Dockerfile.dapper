@@ -1,0 +1,16 @@
+FROM golang:1.13.8
+RUN curl -sSfL "https://get.docker.com" | sh
+
+ARG DAPPER_HOST_ARCH
+ENV HOST_ARCH=${DAPPER_HOST_ARCH}
+
+ENV GO111MODULE=off
+ENV CROSS=false
+ENV DAPPER_ENV CROSS REPO TAG OS ARCH IMAGE_NAME
+ENV DAPPER_SOURCE /go/src/github.com/rancher/octopus/
+ENV DAPPER_OUTPUT ./bin ./dist
+ENV DAPPER_DOCKER_SOCKET true
+ENV HOME ${DAPPER_SOURCE}
+
+WORKDIR ${DAPPER_SOURCE}/adaptors/modbus
+CMD ["make", "-se", "adaptor", "modbus", "containerize"]
