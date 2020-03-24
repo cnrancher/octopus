@@ -8,27 +8,18 @@
 #    OS_ARCH         -  The arch for the localhost OS, default is automatically discovered.
 #    KIND_VERSION    -  The Kind version for running, default is v0.7.0.
 #    K8S_VERSION     -  The Kubernetes version for the cluster, default is v1.17.2.
-#    CLUSTER_NAME    -  The name for the cluster, default is octopus-test.
-#    CLUSTER_CONFIG  -  The bootstrap configuration path for the cluster, if needed.
+#    CLUSTER_NAME    -  The name for the cluster, default is edge.
+#    CONTROL_PLANES  -  The number of the control-plane, default is 1.
+#    WORKERS         -  The number of the workers, default is 3.
 
-OS_TYPE=${OS_TYPE:-"$(uname -s)"}
-OS_ARCH=${OS_ARCH:-"$(uname -m)"}
-KIND_VERSION=${KIND_VERSION:-"v0.7.0"}
 K8S_VERSION=${K8S_VERSION:-"v1.17.2"}
 CLUSTER_NAME=${CLUSTER_NAME:-"edge"}
-CLUSTER_CONFIG=${CLUSTER_CONFIG:-}
-if [[ -z "${CLUSTER_CONFIG}" ]]; then
-  CLUSTER_CONFIG="/tmp/default-cluster-config.yaml"
-fi
 
 function octopus::cluster_kind::install() {
-  local os_type, os_arch
-  os_type=$(echo -n "${OS_TYPE}" | tr '[:upper:]' '[:lower:]')
-  os_arch=${OS_ARCH:-"amd64"}
-  if [[ "${os_arch}" == "x86_64" ]]; then
-    os_arch="amd64"
-  fi
-  curl -SfL "https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-${os_type}-${os_arch}" >/tmp/kind
+  local version=${KIND_VERSION:-"v1.17.2"}
+  local os_type=${OS_TYPE:-"$(octopus::util::get_os)"}
+  local os_arch=${OS_ARCH:-"$(octopus::util::get_arch)"}
+  curl -fL "https://github.com/kubernetes-sigs/kind/releases/download/${version}/kind-${os_type}-${os_arch}" >/tmp/kind
   chmod +x /tmp/kind && mv /tmp/kind /usr/local/bin/kind
 }
 
@@ -37,28 +28,45 @@ function octopus::cluster_kind::validate() {
     return 0
   fi
 
-  octopus::log::info "installing kind (version: ${KIND_VERSION}, os: ${OS_TYPE}-${OS_ARCH})"
+  octopus::log::info "installing kind"
   if octopus::cluster_kind::install; then
-    octopus::log::info "kind: $(kind --version 2>&1 | awk '{print $NF}')"
+    octopus::log::info "$(kind --version 2>&1)"
     return 0
   fi
   octopus::log::error "no kind available"
   return 1
 }
 
-function octopus::cluster_kind:configure_default() {
-  if [[ ! -f "${CLUSTER_CONFIG}" ]]; then
-    octopus::log::info "using default cluster config"
-    cat >"${CLUSTER_CONFIG}" <<EOF
+function octopus::cluster_kind:setup_configuration() {
+  local config="/tmp/kind-${CLUSTER_NAME}-cluster-config.yaml"
+  cat >"${config}" <<EOF
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
+EOF
+
+  local control_planes=${CONTROL_PLANES:-1}
+  if [[ ${control_planes} -lt 1 ]]; then
+    control_planes=1
+  fi
+  for ((i = 0; i < control_planes; i++)); do
+    # shellcheck disable=SC2086
+    cat >>${config} <<EOF
   - role: control-plane
-  - role: worker
-  - role: worker
+EOF
+  done
+
+  local workers=${WORKERS:-3}
+  if [[ ${workers} -lt 1 ]]; then
+    workers=1
+  fi
+  for ((i = 0; i < workers; i++)); do
+    cat >>"${config}" <<EOF
   - role: worker
 EOF
-  fi
+  done
+
+  echo -n "${config}"
 }
 
 function octopus::cluster_kind::startup() {
@@ -73,13 +81,13 @@ function octopus::cluster_kind::startup() {
   fi
 
   octopus::log::info "creating ${CLUSTER_NAME} cluster with ${K8S_VERSION}"
-  octopus::cluster_kind:configure_default
-  kind create cluster --name "${CLUSTER_NAME}" --config "${CLUSTER_CONFIG}" --image="kindest/node:${K8S_VERSION}" --wait 5m
+  # setup cluster
+  local config
+  config=$(octopus::cluster_kind:setup_configuration)
+  local kind_image="kindest/node:${K8S_VERSION}"
+  kind create cluster --name "${CLUSTER_NAME}" --config "${config}" --image "${kind_image}" --wait 5m
 
-  local kubconfig="/tmp/kubeconfig-${CLUSTER_NAME}.yaml"
-  octopus::log::info "exporting ${CLUSTER_NAME} cluster's kubeconfig to ${kubconfig}"
-  rm -f "${kubconfig}"
-  kind export kubeconfig --name "${CLUSTER_NAME}" --kubeconfig "${kubconfig}"
+  octopus::log::info "${CLUSTER_NAME} cluster's kubeconfig has wrote in the ~/.kube/config"
 }
 
 function octopus::cluster_kind::cleanup() {

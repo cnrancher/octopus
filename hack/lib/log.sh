@@ -89,6 +89,6 @@ octopus::log::fatal() {
 
   echo "[FATA] ${timestamp} exiting with status ${code}" >&2
 
-  popd || exit "${code}"
+  popd >/dev/null 2>&1 || exit "${code}"
   exit "${code}"
 }

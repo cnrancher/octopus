@@ -13,19 +13,19 @@ type ClusterKind string
 
 const (
 	KindCluster ClusterKind = "kind"
-	K3SCluster  ClusterKind = "k3s"
+	K3dCluster  ClusterKind = "k3d"
 )
 
-type EmbeddedCluster interface {
+type LocalCluster interface {
 	Start(rootDir string, writer io.Writer) error
 	Stop(rootDir string, writer io.Writer) error
 }
 
-type embeddedCluster struct {
+type localCluster struct {
 	kind ClusterKind
 }
 
-func (c *embeddedCluster) Start(rootDir string, writer io.Writer) error {
+func (c *localCluster) Start(rootDir string, writer io.Writer) error {
 	var path = fmt.Sprintf("%s/hack/cluster-%s-startup.sh", rootDir, c.kind)
 	if !isScriptExisted(path) {
 		return errors.Errorf("%s cluster startup script isn't existed in %s", c.kind, path)
@@ -38,7 +38,7 @@ func (c *embeddedCluster) Start(rootDir string, writer io.Writer) error {
 	return cmd.Run()
 }
 
-func (c *embeddedCluster) Stop(rootDir string, writer io.Writer) error {
+func (c *localCluster) Stop(rootDir string, writer io.Writer) error {
 	var path = fmt.Sprintf("%s/hack/cluster-%s-cleanup.sh", rootDir, c.kind)
 	if !isScriptExisted(path) {
 		return errors.Errorf("%s cluster cleanup script isn't existed in %s", c.kind, path)
@@ -51,8 +51,8 @@ func (c *embeddedCluster) Stop(rootDir string, writer io.Writer) error {
 	return cmd.Run()
 }
 
-func NewEmbeddedCluster(kind ClusterKind) EmbeddedCluster {
-	return &embeddedCluster{
+func NewLocalCluster(kind ClusterKind) LocalCluster {
+	return &localCluster{
 		kind: kind,
 	}
 }

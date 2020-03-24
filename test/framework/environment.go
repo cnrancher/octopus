@@ -12,14 +12,15 @@ import (
 
 const (
 	envUseExistingCluster = "USE_EXISTING_CLUSTER"
+	envLocalClusterKind   = "LOCAL_CLUSTER_KIND"
 )
 
-var testEmbeddedCluster EmbeddedCluster
+var testLocalCluster LocalCluster
 
 func StartEnv(rootDir string, testEnv *envtest.Environment, writer io.Writer) (cfg *rest.Config, err error) {
 	if !isUsingExistingCluster() {
-		testEmbeddedCluster = NewEmbeddedCluster(KindCluster)
-		if err := testEmbeddedCluster.Start(rootDir, writer); err != nil {
+		testLocalCluster = NewLocalCluster(getLocalClusterKind())
+		if err := testLocalCluster.Start(rootDir, writer); err != nil {
 			return nil, err
 		}
 	}
@@ -40,8 +41,8 @@ func StopEnv(rootDir string, testEnv *envtest.Environment, writer io.Writer) err
 		}
 	}
 	if !isUsingExistingCluster() {
-		if testEmbeddedCluster != nil {
-			if err := testEmbeddedCluster.Stop(rootDir, writer); err != nil {
+		if testLocalCluster != nil {
+			if err := testLocalCluster.Stop(rootDir, writer); err != nil {
 				return err
 			}
 		}
@@ -51,4 +52,12 @@ func StopEnv(rootDir string, testEnv *envtest.Environment, writer io.Writer) err
 
 func isUsingExistingCluster() bool {
 	return strings.EqualFold(os.Getenv(envUseExistingCluster), "true")
+}
+
+func getLocalClusterKind() ClusterKind {
+	var kind = os.Getenv(envLocalClusterKind)
+	if strings.EqualFold(kind, string(KindCluster)) {
+		return KindCluster
+	}
+	return K3dCluster
 }
