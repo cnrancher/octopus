@@ -8,12 +8,11 @@
 #    OS_ARCH          -  The arch for the localhost OS, default is automatically discovered.
 #    DAPPER_VERSION   -  The dapper version for running, default is v0.4.2.
 
-OS_TYPE=${OS_TYPE:-"$(uname -s)"}
-OS_ARCH=${OS_ARCH:-"$(uname -m)"}
-DAPPER_VERSION=${DAPPER_VERSION:-"v0.4.2"}
-
 function octopus::dapper::install() {
-  curl -SfL "https://releases.rancher.com/dapper/${DAPPER_VERSION}/dapper-${OS_TYPE}-${OS_ARCH}" >/tmp/dapper
+  local version=${DAPPER_VERSION:-"v0.4.2"}
+  local os_type=${OS_TYPE:-"$(uname -s)"}
+  local os_arch=${OS_ARCH:-"$(uname -m)"}
+  curl -fL "https://releases.rancher.com/dapper/${version}/dapper-${os_type}-${os_arch}" >/tmp/dapper
   chmod +x /tmp/dapper && mv /tmp/dapper /usr/local/bin/dapper
 }
 
@@ -22,7 +21,7 @@ function octopus::dapper::validate() {
     return 0
   fi
 
-  octopus::log::info "installing dapper (version: ${DAPPER_VERSION}, os: ${OS_TYPE}-${OS_ARCH})"
+  octopus::log::info "installing dapper"
   if octopus::dapper::install; then
     octopus::log::info "dapper: $(dapper -v)"
     return 0

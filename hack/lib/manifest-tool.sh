@@ -9,20 +9,17 @@
 #    DOCKER_USERNAME        -  The username of Docker.
 #    DOCKER_PASSWORD        -  The password of Docker.
 
-OS_TYPE=${OS_TYPE:-"$(uname -s)"}
-OS_ARCH=${OS_ARCH:-"$(uname -m)"}
-MANIFEST_TOOL_VERSION=${MANIFEST_TOOL_VERSION:-"v1.0.1"}
 DOCKER_USERNAME=${DOCKER_USERNAME:-}
 DOCKER_PASSWORD=${DOCKER_PASSWORD:-}
 
 function octopus::manifest_tool::install() {
-  local os_type
-  os_type=$(echo -n "${OS_TYPE}" | tr '[:upper:]' '[:lower:]')
-  local os_arch=${OS_ARCH:-"amd64"}
-  if [[ "${os_arch}" == "x86_64" ]]; then
-    os_arch="amd64"
+  local version=${MANIFEST_TOOL_VERSION:-"v1.0.1"}
+  local os_type=${OS_TYPE:-"$(octopus::util::get_os)"}
+  local os_arch=${OS_ARCH:-"$(octopus::util::get_arch)"}
+  if [[ "${os_arch}" == "arm" ]]; then
+    os_arch="armv7"
   fi
-  curl -SfL "https://github.com/estesp/manifest-tool/releases/download/${MANIFEST_TOOL_VERSION}/manifest-tool-${os_type}-${os_arch}" >/tmp/manifest-tool
+  curl -SfL "https://github.com/estesp/manifest-tool/releases/download/${version}/manifest-tool-${os_type}-${os_arch}" >/tmp/manifest-tool
   chmod +x /tmp/manifest-tool && mv /tmp/manifest-tool /usr/local/bin/manifest-tool
 }
 
@@ -33,7 +30,7 @@ function octopus::manifest_tool::validate() {
 
   octopus::log::info "installing manifest-tool"
   if octopus::manifest_tool::install; then
-    octopus::log::info "manifest-tool: $(manifest-tool -v)"
+    octopus::log::info "$(manifest-tool --version 2>&1)"
     return 0
   fi
   octopus::log::error "no manifest-tool available"
