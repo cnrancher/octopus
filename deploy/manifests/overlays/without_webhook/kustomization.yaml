@@ -19,6 +19,9 @@ images:
     newName: rancher/octopus
     newTag: latest
 
+## NB(thxCode) Since kustomize v2.1.0, the `bases` field has been deprecated by `resources`, ref to:
+## - https://github.com/kubernetes-sigs/kustomize/blob/v2.1.0/docs/v_2.1.0.md#field-changes--deprecations
+## Select the appropriate kubectl to generate according to https://github.com/kubernetes-sigs/kustomize#kubectl-integration.
 bases:
   - ../../crd
   - ../../rbac

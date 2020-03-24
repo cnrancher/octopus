@@ -232,7 +232,7 @@ webhooks:
     service:
       name: octopus-webhook-service
       namespace: octopus-system
-      path: /mutate-edge-cattle-io-v1alpha1-device
+      path: /mutate-edge-cattle-io-v1alpha1-devicelink
   failurePolicy: Fail
   name: mdevicelinks.edge.cattle.io
   rules:
@@ -267,7 +267,7 @@ webhooks:
     service:
       name: octopus-webhook-service
       namespace: octopus-system
-      path: /validate-edge-cattle-io-v1alpha1-device
+      path: /validate-edge-cattle-io-v1alpha1-devicelink
   failurePolicy: Fail
   name: vdevicelinks.edge.cattle.io
   rules:

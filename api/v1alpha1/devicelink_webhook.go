@@ -19,7 +19,7 @@ func (in *DeviceLink) SetupWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-// +kubebuilder:webhook:path=/mutate-edge-cattle-io-v1alpha1-device,mutating=true,failurePolicy=fail,groups=edge.cattle.io,resources=devicelinks,verbs=create;update,versions=v1alpha1,name=mdevicelinks.edge.cattle.io
+// +kubebuilder:webhook:path=/mutate-edge-cattle-io-v1alpha1-devicelink,mutating=true,failurePolicy=fail,groups=edge.cattle.io,resources=devicelinks,verbs=create;update,versions=v1alpha1,name=mdevicelinks.edge.cattle.io
 
 var _ webhook.Defaulter = &DeviceLink{}
 
@@ -41,7 +41,7 @@ func (in *DeviceLink) Default() {
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
-// +kubebuilder:webhook:verbs=create;update,path=/validate-edge-cattle-io-v1alpha1-device,mutating=false,failurePolicy=fail,groups=edge.cattle.io,resources=devicelinks,versions=v1alpha1,name=vdevicelinks.edge.cattle.io
+// +kubebuilder:webhook:verbs=create;update,path=/validate-edge-cattle-io-v1alpha1-devicelink,mutating=false,failurePolicy=fail,groups=edge.cattle.io,resources=devicelinks,versions=v1alpha1,name=vdevicelinks.edge.cattle.io
 
 var _ webhook.Validator = &DeviceLink{}
 
