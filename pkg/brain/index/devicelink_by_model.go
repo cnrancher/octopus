@@ -8,14 +8,14 @@ import (
 	"github.com/rancher/octopus/pkg/util/object"
 )
 
-const DeviceLinkByModelField = "DeviceLinkByModel"
+const DeviceLinkByModelField = "deviceLinkByModel"
 
 var deviceLinkByModelIndexLog = ctrl.Log.WithName("index").WithName(DeviceLinkByModelField)
 
 func DeviceLinkByModelFunc(rawObj runtime.Object) []string {
 	var link = object.ToDeviceLinkObject(rawObj)
 	if link == nil {
-		deviceLinkByModelIndexLog.Error(nil, "received runtime object is not DeviceLink", "object", rawObj)
+		deviceLinkByModelIndexLog.Error(nil, "Received runtime object is not DeviceLink", "object", rawObj)
 		return nil
 	}
 

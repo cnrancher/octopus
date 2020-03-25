@@ -47,13 +47,13 @@ type DeviceLinkReconciler struct {
 
 func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	var ctx = context.Background()
-	var log = r.Log.WithValues("devicelink", req.NamespacedName)
+	var log = r.Log.WithValues("deviceLink", req.NamespacedName)
 
 	// fetches link
 	var link edgev1alpha1.DeviceLink
 	if err := r.Get(ctx, req.NamespacedName, &link); err != nil {
 		if !apierrs.IsNotFound(err) {
-			log.Error(err, "unable to fetch DeviceLink")
+			log.Error(err, "Unable to fetch DeviceLink")
 			return ctrl.Result{Requeue: true}, nil
 		}
 		// ignores error, since they can't be fixed by an immediate requeue
@@ -61,7 +61,7 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	}
 
 	// validates application
-	if link.Spec.Adaptor.Node != r.NodeName {
+	if link.Status.Adaptor.Node != r.NodeName {
 		return ctrl.Result{}, nil
 	}
 
@@ -81,7 +81,7 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		// remove finalizer
 		link.Finalizers = collection.StringSliceRemove(link.Finalizers, ReconcilingDeviceLink)
 		if err := r.Update(ctx, &link); err != nil {
-			log.Error(err, "unable to remove finalizer from DeviceLink")
+			log.Error(err, "Unable to remove finalizer from DeviceLink")
 			return ctrl.Result{Requeue: true}, nil
 		}
 
@@ -92,7 +92,7 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	if !collection.StringSliceContain(link.Finalizers, ReconcilingDeviceLink) {
 		link.Finalizers = append(link.Finalizers, ReconcilingDeviceLink)
 		if err := r.Update(ctx, &link); err != nil {
-			log.Error(err, "unable to add finalizer to DeviceLink")
+			log.Error(err, "Unable to add finalizer to DeviceLink")
 			return ctrl.Result{Requeue: true}, nil
 		}
 		return ctrl.Result{}, nil
@@ -106,7 +106,7 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			compareAdaptorParameters(link.Spec.Adaptor, link.Status.Adaptor) {
 			devicelink.ToCheckAdaptorExisted(&link.Status)
 			if err := r.Status().Update(ctx, &link); err != nil {
-				log.Error(err, "unable to change the status of DeviceLink")
+				log.Error(err, "Unable to change the status of DeviceLink")
 				return ctrl.Result{Requeue: true}, nil
 			}
 		}
@@ -117,7 +117,7 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			compareAdaptorParameters(link.Spec.Adaptor, link.Status.Adaptor) {
 			devicelink.ToCheckAdaptorExisted(&link.Status)
 			if err := r.Status().Update(ctx, &link); err != nil {
-				log.Error(err, "unable to change the status of DeviceLink")
+				log.Error(err, "Unable to change the status of DeviceLink")
 				return ctrl.Result{Requeue: true}, nil
 			}
 			return ctrl.Result{}, nil
@@ -125,16 +125,14 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	default:
 		if r.SuctionCup.ExistAdaptor(link.Spec.Adaptor.Name) {
 			devicelink.SuccessOnAdaptorExisted(&link.Status)
-			r.Eventf(&link, "Normal", "Validated", "found the adaptor")
 		} else {
 			devicelink.FailOnAdaptorExisted(&link.Status, "the adaptor isn't existed")
-			r.Eventf(&link, "Warning", "FailedValidate", "could not find the adaptor")
 		}
 
 		link.Status.Adaptor.Name = link.Spec.Adaptor.Name
 		link.Status.Adaptor.Parameters = link.Spec.Adaptor.Parameters
 		if err := r.Status().Update(ctx, &link); err != nil {
-			log.Error(err, "unable to change the status of DeviceLink")
+			log.Error(err, "Unable to change the status of DeviceLink")
 			return ctrl.Result{Requeue: true}, nil
 		}
 		return ctrl.Result{}, nil
@@ -150,14 +148,14 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		device = model.NewInstanceOfTypeMeta(link.Status.Model)
 		if err := r.Get(ctx, req.NamespacedName, &device); err != nil {
 			if !apierrs.IsNotFound(err) && !meta.IsNoMatchError(err) {
-				log.Error(err, "unable to fetch the device of DeviceLink")
+				log.Error(err, "Unable to fetch the device of DeviceLink")
 				return ctrl.Result{Requeue: true}, nil
 			}
 		}
 		if !object.IsActivating(&device) {
 			devicelink.ToCheckDeviceCreated(&link.Status)
 			if err := r.Status().Update(ctx, &link); err != nil {
-				log.Error(err, "unable to change the status of DeviceLink")
+				log.Error(err, "Unable to change the status of DeviceLink")
 				return ctrl.Result{Requeue: true}, nil
 			}
 			return ctrl.Result{}, nil
@@ -166,45 +164,41 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		// update device
 		var updated, err = updateDevice(&link, &device)
 		if err != nil {
-			devicelink.FailOnDeviceCreated(&link.Status, fmt.Sprintf("unable to construct device: %v", err))
-			r.Eventf(&link, "Warning", "FailedValidate", "unable to construct device from template")
+			devicelink.FailOnDeviceCreated(&link.Status, fmt.Sprintf("unable to update device from template: %v", err))
 
 			if err := r.Status().Update(ctx, &link); err != nil {
-				log.Error(err, "unable to change the status of DeviceLink")
+				log.Error(err, "Unable to change the status of DeviceLink")
 				return ctrl.Result{Requeue: true}, nil
 			}
 			return ctrl.Result{}, nil
 		}
 		if updated {
 			if err := r.Update(ctx, &device); err != nil {
-				log.Error(err, "failed to update device")
+				log.Error(err, "Failed to update device")
 				return ctrl.Result{Requeue: true}, nil
 			}
 		}
 	default:
 		// create device
 		if device, err := constructDevice(&link, r.Scheme); err != nil {
-			devicelink.FailOnDeviceCreated(&link.Status, fmt.Sprintf("unable to construct device: %v", err))
-			r.Eventf(&link, "Warning", "FailedValidate", "unable to construct device from template")
+			devicelink.FailOnDeviceCreated(&link.Status, fmt.Sprintf("unable to construct device from template: %v", err))
 		} else {
 			var err = r.Create(ctx, &device)
 			if err != nil {
 				if !apierrs.IsAlreadyExists(err) {
-					log.Error(err, "unable to create the device of DeviceLink")
+					log.Error(err, "Unable to create the device of DeviceLink")
 					return ctrl.Result{Requeue: true}, nil
 				}
 			}
 			if meta.IsNoMatchError(err) {
 				devicelink.FailOnDeviceCreated(&link.Status, fmt.Sprintf("unable to create device from template: %v", err))
-				r.Eventf(&link, "Warning", "FailedCreate", "unable to construct device from template")
 			} else {
 				devicelink.SuccessOnDeviceCreated(&link.Status)
-				r.Eventf(&link, "Normal", "Created", "created the device successfully")
 			}
 		}
 
 		if err := r.Status().Update(ctx, &link); err != nil {
-			log.Error(err, "unable to change the status of DeviceLink")
+			log.Error(err, "Unable to change the status of DeviceLink")
 			return ctrl.Result{Requeue: true}, nil
 		}
 		return ctrl.Result{}, nil
@@ -218,35 +212,35 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		return ctrl.Result{}, nil
 	case metav1.ConditionTrue:
 		if err := r.SuctionCup.Send(&device, &link); err != nil {
-			devicelink.FailOnDeviceConnected(&link.Status, fmt.Sprintf("unable to send data: %v", err))
-			r.Eventf(&link, "Warning", "FailSentData", "unable to send data to device")
+			devicelink.FailOnDeviceConnected(&link.Status, fmt.Sprintf("unable to send data to adaptor: %v", err))
+			r.Eventf(&link, "Warning", "FailedSent", "cannot send data to adaptor")
 
 			if err := r.Status().Update(ctx, &link); err != nil {
-				log.Error(err, "unable to change the status of DeviceLink")
+				log.Error(err, "Unable to change the status of DeviceLink")
 				return ctrl.Result{Requeue: true}, nil
 			}
 		}
 
-		r.Eventf(&link, "Normal", "SentData", "sent data successfully")
+		r.Eventf(&link, "Normal", "Sent", "sent data to adaptor")
 		return ctrl.Result{}, nil
 	default:
 		if err := r.SuctionCup.Connect(&link); err != nil {
-			devicelink.FailOnDeviceConnected(&link.Status, fmt.Sprintf("unable to connect: %v", err))
-			r.Eventf(&link, "Warning", "FailConnected", "unable to connect to device")
+			devicelink.FailOnDeviceConnected(&link.Status, fmt.Sprintf("unable to connect to adaptor: %v", err))
+			r.Eventf(&link, "Warning", "FailedConnected", "cannot connect to adaptor")
 		} else {
 			devicelink.SuccessOnDeviceConnected(&link.Status)
-			r.Eventf(&link, "Normal", "Connected", "connected successfully")
+			r.Eventf(&link, "Normal", "Connected", "connected to adaptor")
 		}
 
 		if err := r.Status().Update(ctx, &link); err != nil {
-			log.Error(err, "unable to change the status of DeviceLink")
+			log.Error(err, "Unable to change the status of DeviceLink")
 			return ctrl.Result{Requeue: true}, nil
 		}
 		return ctrl.Result{}, nil
 	}
 }
 
-func (r *DeviceLinkReconciler) SetupWithManager(name string, ctrlMgr ctrl.Manager, suctionCupMgr suctioncup.Manager) error {
+func (r *DeviceLinkReconciler) SetupWithManager(ctrlMgr ctrl.Manager, suctionCupMgr suctioncup.Manager) error {
 	// registers receiver
 	suctionCupMgr.RegisterAdaptorHandler(r)
 	suctionCupMgr.RegisterConnectionHandler(r)
@@ -261,7 +255,7 @@ func (r *DeviceLinkReconciler) SetupWithManager(name string, ctrlMgr ctrl.Manage
 	}
 
 	return ctrl.NewControllerManagedBy(ctrlMgr).
-		Named(name + ".DeviceLink").
+		Named("DeviceLink").
 		For(&edgev1alpha1.DeviceLink{}).
 		Complete(r)
 }

@@ -14,6 +14,7 @@ func newCommand() *cobra.Command {
 		Use: "dummy",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			verflag.PrintAndExitIfRequested()
+
 			return dummy.Run()
 		},
 	}

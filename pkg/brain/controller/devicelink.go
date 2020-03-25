@@ -9,7 +9,6 @@ import (
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -22,7 +21,6 @@ import (
 // DeviceLinkReconciler reconciles a DeviceLink object
 type DeviceLinkReconciler struct {
 	client.Client
-	record.EventRecorder
 
 	Log logr.Logger
 }
@@ -34,13 +32,13 @@ type DeviceLinkReconciler struct {
 
 func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	var ctx = context.Background()
-	var log = r.Log.WithValues("devicelink", req.NamespacedName)
+	var log = r.Log.WithValues("deviceLink", req.NamespacedName)
 
 	// fetches link
 	var link edgev1alpha1.DeviceLink
 	if err := r.Get(ctx, req.NamespacedName, &link); err != nil {
 		if !apierrs.IsNotFound(err) {
-			log.Error(err, "unable to fetch DeviceLink")
+			log.Error(err, "Unable to fetch DeviceLink")
 			return ctrl.Result{Requeue: true}, nil
 		}
 		// ignores error, since they can't be fixed by an immediate requeue
@@ -57,7 +55,7 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		if link.Spec.Adaptor.Node != link.Status.Adaptor.Node {
 			devicelink.ToCheckNodeExisted(&link.Status)
 			if err := r.Status().Update(ctx, &link); err != nil {
-				log.Error(err, "unable to change the status of DeviceLink")
+				log.Error(err, "Unable to change the status of DeviceLink")
 				return ctrl.Result{Requeue: true}, nil
 			}
 		}
@@ -66,7 +64,7 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		if link.Spec.Adaptor.Node != link.Status.Adaptor.Node {
 			devicelink.ToCheckNodeExisted(&link.Status)
 			if err := r.Status().Update(ctx, &link); err != nil {
-				log.Error(err, "unable to change the status of DeviceLink")
+				log.Error(err, "Unable to change the status of DeviceLink")
 				return ctrl.Result{Requeue: true}, nil
 			}
 			return ctrl.Result{}, nil
@@ -75,21 +73,19 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		var node corev1.Node
 		if err := r.Get(ctx, types.NamespacedName{Name: link.Spec.Adaptor.Node}, &node); err != nil {
 			if !apierrs.IsNotFound(err) {
-				log.Error(err, "unable to fetch the adaptor node of DeviceLink")
+				log.Error(err, "Unable to fetch the adaptor node of DeviceLink")
 				return ctrl.Result{Requeue: true}, nil
 			}
 		}
 		if object.IsActivating(&node) {
 			devicelink.SuccessOnNodeExisted(&link.Status)
-			r.Eventf(&link, "Normal", "Validated", "found the adaptor node")
 		} else {
 			devicelink.FailOnNodeExisted(&link.Status, "adaptor node isn't existed")
-			r.Eventf(&link, "Warning", "FailedValidate", "could not find the adaptor node")
 		}
 
 		link.Status.Adaptor.Node = link.Spec.Adaptor.Node
 		if err := r.Status().Update(ctx, &link); err != nil {
-			log.Error(err, "unable to change the status of DeviceLink")
+			log.Error(err, "Unable to change the status of DeviceLink")
 			return ctrl.Result{Requeue: true}, nil
 		}
 		return ctrl.Result{}, nil
@@ -101,7 +97,7 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		if link.Spec.Model != link.Status.Model {
 			devicelink.ToCheckModelExisted(&link.Status)
 			if err := r.Status().Update(ctx, &link); err != nil {
-				log.Error(err, "unable to change the status of DeviceLink")
+				log.Error(err, "Unable to change the status of DeviceLink")
 				return ctrl.Result{Requeue: true}, nil
 			}
 		}
@@ -110,7 +106,7 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		if link.Spec.Model != link.Status.Model {
 			devicelink.ToCheckModelExisted(&link.Status)
 			if err := r.Status().Update(ctx, &link); err != nil {
-				log.Error(err, "unable to change the status of DeviceLink")
+				log.Error(err, "Unable to change the status of DeviceLink")
 				return ctrl.Result{Requeue: true}, nil
 			}
 			return ctrl.Result{}, nil
@@ -124,7 +120,7 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			&m,
 		); err != nil {
 			if !apierrs.IsNotFound(err) {
-				log.Error(err, "unable to fetch the model of DeviceLink")
+				log.Error(err, "Unable to fetch the model of DeviceLink")
 				return ctrl.Result{Requeue: true}, nil
 			}
 		}
@@ -141,17 +137,14 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 
 			if versionServed {
 				devicelink.SuccessOnModelExisted(&link.Status)
-				r.Eventf(&link, "Normal", "Validated", "found the model")
 			} else {
 				devicelink.FailOnModelExisted(&link.Status, "model version isn't served")
-				r.Eventf(&link, "Warning", "FailedValidate", "could not find the version of model")
 			}
 		} else {
 			devicelink.FailOnModelExisted(&link.Status, "model isn't existed")
-			r.Eventf(&link, "Warning", "FailedValidate", "could not find the model")
 		}
 		if err := r.Status().Update(ctx, &link); err != nil {
-			log.Error(err, "unable to change the status of DeviceLink")
+			log.Error(err, "Unable to change the status of DeviceLink")
 			return ctrl.Result{Requeue: true}, nil
 		}
 		return ctrl.Result{}, nil
@@ -160,9 +153,9 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	return ctrl.Result{}, nil
 }
 
-func (r *DeviceLinkReconciler) SetupWithManager(name string, mgr ctrl.Manager) error {
+func (r *DeviceLinkReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		Named(name + ".DeviceLink").
+		Named("DeviceLink").
 		For(&edgev1alpha1.DeviceLink{}).
 		Complete(r)
 }

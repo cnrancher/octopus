@@ -40,7 +40,7 @@ func (r *NodeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	var node corev1.Node
 	if err := r.Get(ctx, req.NamespacedName, &node); err != nil {
 		if !apierrs.IsNotFound(err) {
-			log.Error(err, "unable to fetch Node")
+			log.Error(err, "Unable to fetch Node")
 			return ctrl.Result{Requeue: true}, nil
 		}
 		// ignores error, since they can't be fixed by an immediate requeue
@@ -55,7 +55,7 @@ func (r *NodeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		// move link NodeExisted condition to `False`
 		var links edgev1alpha1.DeviceLinkList
 		if err := r.List(ctx, &links, client.MatchingFields{index.DeviceLinkByNodeField: node.Name}); err != nil {
-			log.Error(err, "unable to list related DeviceLink of Node")
+			log.Error(err, "Unable to list related DeviceLink of Node")
 			return ctrl.Result{Requeue: true}, nil
 		}
 		for _, link := range links.Items {
@@ -64,7 +64,7 @@ func (r *NodeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			}
 			devicelink.FailOnNodeExisted(&link.Status, "adaptor node isn't existed")
 			if err := r.Status().Update(ctx, &link); err != nil {
-				log.Error(err, "unable to change the status of DeviceLink")
+				log.Error(err, "Unable to change the status of DeviceLink")
 				return ctrl.Result{Requeue: true}, nil
 			}
 		}
@@ -72,7 +72,7 @@ func (r *NodeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		// remove finalizer
 		node.Finalizers = collection.StringSliceRemove(node.Finalizers, ReconcilingNode)
 		if err := r.Update(ctx, &node); err != nil {
-			log.Error(err, "unable to remove finalizer from Node")
+			log.Error(err, "Unable to remove finalizer from Node")
 			return ctrl.Result{Requeue: true}, nil
 		}
 
@@ -83,7 +83,7 @@ func (r *NodeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	if !collection.StringSliceContain(node.Finalizers, ReconcilingNode) {
 		node.Finalizers = append(node.Finalizers, ReconcilingNode)
 		if err := r.Update(ctx, &node); err != nil {
-			log.Error(err, "unable to add finalizer to Node")
+			log.Error(err, "Unable to add finalizer to Node")
 			return ctrl.Result{Requeue: true}, nil
 		}
 		// NB(thxCode) keeps going down, no need to reconcile again:
@@ -94,7 +94,7 @@ func (r *NodeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	// move link NodeExisted condition from `False` to `True`
 	var links edgev1alpha1.DeviceLinkList
 	if err := r.List(ctx, &links, client.MatchingFields{index.DeviceLinkByNodeField: node.Name}); err != nil {
-		log.Error(err, "unable to list related DeviceLink of Node")
+		log.Error(err, "Unable to list related DeviceLink of Node")
 		return ctrl.Result{Requeue: true}, nil
 	}
 	for _, link := range links.Items {
@@ -103,7 +103,7 @@ func (r *NodeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		}
 		devicelink.ToCheckNodeExisted(&link.Status)
 		if err := r.Status().Update(ctx, &link); err != nil {
-			log.Error(err, "unable to change the status of DeviceLink")
+			log.Error(err, "Unable to change the status of DeviceLink")
 			return ctrl.Result{Requeue: true}, nil
 		}
 	}
@@ -111,7 +111,7 @@ func (r *NodeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	return ctrl.Result{}, nil
 }
 
-func (r *NodeReconciler) SetupWithManager(name string, mgr ctrl.Manager) error {
+func (r *NodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// indexes DeviceLink by `spec.adaptor.node`
 	if err := mgr.GetFieldIndexer().IndexField(
 		&edgev1alpha1.DeviceLink{},
@@ -122,7 +122,7 @@ func (r *NodeReconciler) SetupWithManager(name string, mgr ctrl.Manager) error {
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
-		Named(name + ".Node").
+		Named("Node").
 		For(&corev1.Node{}).
 		WithEventFilter(predicate.NodeChangedFuncs).
 		Complete(r)

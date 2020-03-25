@@ -57,16 +57,14 @@ func (m *manager) Start(stop <-chan struct{}) error {
 	// starts reconcile
 	for i := 0; i < runtime.NumCPU(); i++ {
 		go func(index int) {
-			log.Info("starting reconciling queue", "index", index)
+			log.Info("Starting reconciling queue", "index", index)
 			wait.Until(m.queue.Reconcile, 1*time.Second, stop)
-			log.Info("stopped reconciling queue", "index", index)
 		}(i)
 	}
 
 	// serves adaptor registration server
-	log.Info("starting registration server")
+	log.Info("Starting registration server")
 	var err = m.registrationServer.Start(stop)
-	log.Info("stopped registration server")
 	return err
 }
 

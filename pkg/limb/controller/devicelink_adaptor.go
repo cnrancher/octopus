@@ -19,41 +19,39 @@ import (
 
 func (r *DeviceLinkReconciler) ReceiveAdaptorStatus(req suctioncup.RequestAdaptorStatus) (suctioncup.Response, error) {
 	var ctx = context.Background()
-	var log = r.Log.WithName("ReceiveAdaptorStatus").WithValues("adaptor", req.Name)
+	var log = r.Log.WithName("adaptorRegistration").WithValues("adaptor", req.Name)
 
 	defer runtime.HandleCrash(handler.NewPanicsLogHandler(log))
 
 	var links edgev1alpha1.DeviceLinkList
 	if err := r.List(ctx, &links, client.MatchingFields{index.DeviceLinkByAdaptorField: req.Name}); err != nil {
-		log.Error(err, "unable to list related DeviceLink of adaptor")
+		log.Error(err, "Unable to list related DeviceLink of adaptor")
 		return suctioncup.Response{Requeue: true}, nil
 	}
 
 	if req.Registered {
-		log.Info("adaptor is registered")
+		log.Info("Adaptor is registered")
 	} else {
-		log.Info("adaptor is unregistered")
+		log.Info("Adaptor is unregistered")
 	}
 
 	for _, link := range links.Items {
 		// filter out the corresponding links
-		if link.Spec.Adaptor.Node != r.NodeName {
+		if link.Status.Adaptor.Node != r.NodeName {
 			continue
 		}
 
 		if req.Registered {
 			if devicelink.GetAdaptorExistedStatus(&link.Status) == metav1.ConditionFalse {
 				devicelink.SuccessOnAdaptorExisted(&link.Status)
-				r.Eventf(&link, "Normal", "Validated", "found the adaptor")
 			}
 		} else {
 			if devicelink.GetAdaptorExistedStatus(&link.Status) != metav1.ConditionFalse {
 				devicelink.FailOnAdaptorExisted(&link.Status, "the adaptor is unregistered")
-				r.Eventf(&link, "Warning", "FailedValidate", "the adaptor is unregistered")
 			}
 		}
 		if err := r.Status().Update(ctx, &link); err != nil {
-			log.Error(err, "unable to change the status of DeviceLink")
+			log.Error(err, "Unable to change the status of DeviceLink")
 			return suctioncup.Response{Requeue: true}, nil
 		}
 	}

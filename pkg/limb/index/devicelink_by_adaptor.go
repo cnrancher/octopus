@@ -7,14 +7,14 @@ import (
 	"github.com/rancher/octopus/pkg/util/object"
 )
 
-const DeviceLinkByAdaptorField = "DeviceLinkByAdaptor"
+const DeviceLinkByAdaptorField = "deviceLinkByAdaptor"
 
 var deviceLinkByAdaptorIndexLog = ctrl.Log.WithName("index").WithName(DeviceLinkByAdaptorField)
 
 func DeviceLinkByAdaptorFunc(rawObj runtime.Object) []string {
 	var link = object.ToDeviceLinkObject(rawObj)
 	if link == nil {
-		deviceLinkByAdaptorIndexLog.Error(nil, "received runtime object is not DeviceLink", "object", rawObj)
+		deviceLinkByAdaptorIndexLog.Error(nil, "Received runtime object is not DeviceLink", "object", rawObj)
 		return nil
 	}
 

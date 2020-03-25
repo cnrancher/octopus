@@ -27,8 +27,16 @@ func Register(ctx context.Context, request api.RegisterRequest) error {
 		return errors.Wrapf(err, "failed to dial Limb %s", api.LimbSocket)
 	}
 
+	// register adaptor
 	if _, err := api.NewRegistrationClient(conn).Register(ctx, &request); err != nil {
 		return errors.Wrapf(err, "failed to register to Limb")
 	}
-	return nil
+
+	sockWatcher, err := newSocketWatcher()
+	if err != nil {
+		return errors.Wrapf(err, "failed to create socket watcher")
+	}
+
+	// watch limb socket
+	return sockWatcher.Watch(ctx.Done())
 }

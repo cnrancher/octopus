@@ -41,7 +41,7 @@ func (r *ModelReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	var model apiextensionsv1.CustomResourceDefinition
 	if err := r.Get(ctx, req.NamespacedName, &model); err != nil {
 		if !apierrs.IsNotFound(err) {
-			log.Error(err, "unable to fetch Model")
+			log.Error(err, "Unable to fetch Model")
 			return ctrl.Result{Requeue: true}, nil
 		}
 		// ignores error, since they can't be fixed by an immediate requeue
@@ -53,13 +53,13 @@ func (r *ModelReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			return ctrl.Result{}, nil
 		}
 		if crd.GetTerminating(&model.Status) != metav1.ConditionFalse {
-			return ctrl.Result{Requeue: true}, nil
+			return ctrl.Result{}, nil
 		}
 
 		// move link ModelExisted condition to `False`
 		var links edgev1alpha1.DeviceLinkList
 		if err := r.List(ctx, &links, client.MatchingFields{index.DeviceLinkByModelField: model.Name}); err != nil {
-			log.Error(err, "unable to list related DeviceLink of Model")
+			log.Error(err, "Unable to list related DeviceLink of Model")
 			return ctrl.Result{Requeue: true}, nil
 		}
 		for _, link := range links.Items {
@@ -68,7 +68,7 @@ func (r *ModelReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			}
 			devicelink.FailOnModelExisted(&link.Status, "model isn't existed")
 			if err := r.Status().Update(ctx, &link); err != nil {
-				log.Error(err, "unable to change the status of DeviceLink")
+				log.Error(err, "Unable to change the status of DeviceLink")
 				return ctrl.Result{Requeue: true}, nil
 			}
 		}
@@ -76,7 +76,7 @@ func (r *ModelReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		// remove finalizer
 		model.Finalizers = collection.StringSliceRemove(model.Finalizers, ReconcilingModel)
 		if err := r.Update(ctx, &model); err != nil {
-			log.Error(err, "unable to remove finalizer from Model")
+			log.Error(err, "Unable to remove finalizer from Model")
 			return ctrl.Result{Requeue: true}, nil
 		}
 
@@ -90,7 +90,7 @@ func (r *ModelReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		}
 		model.Finalizers = append(model.Finalizers, ReconcilingModel)
 		if err := r.Update(ctx, &model); err != nil {
-			log.Error(err, "unable to add finalizer to CRD")
+			log.Error(err, "Unable to add finalizer to CRD")
 			return ctrl.Result{Requeue: true}, nil
 		}
 		// NB(thxCode) keeps going down, no need to reconcile again:
@@ -101,7 +101,7 @@ func (r *ModelReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	// move link ModelExisted condition from `False` to `True`
 	var links edgev1alpha1.DeviceLinkList
 	if err := r.List(ctx, &links, client.MatchingFields{index.DeviceLinkByModelField: model.Name}); err != nil {
-		log.Error(err, "unable to list related DeviceLink of Model")
+		log.Error(err, "Unable to list related DeviceLink of Model")
 		return ctrl.Result{Requeue: true}, nil
 	}
 	for _, link := range links.Items {
@@ -110,7 +110,7 @@ func (r *ModelReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		}
 		devicelink.ToCheckModelExisted(&link.Status)
 		if err := r.Status().Update(ctx, &link); err != nil {
-			log.Error(err, "unable to change the status of DeviceLink")
+			log.Error(err, "Unable to change the status of DeviceLink")
 			return ctrl.Result{Requeue: true}, nil
 		}
 	}
@@ -118,7 +118,7 @@ func (r *ModelReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	return ctrl.Result{}, nil
 }
 
-func (r *ModelReconciler) SetupWithManager(name string, mgr ctrl.Manager) error {
+func (r *ModelReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// indexes DeviceLink by `spec.model`
 	if err := mgr.GetFieldIndexer().IndexField(
 		&edgev1alpha1.DeviceLink{},
@@ -129,7 +129,7 @@ func (r *ModelReconciler) SetupWithManager(name string, mgr ctrl.Manager) error 
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
-		Named(name + ".CustomResourceDefinition").
+		Named("CRD").
 		For(&apiextensionsv1.CustomResourceDefinition{}).
 		WithEventFilter(predicate.ModelChangedFuncs).
 		Complete(r)

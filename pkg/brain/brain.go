@@ -16,17 +16,17 @@ import (
 )
 
 func Run(name string, opts *options.Options) error {
-	var setupLog = ctrl.Log.WithName(name).WithName("setup")
-	defer runtime.HandleCrash(handler.NewPanicsLogHandler(setupLog))
+	var log = ctrl.Log.WithName(name).WithName("setup")
+	defer runtime.HandleCrash(handler.NewPanicsLogHandler(log))
 
-	setupLog.V(0).Info("registering APIs scheme")
+	log.V(0).Info("Registering APIs scheme")
 	var scheme = k8sruntime.NewScheme()
 	if err := RegisterScheme(scheme); err != nil {
-		setupLog.Error(err, "unable to register APIs scheme")
+		log.Error(err, "Unable to register APIs scheme")
 		return err
 	}
 
-	setupLog.V(0).Info("creating controller manager")
+	log.V(0).Info("Creating controller manager")
 	var controllerMgr, err = ctrl.NewManager(
 		ctrl.GetConfigOrDie(),
 		ctrl.Options{
@@ -38,45 +38,44 @@ func Run(name string, opts *options.Options) error {
 		},
 	)
 	if err != nil {
-		setupLog.Error(err, "unable to start controller manager")
+		log.Error(err, "Unable to start controller manager")
 		return err
 	}
 
-	setupLog.V(0).Info("creating controllers")
+	log.V(0).Info("Creating controllers")
 	if err = (&controller.DeviceLinkReconciler{
-		Client:        controllerMgr.GetClient(),
-		EventRecorder: controllerMgr.GetEventRecorderFor(name),
-		Log:           ctrl.Log.WithName("controller").WithName("DeviceLink"),
-	}).SetupWithManager(name, controllerMgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "DeviceLink")
+		Client: controllerMgr.GetClient(),
+		Log:    ctrl.Log.WithName("controller").WithName("deviceLink"),
+	}).SetupWithManager(controllerMgr); err != nil {
+		log.Error(err, "Unable to create controller", "controller", "DeviceLink")
 		return err
 	}
 	if err = (&controller.NodeReconciler{
 		Client: controllerMgr.GetClient(),
-		Log:    ctrl.Log.WithName("controller").WithName("Node"),
-	}).SetupWithManager(name, controllerMgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Node")
+		Log:    ctrl.Log.WithName("controller").WithName("node"),
+	}).SetupWithManager(controllerMgr); err != nil {
+		log.Error(err, "Unable to create controller", "controller", "Node")
 		return err
 	}
 	if err = (&controller.ModelReconciler{
 		Client: controllerMgr.GetClient(),
-		Log:    ctrl.Log.WithName("controller").WithName("Model"),
-	}).SetupWithManager(name, controllerMgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Model")
+		Log:    ctrl.Log.WithName("controller").WithName("crd"),
+	}).SetupWithManager(controllerMgr); err != nil {
+		log.Error(err, "Unable to create controller", "controller", "CRD")
 		return err
 	}
 
 	if !opts.DisableAdmissionWebhook {
-		setupLog.V(0).Info("creating admission webhooks")
+		log.V(0).Info("Creating admission webhooks")
 		if err = (&edgev1alpha1.DeviceLink{}).SetupWebhookWithManager(controllerMgr); err != nil {
-			setupLog.Error(err, "unable to create webhook", "webhook", "DeviceLink")
+			log.Error(err, "Unable to create webhook", "webhook", "DeviceLink")
 			return err
 		}
 	}
 
-	setupLog.Info("starting")
+	log.Info("Starting")
 	if err = controllerMgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		setupLog.Error(err, "problem running")
+		log.Error(err, "Problem running")
 		return err
 	}
 	return nil

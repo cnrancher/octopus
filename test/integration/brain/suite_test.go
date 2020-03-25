@@ -83,25 +83,23 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(ctrlMgr).ToNot(BeNil())
 
 	By("creating controllers")
-	var name = "brain"
 
 	err = (&controller.DeviceLinkReconciler{
-		Client:        ctrlMgr.GetClient(),
-		EventRecorder: ctrlMgr.GetEventRecorderFor(name),
-		Log:           ctrl.Log.WithName("controller").WithName("DeviceLink"),
-	}).SetupWithManager(name, ctrlMgr)
+		Client: ctrlMgr.GetClient(),
+		Log:    ctrl.Log.WithName("controller").WithName("deviceLink"),
+	}).SetupWithManager(ctrlMgr)
 	Expect(err).ToNot(HaveOccurred())
 
 	err = (&controller.NodeReconciler{
 		Client: ctrlMgr.GetClient(),
-		Log:    ctrl.Log.WithName("controller").WithName("Node"),
-	}).SetupWithManager(name, ctrlMgr)
+		Log:    ctrl.Log.WithName("controller").WithName("node"),
+	}).SetupWithManager(ctrlMgr)
 	Expect(err).ToNot(HaveOccurred())
 
 	err = (&controller.ModelReconciler{
 		Client: ctrlMgr.GetClient(),
-		Log:    ctrl.Log.WithName("controller").WithName("Model"),
-	}).SetupWithManager(name, ctrlMgr)
+		Log:    ctrl.Log.WithName("controller").WithName("crd"),
+	}).SetupWithManager(ctrlMgr)
 	Expect(err).ToNot(HaveOccurred())
 
 	go func() {

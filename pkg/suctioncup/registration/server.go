@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -32,23 +33,27 @@ func NewServer(path string, adaptors adaptor.Adaptors, queue event.Queue) (Serve
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, errors.Wrapf(err, "failed to create socket directory")
 	}
+
 	if err := cleanup(dir); err != nil {
 		return nil, errors.Wrapf(err, "failed to cleanup socket directory")
 	}
 
+	var socketWatcher, err = newSocketWatcher(log.WithName("watcher"), dir, adaptors, queue.GetAdaptorNotifier())
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to create socket watcher")
+	}
+
 	return &server{
-		path:               path,
-		adaptors:           adaptors,
-		adaptorNotifier:    queue.GetAdaptorNotifier(),
-		connectionNotifier: queue.GetConnectionNotifier(),
+		path:         path,
+		connNotifier: queue.GetConnectionNotifier(),
+		sockWatcher:  socketWatcher,
 	}, nil
 }
 
 type server struct {
-	path               string
-	adaptors           adaptor.Adaptors
-	adaptorNotifier    event.AdaptorNotifier
-	connectionNotifier event.ConnectionNotifier
+	path         string
+	connNotifier event.ConnectionNotifier
+	sockWatcher  *socketWatcher
 }
 
 func (s *server) Start(stop <-chan struct{}) error {
@@ -60,6 +65,10 @@ func (s *server) Start(stop <-chan struct{}) error {
 		_ = lis.Close()
 	}()
 
+	// start adaptor socket watcher
+	go s.sockWatcher.Start(stop)
+
+	// start grpc server
 	var srvOptions = []grpc.ServerOption{
 		grpc.ConnectionTimeout(10 * time.Second),
 	}
@@ -85,30 +94,31 @@ func (s *server) Start(stop <-chan struct{}) error {
 
 // implement the Registration rpc protoc
 func (s *server) Register(_ context.Context, req *api.RegisterRequest) (*api.Empty, error) {
-	log = log.WithValues("adaptor", req.Name)
+	var log = log.WithValues("adaptor", req.Name)
 
 	defer utilruntime.HandleCrash(handler.NewPanicsLogHandler(log))
 
 	if err := validate(req); err != nil {
-		log.Error(err, "rejected the register request")
+		log.Error(err, "Rejected the register request")
 		return &api.Empty{}, grpcstatus.Error(grpccodes.InvalidArgument, err.Error())
 	}
 
-	var adp, err = adaptor.NewAdaptor(api.AdaptorPath, req.Name, req.Endpoint, s.connectionNotifier)
+	var adp, err = adaptor.NewAdaptor(api.AdaptorPath, req.Name, req.Endpoint, s.connNotifier)
 	if err != nil {
-		log.Error(err, "unable to connect adaptor")
+		log.Error(err, "Unable to connect adaptor")
 		return &api.Empty{}, grpcstatus.Errorf(grpcstatus.Code(err), "could not connect the registering adaptor %s", req.Name)
 	}
-	s.adaptors.Put(adp)
-
-	// use another loop to reduce the blocking of rpc,
-	// at the same time, that loop ensures that all links will be updated.
-	s.adaptorNotifier.NoticeAdaptorRegistered(adp.GetName())
+	if err := s.sockWatcher.Watch(adp); err != nil {
+		log.Error(err, "Unable to watch adaptor's socket")
+		return &api.Empty{}, grpcstatus.Errorf(grpccodes.Internal, "could not watch the socket of registering adaptor %s", req.Name)
+	}
 
 	return &api.Empty{}, nil
 }
 
 func cleanup(socketDir string) error {
+	var log = log.WithName("cleaner")
+
 	var dir, err = os.Open(socketDir)
 	if err != nil {
 		return err
@@ -121,21 +131,27 @@ func cleanup(socketDir string) error {
 	}
 
 	for _, content := range contents {
-		if !validation.IsSocketFile(content) {
-			continue
-		}
-
 		var path = filepath.Join(socketDir, content)
-		if stat, err := os.Stat(path); err != nil {
-			log.Error(err, "could not stat socket path", "path", path)
-			continue
-		} else if stat.IsDir() {
-			log.Error(nil, "socket path is not a file", "path", path)
+		var pi, err = os.Stat(path)
+		if err != nil {
+			log.Error(err, "Cannot get stat of path", "path", path)
 			continue
 		}
-
-		if err = os.RemoveAll(path); err != nil {
-			log.Error(err, "could not remove stale socket file", "path", path)
+		if pi.IsDir() {
+			log.V(0).Info("Ignore dir", "path", path)
+			continue
+		}
+		if strings.HasPrefix(pi.Name(), ".") {
+			log.V(0).Info("Ignore ignoring file", "path", path)
+			continue
+		}
+		if pi.Mode()&os.ModeSocket == 0 {
+			log.V(0).Info("Ignore non socket file", "path", path)
+			continue
+		}
+		err = os.RemoveAll(path)
+		if err != nil {
+			log.Error(err, "Cannot remove stale socket file", "path", path)
 		}
 	}
 
@@ -148,9 +164,6 @@ func validate(req *api.RegisterRequest) error {
 	}
 	if !validation.IsQualifiedName(req.Name) {
 		return errors.Errorf("the requested name %s is not qualified", req.Name)
-	}
-	if !validation.IsSocketFile(req.Endpoint) {
-		return errors.Errorf("the requested endpoint %s could not be recognized", req.Endpoint)
 	}
 	return nil
 }
