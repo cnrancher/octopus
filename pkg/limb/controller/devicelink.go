@@ -103,7 +103,7 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	case metav1.ConditionFalse:
 		if r.SuctionCup.ExistAdaptor(link.Spec.Adaptor.Name) ||
 			link.Spec.Adaptor.Name != link.Status.Adaptor.Name ||
-			bytes.Compare(link.Spec.Adaptor.Parameters.Raw, link.Status.Adaptor.Parameters.Raw) != 0 {
+			compareAdaptorParameters(link.Spec.Adaptor, link.Status.Adaptor) {
 			devicelink.ToCheckAdaptorExisted(&link.Status)
 			if err := r.Status().Update(ctx, &link); err != nil {
 				log.Error(err, "unable to change the status of DeviceLink")
@@ -114,7 +114,7 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	case metav1.ConditionTrue:
 		if !r.SuctionCup.ExistAdaptor(link.Spec.Adaptor.Name) ||
 			link.Spec.Adaptor.Name != link.Status.Adaptor.Name ||
-			bytes.Compare(link.Spec.Adaptor.Parameters.Raw, link.Status.Adaptor.Parameters.Raw) != 0 {
+			compareAdaptorParameters(link.Spec.Adaptor, link.Status.Adaptor) {
 			devicelink.ToCheckAdaptorExisted(&link.Status)
 			if err := r.Status().Update(ctx, &link); err != nil {
 				log.Error(err, "unable to change the status of DeviceLink")
@@ -335,6 +335,15 @@ func markDevice(link *edgev1alpha1.DeviceLink, deviceAnnotations map[string]stri
 	var deviceAdaptor = link.Spec.Adaptor
 	deviceAnnotations["edge.cattle.io/adaptor-node"] = deviceAdaptor.Node
 	deviceAnnotations["edge.cattle.io/adaptor-name"] = deviceAdaptor.Name
-	deviceAnnotations["edge.cattle.io/adaptor-parameters"] = string(deviceAdaptor.Parameters.Raw)
+	if deviceAdaptor.Parameters != nil {
+		deviceAnnotations["edge.cattle.io/adaptor-parameters"] = string(deviceAdaptor.Parameters.Raw)
+	}
 	return deviceAnnotations
+}
+
+func compareAdaptorParameters(adaptor, statusAdaptor edgev1alpha1.DeviceAdaptor) bool {
+	if adaptor.Parameters == nil || statusAdaptor.Parameters == nil {
+		return false
+	}
+	return bytes.Compare(adaptor.Parameters.Raw, statusAdaptor.Parameters.Raw) != 0
 }

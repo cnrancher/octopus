@@ -63,8 +63,10 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 
 		// validate parameters
 		var parameters physical.Parameters
-		if err := jsoniter.Unmarshal(req.GetParameters(), &parameters); err != nil {
-			return status.Errorf(codes.Internal, "failed to unmarshal parameters: %v", err)
+		if req.Parameters != nil {
+			if err := jsoniter.Unmarshal(req.GetParameters(), &parameters); err != nil {
+				return status.Errorf(codes.Internal, "failed to unmarshal parameters: %v", err)
+			}
 		}
 		if err := parameters.Validate(); err != nil {
 			return status.Errorf(codes.InvalidArgument, "failed to validate parameters: %v", err)
