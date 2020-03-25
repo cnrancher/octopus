@@ -44,6 +44,7 @@ func SuccessOnModelExisted(status *edgev1alpha1.DeviceLinkStatus) {
 }
 
 func ToCheckModelExisted(status *edgev1alpha1.DeviceLinkStatus) {
+
 	status.Conditions = deviceLinkConditions(status.Conditions).
 		did(edgev1alpha1.DeviceLinkModelExisted, metav1.ConditionUnknown, "Confirming", "verify if there is a suitable model as a template")
 }
@@ -136,6 +137,12 @@ func (d deviceLinkConditions) did(t edgev1alpha1.DeviceLinkConditionType, result
 		}
 		previous = d[:i]
 		lastItemLTT = d[conditionsLen-1].LastUpdateTime
+		// confirm the previous status
+		if conditionsLen > 1 {
+			if d[i-1].Status != metav1.ConditionTrue {
+				return previous
+			}
+		}
 	}
 
 	return append(previous,

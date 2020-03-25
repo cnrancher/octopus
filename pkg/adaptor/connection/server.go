@@ -36,6 +36,7 @@ func (s *server) Start(stop <-chan struct{}) error {
 		_ = lis.Close()
 	}()
 
+	// start grpc server
 	var srvOptions = []grpc.ServerOption{
 		grpc.ConnectionTimeout(10 * time.Second),
 	}

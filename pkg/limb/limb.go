@@ -19,17 +19,17 @@ import (
 )
 
 func Run(name string, opts *options.Options) error {
-	var setupLog = ctrl.Log.WithName(name).WithName("setup")
-	defer runtime.HandleCrash(handler.NewPanicsLogHandler(setupLog))
+	var log = ctrl.Log.WithName(name).WithName("setup")
+	defer runtime.HandleCrash(handler.NewPanicsLogHandler(log))
 
-	setupLog.V(0).Info("registering APIs scheme")
+	log.V(0).Info("Registering APIs scheme")
 	var scheme = k8sruntime.NewScheme()
 	if err := RegisterScheme(scheme); err != nil {
-		setupLog.Error(err, "unable to register APIs scheme")
+		log.Error(err, "Unable to register APIs scheme")
 		return err
 	}
 
-	setupLog.V(0).Info("parsing arguments")
+	log.V(0).Info("Parsing arguments")
 	// processing options
 	var nodeName = os.Getenv("NODE_NAME")
 	if nodeName == "" {
@@ -38,9 +38,9 @@ func Run(name string, opts *options.Options) error {
 	if nodeName == "" {
 		return errors.New("node name could not be blank")
 	}
-	setupLog.Info("landing on", "node", nodeName)
+	log.Info("Landing on", "node", nodeName)
 
-	setupLog.V(0).Info("creating controller manager")
+	log.V(0).Info("Creating controller manager")
 	var controllerMgr, err = ctrl.NewManager(
 		ctrl.GetConfigOrDie(),
 		ctrl.Options{
@@ -49,31 +49,31 @@ func Run(name string, opts *options.Options) error {
 		},
 	)
 	if err != nil {
-		setupLog.Error(err, "unable to start controller manager")
+		log.Error(err, "Unable to start controller manager")
 		return err
 	}
 
-	setupLog.V(0).Info("creating suction cup manager")
+	log.V(0).Info("Creating suction cup manager")
 	suctionCupMgr, err := suctioncup.NewManager()
 	if err != nil {
-		setupLog.Error(err, "unable to start suction cup manager")
+		log.Error(err, "Unable to start suction cup manager")
 		return err
 	}
 
-	setupLog.V(0).Info("creating controllers")
+	log.V(0).Info("Creating controllers")
 	if err = (&controller.DeviceLinkReconciler{
 		Client:        controllerMgr.GetClient(),
 		EventRecorder: controllerMgr.GetEventRecorderFor(name),
 		Scheme:        controllerMgr.GetScheme(),
-		Log:           ctrl.Log.WithName("controller").WithName("DeviceLink"),
+		Log:           ctrl.Log.WithName("controller").WithName("deviceLink"),
 		SuctionCup:    suctionCupMgr.GetNeurons(),
 		NodeName:      nodeName,
-	}).SetupWithManager(name, controllerMgr, suctionCupMgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "DeviceLink")
+	}).SetupWithManager(controllerMgr, suctionCupMgr); err != nil {
+		log.Error(err, "Unable to create controller", "controller", "DeviceLink")
 		return err
 	}
 
-	setupLog.Info("starting")
+	log.Info("Starting")
 	var stop = ctrl.SetupSignalHandler()
 	var eg, ctx = errgroup.WithContext(critical.Context(stop))
 	stop = ctx.Done()
@@ -84,7 +84,7 @@ func Run(name string, opts *options.Options) error {
 		return controllerMgr.Start(stop)
 	})
 	if err = eg.Wait(); err != nil {
-		setupLog.Error(err, "problem running")
+		log.Error(err, "Problem running")
 		return err
 	}
 	return nil

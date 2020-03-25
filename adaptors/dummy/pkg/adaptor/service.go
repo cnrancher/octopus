@@ -56,7 +56,7 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 		var req, err = server.Recv()
 		if err != nil {
 			if !connection.IsClosed(err) {
-				log.Error(err, "failed to receive connect request from Limb")
+				log.Error(err, "Failed to receive connect request from Limb")
 			}
 			return nil
 		}
@@ -94,7 +94,7 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 				// send device
 				if err := server.Send(&api.ConnectResponse{Device: respBytes}); err != nil {
 					if !connection.IsClosed(err) {
-						log.Error(err, "failed to send response to connection")
+						log.Error(err, "Failed to send response to connection")
 					}
 				}
 			}

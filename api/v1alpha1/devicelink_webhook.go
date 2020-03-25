@@ -11,7 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
-var deviceWebhookLog = ctrl.Log.WithName("webhook").WithName("DeviceLink")
+var deviceWebhookLog = ctrl.Log.WithName("webhook").WithName("deviceLink")
 
 func (in *DeviceLink) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).

@@ -29,7 +29,7 @@ func (c Adaptors) Delete(nameOrEndpoint string) {
 	if aa, exist := c.index.Load(nameOrEndpoint); exist {
 		var adaptor = aa.(Adaptor)
 		if err := adaptor.Stop(); err != nil {
-			log.Error(err, "failed to stop adaptor", "adaptor", adaptor.GetName())
+			log.Error(err, "Failed to stop adaptor", "adaptor", adaptor.GetName())
 		}
 		c.index.Delete(adaptor.GetEndpoint())
 		c.index.Delete(adaptor.GetName())
@@ -40,8 +40,9 @@ func (c Adaptors) Put(adaptor Adaptor) {
 	if aa, exist := c.index.LoadOrStore(adaptor.GetName(), adaptor); exist {
 		var staleAdaptor = aa.(Adaptor)
 		if err := staleAdaptor.Stop(); err != nil {
-			log.Error(err, "failed to stop stale adaptor", "adaptor", staleAdaptor.GetName())
+			log.Error(err, "Failed to stop stale adaptor", "adaptor", staleAdaptor.GetName())
 		}
+		c.index.Delete(staleAdaptor.GetEndpoint())
 	}
 	c.index.Store(adaptor.GetEndpoint(), adaptor)
 }
@@ -53,7 +54,7 @@ func (c Adaptors) Cleanup() {
 		// close adaptor
 		var adaptor = aa.(Adaptor)
 		if err := adaptor.Stop(); err != nil {
-			log.Error(err, "failed to stop adaptor", "adaptor", adaptor.GetName())
+			log.Error(err, "Failed to stop adaptor", "adaptor", adaptor.GetName())
 		}
 
 		return true

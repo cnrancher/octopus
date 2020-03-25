@@ -47,7 +47,7 @@ func (d *device) Configure(spec v1alpha1.DummyDeviceSpec) {
 
 func (d *device) Shutdown() {
 	d.off()
-	d.log.Info("closed connection")
+	d.log.Info("Closed connection")
 }
 
 func (d *device) on(gear v1alpha1.DummyDeviceGear) {
@@ -92,9 +92,9 @@ func (d *device) off() {
 }
 
 func (d *device) mockPhysicalWatching(gear v1alpha1.DummyDeviceGear, stop <-chan struct{}) {
-	d.log.Info("mocking started")
+	d.log.Info("Mocking started")
 	defer func() {
-		d.log.Info("mocking finished")
+		d.log.Info("Mocking finished")
 	}()
 
 	var duration time.Duration
