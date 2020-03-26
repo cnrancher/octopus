@@ -3,14 +3,18 @@ module github.com/rancher/octopus
 go 1.13
 
 require (
+	github.com/bettercap/gatt v0.0.0-20191018133023-569d3d9372bb
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/go-logr/logr v0.1.0
 	github.com/gogo/protobuf v1.3.1
 	github.com/json-iterator/go v1.1.8
+	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
+	github.com/mgutz/logxi v0.0.0-20161027140823-aebf8a7d67ab // indirect
 	github.com/onsi/ginkgo v1.11.0
 	github.com/onsi/gomega v1.8.1
 	github.com/pkg/errors v0.8.1
+	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.5
 	go.uber.org/zap v1.10.0
