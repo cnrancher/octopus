@@ -1,0 +1,43 @@
+apiVersion: edge.cattle.io/v1alpha1
+kind: DeviceLink
+metadata:
+  name: modbus-tcp
+spec:
+  adaptor:
+    node: k3s
+    name: adaptors.edge.cattle.io/modbus
+    parameters:
+      syncInterval: 5
+      timout: 10
+  model:
+    apiVersion: "devices.edge.cattle.io/v1alpha1"
+    kind: "ModbusDevice"
+  template:
+    metadata:
+      labels:
+        device: modbus-tcp
+    spec:
+      protocol:
+        tcp:
+          ip: 192.168.1.3
+          port: 502
+          slaveID: 1
+      properties:
+        - name: temperature-enable
+          description: enable data collection of temperature sensor
+          readOnly: false
+          visitor:
+            register: CoilRegister
+            offset: 2
+            quantity: 1
+          value: "true"
+          dataType: boolean
+        - name: temperature
+          description: enable data collection of temperature sensor
+          readOnly: false
+          visitor:
+            register: HoldingRegister
+            offset: 2
+            quantity: 8
+          value: "33.3"
+          dataType: float
