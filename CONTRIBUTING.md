@@ -39,7 +39,7 @@ Octopus follows the standard [github pull request](https://help.github.com/artic
     + Run and pass `make adaptors <adaptor directory name> package`
     + Run and pass `make adaptors <adaptor directory name> test only`
 - Developing Octopus:
-    + Run and pass `make octopus pckage`
+    + Run and pass `make octopus package`
     + Run and pass `make octopus test only`
 
 ## Code review

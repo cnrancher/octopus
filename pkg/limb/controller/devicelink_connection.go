@@ -2,7 +2,6 @@ package controller
 
 import (
 	"context"
-	"fmt"
 
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -50,7 +49,7 @@ func (r *DeviceLinkReconciler) ReceiveConnectionStatus(req suctioncup.RequestCon
 	}
 	if !object.IsActivating(&target) {
 		devicelink.ToCheckDeviceCreated(&link.Status)
-		r.Eventf(&link, "Warning", "Recreating", "cannot find previous device instance")
+		r.Eventf(&link, "Warning", "Recreating", "cannot find previous device")
 		if err := r.Status().Update(ctx, &link); err != nil {
 			log.Error(err, "Unable to change the status of DeviceLink")
 			return suctioncup.Response{Requeue: true}, nil
@@ -72,8 +71,8 @@ func (r *DeviceLinkReconciler) ReceiveConnectionStatus(req suctioncup.RequestCon
 	}
 
 	if req.Error != nil {
-		devicelink.FailOnDeviceConnected(&link.Status, fmt.Sprintf("received error: %v", req.Error.Error()))
-		r.Eventf(&link, "Warning", "FailedReceived", "received error from adaptor")
+		devicelink.FailOnDeviceConnected(&link.Status, "received error from adaptor")
+		r.Eventf(&link, "Warning", "FailedReceived", "received error from adaptor: %v", req.Error)
 		if err := r.Status().Update(ctx, &link); err != nil {
 			log.Error(err, "Unable to change the status of DeviceLink")
 			return suctioncup.Response{Requeue: true}, nil
@@ -91,8 +90,8 @@ func (r *DeviceLinkReconciler) ReceiveConnectionStatus(req suctioncup.RequestCon
 		updatedStatus = updated.Object["status"]
 		return nil
 	}(); err != nil {
-		devicelink.FailOnDeviceConnected(&link.Status, fmt.Sprintf("received data is invalid: %v", err.Error()))
-		r.Eventf(&link, "Warning", "FailReceived", "received invalid data from adaptor")
+		devicelink.FailOnDeviceConnected(&link.Status, "received invalid data from adaptor")
+		r.Eventf(&link, "Warning", "FailReceived", "received invalid data from adaptor: %v", err)
 		if err := r.Status().Update(ctx, &link); err != nil {
 			log.Error(err, "Unable to change the status of DeviceLink")
 			return suctioncup.Response{Requeue: true}, nil
@@ -105,6 +104,5 @@ func (r *DeviceLinkReconciler) ReceiveConnectionStatus(req suctioncup.RequestCon
 		log.Error(err, "Unable to update the device of DeviceLink")
 		return suctioncup.Response{Requeue: true}, nil
 	}
-	r.Eventf(&link, "Normal", "Received", "received data from adaptor")
 	return suctioncup.Response{}, nil
 }
