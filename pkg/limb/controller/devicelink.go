@@ -3,7 +3,6 @@ package controller
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"reflect"
 
 	"github.com/go-logr/logr"
@@ -164,8 +163,8 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		// update device
 		var updated, err = updateDevice(&link, &device)
 		if err != nil {
-			devicelink.FailOnDeviceCreated(&link.Status, fmt.Sprintf("unable to update device from template: %v", err))
-
+			devicelink.FailOnDeviceCreated(&link.Status, "unable to update device from template")
+			r.Eventf(&link, "Warning", "FailedCreated", "cannot update device from template: %v", err)
 			if err := r.Status().Update(ctx, &link); err != nil {
 				log.Error(err, "Unable to change the status of DeviceLink")
 				return ctrl.Result{Requeue: true}, nil
@@ -181,7 +180,8 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	default:
 		// create device
 		if device, err := constructDevice(&link, r.Scheme); err != nil {
-			devicelink.FailOnDeviceCreated(&link.Status, fmt.Sprintf("unable to construct device from template: %v", err))
+			devicelink.FailOnDeviceCreated(&link.Status, "unable to construct device from template")
+			r.Eventf(&link, "Warning", "FailedCreated", "cannot create device from template: %v", err)
 		} else {
 			var err = r.Create(ctx, &device)
 			if err != nil {
@@ -191,9 +191,11 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 				}
 			}
 			if meta.IsNoMatchError(err) {
-				devicelink.FailOnDeviceCreated(&link.Status, fmt.Sprintf("unable to create device from template: %v", err))
+				devicelink.FailOnDeviceCreated(&link.Status, "unable to construct device from template")
+				r.Eventf(&link, "Warning", "FailedCreated", "cannot create device from template: the model isn't existed")
 			} else {
 				devicelink.SuccessOnDeviceCreated(&link.Status)
+				r.Eventf(&link, "Normal", "Created", "device instance is created")
 			}
 		}
 
@@ -212,21 +214,19 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		return ctrl.Result{}, nil
 	case metav1.ConditionTrue:
 		if err := r.SuctionCup.Send(&device, &link); err != nil {
-			devicelink.FailOnDeviceConnected(&link.Status, fmt.Sprintf("unable to send data to adaptor: %v", err))
-			r.Eventf(&link, "Warning", "FailedSent", "cannot send data to adaptor")
+			devicelink.FailOnDeviceConnected(&link.Status, "cannot send data to adaptor")
+			r.Eventf(&link, "Warning", "FailedSent", "cannot send data to adaptor: %v", err)
 
 			if err := r.Status().Update(ctx, &link); err != nil {
 				log.Error(err, "Unable to change the status of DeviceLink")
 				return ctrl.Result{Requeue: true}, nil
 			}
 		}
-
-		r.Eventf(&link, "Normal", "Sent", "sent data to adaptor")
 		return ctrl.Result{}, nil
 	default:
 		if err := r.SuctionCup.Connect(&link); err != nil {
-			devicelink.FailOnDeviceConnected(&link.Status, fmt.Sprintf("unable to connect to adaptor: %v", err))
-			r.Eventf(&link, "Warning", "FailedConnected", "cannot connect to adaptor")
+			devicelink.FailOnDeviceConnected(&link.Status, "unable to connect to adaptor")
+			r.Eventf(&link, "Warning", "FailedConnected", "cannot connect to adaptor: %v", err)
 		} else {
 			devicelink.SuccessOnDeviceConnected(&link.Status)
 			r.Eventf(&link, "Normal", "Connected", "connected to adaptor")
