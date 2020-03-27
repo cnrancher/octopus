@@ -1,9 +1,24 @@
 FROM golang:1.13.8
-RUN curl -sSfL "https://get.docker.com" | sh
+RUN apt-get update && \
+    apt-get install -y gcc ca-certificates xz-utils unzip && \
+    rm -f /bin/sh && ln -s /bin/bash /bin/sh
 
-ARG DAPPER_HOST_ARCH
-ENV HOST_ARCH=${DAPPER_HOST_ARCH}
+# -- for make rules
+## install docker
+RUN curl -sSfL "https://get.docker.com" | sh -s VERSION=19.03; \
+    docker --version
+## install golangci-lint
+RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b "$(go env GOPATH)/bin" v1.23.8; \
+    golangci-lint --version
+## install kubectl
+RUN curl -fL "https://storage.googleapis.com/kubernetes-release/release/v1.17.2/bin/$(go env GOOS)/$(go env GOARCH)/kubectl" >/usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl; \
+    kubectl version --short --client
+## install controller-gen
+RUN GO111MODULE=on go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.5; \
+    controller-gen --version
+# -- for make rules
 
+# -- for dapper
 ENV GO111MODULE=off
 ENV CROSS=false
 ENV DAPPER_ENV CROSS REPO TAG OS ARCH IMAGE_NAME
@@ -11,6 +26,7 @@ ENV DAPPER_SOURCE /go/src/github.com/rancher/octopus/
 ENV DAPPER_OUTPUT ./bin ./dist
 ENV DAPPER_DOCKER_SOCKET true
 ENV HOME ${DAPPER_SOURCE}
+# -- for dapper
 
-WORKDIR ${DAPPER_SOURCE}/adaptors/modbus
-CMD ["make", "-se", "adaptor", "modbus", "containerize"]
+WORKDIR ${DAPPER_SOURCE}
+ENTRYPOINT ["make", "-se", "adaptor"]

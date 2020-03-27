@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 function octopus::lint::install() {
-  curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b "$(go env GOPATH)/bin" v1.23.8
+  curl -fL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b "$(go env GOPATH)/bin" v1.23.8
 }
 
 function octopus::lint::validate() {

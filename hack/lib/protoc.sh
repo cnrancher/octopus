@@ -33,7 +33,8 @@ function octopus::protoc::validate() {
 
 function octopus::protoc::protoc() {
   if ! octopus::protoc::validate; then
-    octopus::log::fatal "protoc hasn't been installed"
+    octopus::log::warn "cannot execute protoc as it hasn't installed"
+    return
   fi
 
   if ! octopus::protoc::validate_gen_gogfaster; then

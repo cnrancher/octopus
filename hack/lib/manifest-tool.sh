@@ -19,7 +19,7 @@ function octopus::manifest_tool::install() {
   if [[ "${os_arch}" == "arm" ]]; then
     os_arch="armv7"
   fi
-  curl -SfL "https://github.com/estesp/manifest-tool/releases/download/${version}/manifest-tool-${os_type}-${os_arch}" >/tmp/manifest-tool
+  curl -fL "https://github.com/estesp/manifest-tool/releases/download/${version}/manifest-tool-${os_type}-${os_arch}" >/tmp/manifest-tool
   chmod +x /tmp/manifest-tool && mv /tmp/manifest-tool /usr/local/bin/manifest-tool
 }
 
@@ -39,7 +39,8 @@ function octopus::manifest_tool::validate() {
 
 function octopus::manifest_tool::run() {
   if ! octopus::manifest_tool::validate; then
-    octopus::log::fatal "manifest-tool hasn't been installed"
+    octopus::log::warn "cannot execute manifest-tool as it hasn't installed"
+    return
   fi
 
   if [[ ${OS_TYPE} == "Darwin" ]]; then

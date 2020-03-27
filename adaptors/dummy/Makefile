@@ -26,37 +26,36 @@ all: help
 
 .PHONY: help
 help:
-	# building process.
+	# Building process.
 	#
-	# usage:
+	# Usage:
 	#   make adaptor {adaptor-name} stage [only]
 	#
-	# stage:
-	#   a "stage" consists of serval actions, actions follow the below workflow:
-	#     - [dev]  :  generate -> mod -> lint -> build -> test -> verify
-	#     - [prd]  :                       \ = = = = = = = =  package  = = = = = = = = > e2e -> deploy
-	#                                         \ -> build -> test -> containerize -> /
+	# Stage:
+	#   a "stage" consists of serval actions, actions follow as below:
+	#     	generate -> mod -> lint -> build -> containerize -> deploy
+	#                                      \ -> test -> verify -> e2e
 	#   for convenience, the name of the "action" also represents the current "stage".
 	#   choosing to execute a certain "stage" will execute all actions in the previous sequence.
 	#
-	# actions:
-	#   - generate, gen, g  :  generate deployment manifests and code implementations via `controller-gen`.
+	# Actions:
+	#   -      generate, g  :  generate deployment manifests and code implementations via `controller-gen`.
 	#   -           mod, m  :  download code dependencies.
 	#   -          lint, l  :  verify code via `golangci-lint`,
 	#                          roll back to `go fmt` and `go vet` if the installation fails.
 	#   -         build, b  :  compile code.
+	#   -       package, p  :  package docker image.
+	#   -        deploy, d  :  push docker image.
 	#   -          test, t  :  run unit tests.
 	#   -        verify, v  :  run integration tests.
-	#   -     containerize  :  package docker image.
-	#   -  package, pkg, p  :  use `dapper` to build, test and containerize.
 	#   -           e2e, e  :  run e2e tests.
-	#   -        deploy, d  :  push docker image.
 	#   only executing the corresponding "action" of a "stage" needs the `only` suffix.
+	#   integrate with dapper via `BY=dapper`.
 	#
-	# example:
-	#   -            make adaptor dummy  :  execute `pacakge` stage for "dummy" adaptor.
+	# Example:
+	#   -            make adaptor dummy  :  execute `build` stage for "dummy" adaptor.
 	#   -       make adaptor dummy test  :  execute `test` stage for "dummy" adaptor.
-	#   - make adaptor dummy build only  :  execute `build` action for "dummy" adaptor.
+	#   - make adaptor dummy build only  :  only execute `build` action for "dummy" adaptor, during `build` stage.
 	@echo
 
 .PHONY: adaptor
