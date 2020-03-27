@@ -44,33 +44,37 @@ function generate() {
 }
 
 function mod() {
+  [[ "${2:-}" != "only" ]] && generate "$@"
   local adaptor="${1}"
 
   # the adaptor is sharing the vendor with root
   pushd "${ROOT_DIR}" >/dev/null || exist 1
   octopus::log::info "downloading dependencies for adaptor $adaptor..."
 
-  octopus::log::info "tidying"
-  go mod tidy
-
-  octopus::log::info "vending"
-  go mod vendor
+  if [[ "$(go env GO111MODULE)" == "off" ]]; then
+    octopus::log::warn "go mod has been disabled by GO111MODULE=off"
+  else
+    octopus::log::info "tidying"
+    go mod tidy
+    octopus::log::info "vending"
+    go mod vendor
+  fi
 
   octopus::log::info "...done"
   popd >/dev/null || return
 }
 
 function lint() {
+  [[ "${2:-}" != "only" ]] && mod "$@"
   local adaptor="${1}"
 
   octopus::log::info "linting adaptor $adaptor..."
-
   octopus::lint::generate "${CURR_DIR}/..."
-
   octopus::log::info "...done"
 }
 
 function build() {
+  [[ "${2:-}" != "only" ]] && lint "$@"
   local adaptor="${1}"
 
   octopus::log::info "building adaptor $adaptor..."
@@ -116,51 +120,11 @@ function build() {
   octopus::log::info "...done"
 }
 
-function test() {
+function package() {
+  [[ "${2:-}" != "only" ]] && build "$@"
   local adaptor="${1}"
 
-  octopus::log::info "running unit tests for adaptor $adaptor..."
-
-  local unit_test_targets=(
-    "${CURR_DIR}/api/..."
-    "${CURR_DIR}/cmd/..."
-    "${CURR_DIR}/pkg/..."
-  )
-
-  if [[ "${CROSS:-false}" == "true" ]]; then
-    octopus::log::warn "crossed test is not supported"
-  fi
-
-  local os="${OS:-$(go env GOOS)}"
-  local arch="${ARCH:-$(go env GOARCH)}"
-  if [[ "${arch}" == "arm" ]]; then
-    # NB(thxCode): race detector doesn't support `arm` arch, ref to:
-    # - https://golang.org/doc/articles/race_detector.html#Supported_Systems
-    GOOS=${os} GOARCH=${arch} CGO_ENABLED=1 go test \
-      -cover -coverprofile "${CURR_DIR}/dist/coverage_${adaptor}_${os}_${arch}.out" \
-      "${unit_test_targets[@]}"
-  else
-    GOOS=${os} GOARCH=${arch} CGO_ENABLED=1 go test \
-      -race \
-      -cover -coverprofile "${CURR_DIR}/dist/coverage_${adaptor}_${os}_${arch}.out" \
-      "${unit_test_targets[@]}"
-  fi
-
-  octopus::log::info "...done"
-}
-
-function verify() {
-  local adaptor="${1}"
-
-  octopus::log::info "running integration tests for adaptor $adaptor..."
-
-  octopus::log::info "...done"
-}
-
-function containerize() {
-  local adaptor="${1}"
-
-  octopus::log::info "containerizing adaptor ${adaptor}..."
+  octopus::log::info "packaging adaptor ${adaptor}..."
 
   local repo=${REPO:-rancher}
   local image_name=${IMAGE_NAME:-octopus-adaptor-${adaptor}}
@@ -168,7 +132,7 @@ function containerize() {
 
   local platforms
   if [[ "${CROSS:-false}" == "true" ]]; then
-    octopus::log::info "crossed containerizing"
+    octopus::log::info "crossed packaging"
     platforms=("${SUPPORTED_PLATFORMS[@]}")
   else
     local os="${OS:-$(go env GOOS)}"
@@ -176,27 +140,20 @@ function containerize() {
     platforms=("${os}/${arch}")
   fi
 
-  pushd "${CURR_DIR}"
+  pushd "${CURR_DIR}" >/dev/null 2>&1
   for platform in "${platforms[@]}"; do
-    octopus::log::info "containerizing ${platform}"
+    octopus::log::info "packaging ${platform}"
     octopus::docker::build \
       --platform "${platform}" \
       -t "${repo}/${image_name}:${tag}-${platform////-}" .
   done
-  popd
-
-  octopus::log::info "...done"
-}
-
-function e2e() {
-  local adaptor="${1}"
-
-  octopus::log::info "running E2E tests for adaptor $adaptor..."
+  popd >/dev/null 2>&1
 
   octopus::log::info "...done"
 }
 
 function deploy() {
+  [[ "${2:-}" != "only" ]] && package "$@"
   local adaptor="${1}"
 
   octopus::log::info "deploying adaptor $adaptor..."
@@ -234,105 +191,83 @@ function deploy() {
   octopus::log::info "...done"
 }
 
+function test() {
+  [[ "${2:-}" != "only" ]] && build "$@"
+  local adaptor="${1}"
+
+  octopus::log::info "running unit tests for adaptor $adaptor..."
+
+  local unit_test_targets=(
+    "${CURR_DIR}/api/..."
+    "${CURR_DIR}/cmd/..."
+    "${CURR_DIR}/pkg/..."
+  )
+
+  if [[ "${CROSS:-false}" == "true" ]]; then
+    octopus::log::warn "crossed test is not supported"
+  fi
+
+  local os="${OS:-$(go env GOOS)}"
+  local arch="${ARCH:-$(go env GOARCH)}"
+  if [[ "${arch}" == "arm" ]]; then
+    # NB(thxCode): race detector doesn't support `arm` arch, ref to:
+    # - https://golang.org/doc/articles/race_detector.html#Supported_Systems
+    GOOS=${os} GOARCH=${arch} CGO_ENABLED=1 go test \
+      -cover -coverprofile "${CURR_DIR}/dist/coverage_${adaptor}_${os}_${arch}.out" \
+      "${unit_test_targets[@]}"
+  else
+    GOOS=${os} GOARCH=${arch} CGO_ENABLED=1 go test \
+      -race \
+      -cover -coverprofile "${CURR_DIR}/dist/coverage_${adaptor}_${os}_${arch}.out" \
+      "${unit_test_targets[@]}"
+  fi
+
+  octopus::log::info "...done"
+}
+
+function verify() {
+  [[ "${2:-}" != "only" ]] && test "$@"
+  local adaptor="${1}"
+
+  octopus::log::info "running integration tests for adaptor $adaptor..."
+
+  octopus::log::info "...done"
+}
+
+function e2e() {
+  [[ "${2:-}" != "only" ]] && verify "$@"
+  local adaptor="${1}"
+
+  octopus::log::info "running E2E tests for adaptor $adaptor..."
+
+  octopus::log::info "...done"
+}
+
 function entry() {
   local adaptor
   adaptor="${1:-}"
-  if [[ -z "${adaptor}" ]]; then
-    octopus::log::error "please indicate a specific adaptor !!!"
-    exit 0
-  elif [[ ! -d "${ROOT_DIR}/adaptors/${adaptor}" ]]; then
-    octopus::log::error "does not exist ${adaptor} adaptor !!!"
-    exit 0
-  fi
+  shift
 
   local stage
-  stage="${2:-package}"
-
-  local subcmd
-  subcmd="${3:-}"
+  stage="${1:-build}"
+  shift
 
   case $stage in
-  g | gen | generate)
-    generate "${adaptor}"
-    ;;
-  m | mod)
-    if [[ "${subcmd}" != "only" ]]; then
-      generate "${adaptor}"
-    fi
-    mod "${adaptor}"
-    ;;
-  l | lint)
-    if [[ "${subcmd}" != "only" ]]; then
-      generate "${adaptor}"
-      mod "${adaptor}"
-    fi
-    lint "${adaptor}"
-    ;;
-  b | build)
-    if [[ "${subcmd}" != "only" ]]; then
-      generate "${adaptor}"
-      mod "${adaptor}"
-      lint "${adaptor}"
-    fi
-    build "${adaptor}"
-    ;;
-  t | test)
-    if [[ "${subcmd}" != "only" ]]; then
-      generate "${adaptor}"
-      mod "${adaptor}"
-      lint "${adaptor}"
-      build "${adaptor}"
-    fi
-    test "${adaptor}"
-    ;;
-  v | verify)
-    if [[ "${subcmd}" != "only" ]]; then
-      generate "${adaptor}"
-      mod "${adaptor}"
-      lint "${adaptor}"
-      build "${adaptor}"
-      test "${adaptor}"
-    fi
-    verify "${adaptor}"
-    ;;
-  p | pkg | package)
-    if [[ "${subcmd}" != "only" ]]; then
-      generate "${adaptor}"
-      mod "${adaptor}"
-      lint "${adaptor}"
-    fi
-    octopus::dapper::run -C "${ROOT_DIR}" -f "adaptors/${adaptor}/Dockerfile.dapper" -m bind
-    ;;
-  c | containerize)
-    if [[ "${subcmd}" != "only" ]]; then
-      build "${adaptor}"
-      test "${adaptor}"
-    fi
-    containerize "${adaptor}"
-    ;;
-  e | e2e)
-    if [[ "${subcmd}" != "only" ]]; then
-      generate "${adaptor}"
-      mod "${adaptor}"
-      lint "${adaptor}"
-      package "${adaptor}"
-    fi
-    e2e "${adaptor}"
-    ;;
-  d | deploy)
-    if [[ "${subcmd}" != "only" ]]; then
-      generate "${adaptor}"
-      mod "${adaptor}"
-      lint "${adaptor}"
-      package "${adaptor}"
-      e2e "${adaptor}"
-    fi
-    deploy "${adaptor}"
-    ;;
-  *)
-    octopus::log::error "unknown action, select from (generate,mod,lint,build,test,verify,containerize,package,e2e,deploy) "
-    ;;
+  g | gen | generate) generate "$adaptor" "$@" ;;
+  m | mod) mod "$adaptor" "$@" ;;
+  l | lint) lint "$adaptor" "$@" ;;
+  b | build) build "$adaptor" "$@" ;;
+  p | pkg | package) package "$adaptor" "$@" ;;
+  d | dep | deploy) deploy "$adaptor" "$@" ;;
+  t | test) test "$adaptor" "$@" ;;
+  v | ver | verify) verify "$adaptor" "$@" ;;
+  e | e2e) e2e "$adaptor" "$@" ;;
+  *) octopus::log::error "unknown action, select from (generate,mod,lint,build,test,verify,package,deploy,e2e)" ;;
   esac
 }
 
-entry "$@"
+if [[ ${BY:-} == "dapper" ]]; then
+  octopus::dapper::run -C "${ROOT_DIR}" -f "adaptors/${1}/Dockerfile.dapper" -m bind "$@"
+else
+  entry "$@"
+fi

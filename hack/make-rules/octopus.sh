@@ -59,20 +59,25 @@ function generate() {
 }
 
 function mod() {
+  [[ "${1:-}" != "only" ]] && generate
   pushd "${ROOT_DIR}" >/dev/null || exist 1
   octopus::log::info "downloading dependencies for octopus..."
 
-  octopus::log::info "tidying"
-  go mod tidy
-
-  octopus::log::info "vending"
-  go mod vendor
+  if [[ "$(go env GO111MODULE)" == "off" ]]; then
+    octopus::log::warn "go mod has been disabled by GO111MODULE=off"
+  else
+    octopus::log::info "tidying"
+    go mod tidy
+    octopus::log::info "vending"
+    go mod vendor
+  fi
 
   octopus::log::info "...done"
   popd >/dev/null || return
 }
 
 function lint() {
+  [[ "${1:-}" != "only" ]] && mod
   octopus::log::info "linting octopus..."
 
   local targets=(
@@ -87,6 +92,7 @@ function lint() {
 }
 
 function build() {
+  [[ "${1:-}" != "only" ]] && lint
   octopus::log::info "building octopus..."
 
   mkdir -p "${CURR_DIR}/bin"
@@ -128,50 +134,9 @@ function build() {
   octopus::log::info "...done"
 }
 
-function test() {
-  octopus::log::info "running unit tests for octopus..."
-
-  local unit_test_targets=(
-    "${CURR_DIR}/api/..."
-    "${CURR_DIR}/cmd/..."
-    "${CURR_DIR}/pkg/..."
-  )
-
-  if [[ "${CROSS:-false}" == "true" ]]; then
-    octopus::log::warn "crossed test is not supported"
-  fi
-
-  local os="${OS:-$(go env GOOS)}"
-  local arch="${ARCH:-$(go env GOARCH)}"
-  if [[ "${arch}" == "arm" ]]; then
-    # NB(thxCode): race detector doesn't support `arm` arch, ref to:
-    # - https://golang.org/doc/articles/race_detector.html#Supported_Systems
-    GOOS=${os} GOARCH=${arch} CGO_ENABLED=1 go test \
-      -cover -coverprofile "${CURR_DIR}/dist/coverage_${os}_${arch}.out" \
-      "${unit_test_targets[@]}"
-  else
-    GOOS=${os} GOARCH=${arch} CGO_ENABLED=1 go test \
-      -race \
-      -cover -coverprofile "${CURR_DIR}/dist/coverage_${os}_${arch}.out" \
-      "${unit_test_targets[@]}"
-  fi
-
-  octopus::log::info "...done"
-}
-
-function verify() {
-  octopus::log::info "running integration tests for octopus..."
-
-  CGO_ENABLED=1 go test \
-    "${CURR_DIR}/test/integration/brain/..."
-  #  CGO_ENABLED=1 go test \
-  #    "${CURR_DIR}/test/integration/limb/..."
-
-  octopus::log::info "...done"
-}
-
-function containerize() {
-  octopus::log::info "containerizing octopus..."
+function package() {
+  [[ "${1:-}" != "only" ]] && build
+  octopus::log::info "packaging octopus..."
 
   local repo=${REPO:-rancher}
   local image_name=${IMAGE_NAME:-octopus}
@@ -179,7 +144,7 @@ function containerize() {
 
   local platforms
   if [[ "${CROSS:-false}" == "true" ]]; then
-    octopus::log::info "crossed containerizing"
+    octopus::log::info "crossed packaging"
     platforms=("${SUPPORTED_PLATFORMS[@]}")
   else
     local os="${OS:-$(go env GOOS)}"
@@ -187,25 +152,23 @@ function containerize() {
     platforms=("${os}/${arch}")
   fi
 
-  pushd "${CURR_DIR}"
+  pushd "${CURR_DIR}" >/dev/null 2>&1
   for platform in "${platforms[@]}"; do
-    octopus::log::info "containerizing ${platform}"
+    octopus::log::info "packaging ${platform}"
+    if [[ "${platform}" =~ darwin/* ]]; then
+      octopus::log::warn "package into Darwin OS image is unavailable, please use CROSS=true env to containerize multiple arch images or use OS=linux ARCH=amd64 env to containerize linux/amd64 image"
+    fi
     octopus::docker::build \
       --platform "${platform}" \
       -t "${repo}/${image_name}:${tag}-${platform////-}" .
   done
-  popd
-
-  octopus::log::info "...done"
-}
-
-function e2e() {
-  octopus::log::info "running E2E tests for octopus..."
+  popd >/dev/null 2>&1
 
   octopus::log::info "...done"
 }
 
 function deploy() {
+  [[ "${1:-}" != "only" ]] && package
   octopus::log::info "deploying octopus..."
 
   local repo=${REPO:-rancher}
@@ -241,89 +204,78 @@ function deploy() {
   octopus::log::info "...done"
 }
 
+function test() {
+  [[ "${1:-}" != "only" ]] && build
+  octopus::log::info "running unit tests for octopus..."
+
+  local unit_test_targets=(
+    "${CURR_DIR}/api/..."
+    "${CURR_DIR}/cmd/..."
+    "${CURR_DIR}/pkg/..."
+  )
+
+  if [[ "${CROSS:-false}" == "true" ]]; then
+    octopus::log::warn "crossed test is not supported"
+  fi
+
+  local os="${OS:-$(go env GOOS)}"
+  local arch="${ARCH:-$(go env GOARCH)}"
+  if [[ "${arch}" == "arm" ]]; then
+    # NB(thxCode): race detector doesn't support `arm` arch, ref to:
+    # - https://golang.org/doc/articles/race_detector.html#Supported_Systems
+    GOOS=${os} GOARCH=${arch} CGO_ENABLED=1 go test \
+      -cover -coverprofile "${CURR_DIR}/dist/coverage_${os}_${arch}.out" \
+      "${unit_test_targets[@]}"
+  else
+    GOOS=${os} GOARCH=${arch} CGO_ENABLED=1 go test \
+      -race \
+      -cover -coverprofile "${CURR_DIR}/dist/coverage_${os}_${arch}.out" \
+      "${unit_test_targets[@]}"
+  fi
+
+  octopus::log::info "...done"
+}
+
+function verify() {
+  [[ "${1:-}" != "only" ]] && test
+  octopus::log::info "running integration tests for octopus..."
+
+  CGO_ENABLED=1 go test \
+    "${CURR_DIR}/test/integration/brain/..."
+  #  CGO_ENABLED=1 go test \
+  #    "${CURR_DIR}/test/integration/limb/..."
+
+  octopus::log::info "...done"
+}
+
+function e2e() {
+  [[ "${1:-}" != "only" ]] && verify
+  octopus::log::info "running E2E tests for octopus..."
+
+  octopus::log::info "...done"
+}
+
 function entry() {
   local stage
-  stage="${1:-package}"
-
-  local subcmd
-  subcmd="${2:-}"
+  stage="${1:-build}"
+  shift
 
   case $stage in
-  g | gen | generate)
-    generate
-    ;;
-  m | mod)
-    if [[ "${subcmd}" != "only" ]]; then
-      generate
-    fi
-    mod
-    ;;
-  l | lint)
-    if [[ "${subcmd}" != "only" ]]; then
-      generate
-      mod
-    fi
-    lint
-    ;;
-  b | build)
-    if [[ "${subcmd}" != "only" ]]; then
-      generate
-      mod
-      lint
-    fi
-    build
-    ;;
-  t | test)
-    if [[ "${subcmd}" != "only" ]]; then
-      generate
-      mod
-      lint
-      build
-    fi
-    test
-    ;;
-  v | verify)
-    if [[ "${subcmd}" != "only" ]]; then
-      generate
-      mod
-      lint
-      build
-      test
-    fi
-    verify
-    ;;
-  p | pkg | package)
-    if [[ "${subcmd}" != "only" ]]; then
-      generate
-      mod
-      lint
-    fi
-    octopus::dapper::run -C "${CURR_DIR}" -f "Dockerfile.dapper" -m bind
-    ;;
-  c | containerize)
-    if [[ "${subcmd}" != "only" ]]; then
-      build
-      test
-    fi
-    containerize
-    ;;
-  e | e2e)
-    if [[ "${subcmd}" != "only" ]]; then
-      package
-    fi
-    e2e
-    ;;
-  d | deploy)
-    if [[ "${subcmd}" != "only" ]]; then
-      package
-      e2e
-    fi
-    deploy
-    ;;
-  *)
-    octopus::log::error "unknown action, select from (generate,mod,lint,build,test,verify,containerize,package,e2e,deploy) "
-    ;;
+  g | gen | generate) generate ;;
+  m | mod) mod "$@" ;;
+  l | lint) lint "$@" ;;
+  b | build) build "$@" ;;
+  p | pkg | package) package "$@" ;;
+  d | dep | deploy) deploy "$@" ;;
+  t | test) test "$@" ;;
+  v | ver | verify) verify "$@" ;;
+  e | e2e) e2e "$@" ;;
+  *) octopus::log::error "unknown action, select from (generate,mod,lint,build,test,verify,package,deploy,e2e)" ;;
   esac
 }
 
-entry "$@"
+if [[ ${BY:-} == "dapper" ]]; then
+  octopus::dapper::run -C "${CURR_DIR}" -f "Dockerfile.dapper" -m bind "$@"
+else
+  entry "$@"
+fi

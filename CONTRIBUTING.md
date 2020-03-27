@@ -36,11 +36,11 @@ A workflow of sending pull request looks like:
 Octopus follows the standard [github pull request](https://help.github.com/articles/about-pull-requests/) process. To submit a proposed change, please develop the code/fix and add new test cases. After that, run these local verifications before submitting pull request to predict the pass or fail of continuous integration:
 
 - Developing Adaptor:
-    + Run and pass `make adaptors <adaptor directory name> test`
-    + Run and pass `make adaptors <adaptor directory name> package only`
+    + Run and pass `make adaptors <adaptor directory name> package`
+    + Run and pass `make adaptors <adaptor directory name> test only`
 - Developing Octopus:
-    + Run and pass `make octopus test`
-    + Run and pass `make octopus package only`
+    + Run and pass `make octopus pckage`
+    + Run and pass `make octopus test only`
 
 ## Code review
 

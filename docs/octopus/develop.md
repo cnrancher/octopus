@@ -13,9 +13,8 @@
 Octopus takes inspiration from [Maven](https://maven.apache.org/) and provides a set of project build management based on [make](https://www.gnu.org/software/make/manual/make.html). Build management process consists of several stages, a stage consists of several actions. For convenience, the name of the action also represents the current stage. The overall flow relationship of action looks as below:
 
 ```text
-    generate -> mod -> lint -> build -> test -> verify
-                         \ = = = = = = = =  package  = = = = = = = = > e2e -> deploy
-                            \ -> build -> test -> containerize -> /
+          generate -> mod -> lint -> build -> package -> deploy
+                                         \ -> test -> verify -> e2e
 ```
 
 Explanation of each action:
@@ -28,25 +27,26 @@ Explanation of each action:
 | `build` | Compile `octopus` according to the type and architecture of the OS, generate the binary into `bin` directory. <br/><br/> Use `CROSS=true` to compile binaries of the supported platforms(search the `constant.sh` in this repo). |
 | `test` | Run unit tests. |
 | `verify` | Run integration tests. |
-| `containerize` | Package Docker image. |
-| `package` | Use [`dapper`](https://github.com/rancher/dapper) to execute `build`, `test` and `containerize` actions. |
+| `package` | Package Docker image. |
 | `e2e` | Run E2E tests. |
 | `deploy` | Push Docker images, and create manifest images. |
 
 Executing a stage can run `make octopus <stage name>`, for example, when executing the `test` stage, please run `make octopus test`. To execute a stage will execute all actions in the previous sequence, if running `make octopus test`, it actually includes executing `generate`, `mod`, `lint`, `build` and `test` actions.
 
-To run an action by adding `only` command, for example, if only run `build` action, please run `make octopus build only`.
+To run an action by adding `only` command, for example, if only run `build` action, please use `make octopus build only`.
+
+Integrate with [`dapper`](https://github.com/rancher/dapper) via `BY` environment variable, for example, if only run `build` action via [`dapper`](https://github.com/rancher/dapper), please use `BY=dapper make octopus build only`
 
 ### Usage example
 
 1. `make octopus build` on Mac: execute `generate`, `mod`, `lint` and `build` stages, and get a `darwin/amd64` execution binary on `bin` directory.
 1. `CROSS=true make octopus build only` on Mac: execute `build` stage, and get all execution binaries of supported platform on `bin` directory.
+1. `BY=dapper make octopus build only`: execute `build` stage with [`dapper`](https://github.com/rancher/dapper), and get a `linux/amd64` execution binary on `bin` directory.
 1. `make octopus test only` on Mac: execute `test` stage, and run the unit testing on `darwin/amd64` platform.
 1. `CROSS=true make octopus test only` on Mac: execute `test` stage, _crossed testing isn't supported currently_.
-1. `REPO=somebody make octopus package only`: execute `package` stage, then get a `linux/amd64` execution binary on `bin` directory, also get an octopus `linux/amd64` image of `somebody` repo.
-1. `CROSS=true REPO=somebody make octopus package only`: execute `pakcage` stage, then get all execution binaries of supported platform on `bin` directory, also get all supported platform images of `somebody` repo.
+1. `REPO=somebody OS=linux ARCH=amd64 make octopus package`: execute `package` stage, then get a `linux/amd64` execution binary on `bin` directory, also get an octopus `linux/amd64` image of `somebody` repo.
+1. `CROSS=true REPO=somebody make octopus package only`: execute `package` stage, then get all execution binaries of supported platform on `bin` directory, also get all supported platform images of `somebody` repo.
 1. `REPO=somebody make octopus deploy only`: execute `deploy` stage, then push all supported platform images to Docker hub, and create manifest image for the current version and `latest`.
-
 
 ## Build management of Adaptors
 
