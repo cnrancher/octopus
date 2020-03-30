@@ -6,12 +6,16 @@ set -o pipefail
 
 CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 # The root of the octopus directory
-ROOT_DIR="${CURR_DIR}"
+ROOT_DIR="$(cd "${CURR_DIR}/../.." && pwd -P)"
 source "${ROOT_DIR}/hack/lib/init.sh"
 source "${CURR_DIR}/hack/lib/constant.sh"
 
 function generate() {
-  octopus::log::info "generating octopus..."
+  local adaptor="${1}"
+
+  octopus::log::info "generating adaptor $adaptor..."
+
+  # TODO adjust the generation logic if needed
 
   octopus::log::info "generating objects"
   rm -f "${CURR_DIR}/api/*/zz_generated*"
@@ -19,24 +23,12 @@ function generate() {
     object:headerFile="${ROOT_DIR}/hack/boilerplate.go.txt" \
     paths="${CURR_DIR}/api/..."
 
-  octopus::log::info "generating protos"
-  rm -f "${CURR_DIR}/pkg/adaptor/api/*/*.pb.go"
-  for d in $(octopus::util::find_subdirs "${CURR_DIR}/pkg/adaptor/api"); do
-    octopus::protoc::generate \
-      "${CURR_DIR}/pkg/adaptor/api/${d}"
-  done
-
   octopus::log::info "generating manifests"
   # generate crd
   octopus::controller_gen::generate \
     crd:crdVersions=v1 \
     paths="${CURR_DIR}/api/..." \
     output:crd:dir="${CURR_DIR}/deploy/manifests/crd/base"
-  # generate webhook
-  octopus::controller_gen::generate \
-    webhook \
-    paths="${CURR_DIR}/api/..." \
-    output:webhook:dir="${CURR_DIR}/deploy/manifests/overlays/default"
   # generate rbac role
   octopus::controller_gen::generate \
     rbac:roleName=manager-role \
@@ -49,19 +41,17 @@ function generate() {
   fi
   kubectl kustomize "${CURR_DIR}/deploy/manifests/overlays/default" \
     >"${CURR_DIR}/deploy/e2e/all_in_one.yaml"
-  kubectl kustomize "${CURR_DIR}/deploy/manifests/overlays/without_webhook" \
-    >"${CURR_DIR}/deploy/e2e/all_in_one_without_webhook.yaml"
-  # replace the admissionregistration version
-  sed "s#admissionregistration.k8s.io/v1beta1#admissionregistration.k8s.io/v1#g" "${CURR_DIR}/deploy/e2e/all_in_one.yaml" >/tmp/all_in_one.yaml
-  mv /tmp/all_in_one.yaml "${CURR_DIR}/deploy/e2e/all_in_one.yaml"
 
   octopus::log::info "...done"
 }
 
 function mod() {
-  [[ "${1:-}" != "only" ]] && generate
+  [[ "${2:-}" != "only" ]] && generate "$@"
+  local adaptor="${1}"
+
+  # the adaptor is sharing the vendor with root
   pushd "${ROOT_DIR}" >/dev/null || exist 1
-  octopus::log::info "downloading dependencies for octopus..."
+  octopus::log::info "downloading dependencies for adaptor $adaptor..."
 
   if [[ "$(go env GO111MODULE)" == "off" ]]; then
     octopus::log::warn "go mod has been disabled by GO111MODULE=off"
@@ -77,27 +67,23 @@ function mod() {
 }
 
 function lint() {
-  [[ "${1:-}" != "only" ]] && mod
-  octopus::log::info "linting octopus..."
+  [[ "${2:-}" != "only" ]] && mod "$@"
+  local adaptor="${1}"
 
-  local targets=(
-    "${CURR_DIR}/api/..."
-    "${CURR_DIR}/cmd/..."
-    "${CURR_DIR}/pkg/..."
-    "${CURR_DIR}/test/..."
-    "${CURR_DIR}/template/..."
-  )
-  octopus::lint::generate "${targets[@]}"
-
+  octopus::log::info "linting adaptor $adaptor..."
+  octopus::lint::generate "${CURR_DIR}/..."
   octopus::log::info "...done"
 }
 
 function build() {
-  [[ "${1:-}" != "only" ]] && lint
-  octopus::log::info "building octopus..."
+  [[ "${2:-}" != "only" ]] && lint "$@"
+  local adaptor="${1}"
+
+  octopus::log::info "building adaptor $adaptor..."
 
   mkdir -p "${CURR_DIR}/bin"
 
+  # TODO adjust the ldflags if needed
   local version_flags="
     -X k8s.io/client-go/pkg/version.gitVersion=${OCTOPUS_GIT_VERSION}
     -X k8s.io/client-go/pkg/version.gitCommit=${OCTOPUS_GIT_COMMIT}
@@ -107,6 +93,8 @@ function build() {
     -w -s"
   local ext_flags="
     -extldflags '-static'"
+  local os="${OS:-$(go env GOOS)}"
+  local arch="${ARCH:-$(go env GOARCH)}"
 
   local platforms
   if [[ "${CROSS:-false}" == "true" ]]; then
@@ -128,19 +116,21 @@ function build() {
     local arch=${os_arch[1]}
     GOOS=${os} GOARCH=${arch} CGO_ENABLED=0 go build \
       -ldflags "${version_flags} ${flags} ${ext_flags}" \
-      -o "${CURR_DIR}/bin/octopus_${os}_${arch}" \
-      "${CURR_DIR}/cmd/octopus/main.go"
+      -o "${CURR_DIR}/bin/${adaptor}_${os}_${arch}" \
+      "${CURR_DIR}/cmd/${adaptor}/main.go"
   done
 
   octopus::log::info "...done"
 }
 
 function package() {
-  [[ "${1:-}" != "only" ]] && build
-  octopus::log::info "packaging octopus..."
+  [[ "${2:-}" != "only" ]] && build "$@"
+  local adaptor="${1}"
+
+  octopus::log::info "packaging adaptor ${adaptor}..."
 
   local repo=${REPO:-rancher}
-  local image_name=${IMAGE_NAME:-octopus}
+  local image_name=${IMAGE_NAME:-octopus-adaptor-${adaptor}}
   local tag=${TAG:-${OCTOPUS_GIT_VERSION}}
 
   local platforms
@@ -156,9 +146,6 @@ function package() {
   pushd "${CURR_DIR}" >/dev/null 2>&1
   for platform in "${platforms[@]}"; do
     octopus::log::info "packaging ${platform}"
-    if [[ "${platform}" =~ darwin/* ]]; then
-      octopus::log::warn "package into Darwin OS image is unavailable, please use CROSS=true env to containerize multiple arch images or use OS=linux ARCH=amd64 env to containerize linux/amd64 image"
-    fi
     octopus::docker::build \
       --platform "${platform}" \
       -t "${repo}/${image_name}:${tag}-${platform////-}" .
@@ -169,11 +156,13 @@ function package() {
 }
 
 function deploy() {
-  [[ "${1:-}" != "only" ]] && package
-  octopus::log::info "deploying octopus..."
+  [[ "${2:-}" != "only" ]] && package "$@"
+  local adaptor="${1}"
+
+  octopus::log::info "deploying adaptor $adaptor..."
 
   local repo=${REPO:-rancher}
-  local image_name=${IMAGE_NAME:-octopus}
+  local image_name=${IMAGE_NAME:-octopus-adaptor-${adaptor}}
   local tag=${TAG:-${OCTOPUS_GIT_VERSION}}
   local images=()
   for platform in "${SUPPORTED_PLATFORMS[@]}"; do
@@ -206,9 +195,12 @@ function deploy() {
 }
 
 function test() {
-  [[ "${1:-}" != "only" ]] && build
-  octopus::log::info "running unit tests for octopus..."
+  [[ "${2:-}" != "only" ]] && build "$@"
+  local adaptor="${1}"
 
+  octopus::log::info "running unit tests for adaptor $adaptor..."
+
+  # TODO adjust the test targets if needed
   local unit_test_targets=(
     "${CURR_DIR}/api/..."
     "${CURR_DIR}/cmd/..."
@@ -225,12 +217,12 @@ function test() {
     # NB(thxCode): race detector doesn't support `arm` arch, ref to:
     # - https://golang.org/doc/articles/race_detector.html#Supported_Systems
     GOOS=${os} GOARCH=${arch} CGO_ENABLED=1 go test \
-      -cover -coverprofile "${CURR_DIR}/dist/coverage_${os}_${arch}.out" \
+      -cover -coverprofile "${CURR_DIR}/dist/coverage_${adaptor}_${os}_${arch}.out" \
       "${unit_test_targets[@]}"
   else
     GOOS=${os} GOARCH=${arch} CGO_ENABLED=1 go test \
       -race \
-      -cover -coverprofile "${CURR_DIR}/dist/coverage_${os}_${arch}.out" \
+      -cover -coverprofile "${CURR_DIR}/dist/coverage_${adaptor}_${os}_${arch}.out" \
       "${unit_test_targets[@]}"
   fi
 
@@ -238,45 +230,52 @@ function test() {
 }
 
 function verify() {
-  [[ "${1:-}" != "only" ]] && test
-  octopus::log::info "running integration tests for octopus..."
+  [[ "${2:-}" != "only" ]] && test "$@"
+  local adaptor="${1}"
 
-  CGO_ENABLED=1 go test \
-    "${CURR_DIR}/test/integration/brain/..."
-  #  CGO_ENABLED=1 go test \
-  #    "${CURR_DIR}/test/integration/limb/..."
+  octopus::log::info "running integration tests for adaptor $adaptor..."
+
+  # TODO to implement the logic if needed, and place all integration tests to test/integration directory
 
   octopus::log::info "...done"
 }
 
 function e2e() {
-  [[ "${1:-}" != "only" ]] && verify
-  octopus::log::info "running E2E tests for octopus..."
+  [[ "${2:-}" != "only" ]] && verify "$@"
+  local adaptor="${1}"
+
+  octopus::log::info "running E2E tests for adaptor $adaptor..."
+
+  # TODO to implement the logic if needed, and place all E2E tests to test/e2e directory
 
   octopus::log::info "...done"
 }
 
 function entry() {
+  local adaptor
+  adaptor="${1:-}"
+  shift
+
   local stage
   stage="${1:-build}"
   shift
 
   case $stage in
-  g | gen | generate) generate ;;
-  m | mod) mod "$@" ;;
-  l | lint) lint "$@" ;;
-  b | build) build "$@" ;;
-  p | pkg | package) package "$@" ;;
-  d | dep | deploy) deploy "$@" ;;
-  t | test) test "$@" ;;
-  v | ver | verify) verify "$@" ;;
-  e | e2e) e2e "$@" ;;
+  g | gen | generate) generate "$adaptor" "$@" ;;
+  m | mod) mod "$adaptor" "$@" ;;
+  l | lint) lint "$adaptor" "$@" ;;
+  b | build) build "$adaptor" "$@" ;;
+  p | pkg | package) package "$adaptor" "$@" ;;
+  d | dep | deploy) deploy "$adaptor" "$@" ;;
+  t | test) test "$adaptor" "$@" ;;
+  v | ver | verify) verify "$adaptor" "$@" ;;
+  e | e2e) e2e "$adaptor" "$@" ;;
   *) octopus::log::fatal "unknown action, select from (generate,mod,lint,build,test,verify,package,deploy,e2e)" ;;
   esac
 }
 
 if [[ ${BY:-} == "dapper" ]]; then
-  octopus::dapper::run -C "${CURR_DIR}" -f "Dockerfile.dapper" -m bind "$@"
+  octopus::dapper::run -C "${ROOT_DIR}" -f "adaptors/${1}/Dockerfile.dapper" -m bind "$@"
 else
   entry "$@"
 fi

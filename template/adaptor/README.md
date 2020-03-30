@@ -1,18 +1,18 @@
-# Dummy Adaptor
+# Template Adaptor
 
-This adaptor is for testing.
+<!-- describe what the adaptor does in here -->
 
 ## Registration Information
 
 |  Versions | Register Name | Endpoint Socket | Available |
 |:---:|:---:|:---:|:---:|
-|  `v1alpha1` | `adaptors.edge.cattle.io/dummy` | `dummy.socket` | * |
+|  `v1alpha1` | `adaptors.edge.cattle.io/template` | `template.socket` | * |
 
 ## Support Model
 
 | Kind | Group | Version | Available | 
 |:---:|:---:|:---:|:---:|
-| `DummyDevice` | `devices.edge.cattle.io` | `v1alpha1` | * |
+| `TemplateDevice` | `devices.edge.cattle.io` | `v1alpha1` | * |
 
 ## Support Platform
 
@@ -30,13 +30,13 @@ kubectl apply -f ./deploy/e2e/all_in_one.yaml
 
 ## Authority
 
-Grant permissions to Octopus as below:
+Grant permissions to Octopus as below <!-- kubectl describe clusterrole ... -->:
 
 ```text
   Resources                                   Non-Resource URLs  Resource Names  Verbs
   ---------                                   -----------------  --------------  -----
-  dummydevices.devices.edge.cattle.io         []                 []              [create delete get list patch update watch]
-  dummydevices.devices.edge.cattle.io/status  []                 []              [get patch update]
+  templatedevices.devices.edge.cattle.io         []                 []              [create delete get list patch update watch]
+  templatedevices.devices.edge.cattle.io/status  []                 []              [get patch update]
 ```
 
 Permissions obtained from cluster as below: 

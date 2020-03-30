@@ -57,8 +57,8 @@ To make it easier for your PR to receive reviews, consider the reviewers will ne
 There are multiple types of tests. The location of the test code varies with type, as do the specifics of the environment needed to successfully run the test:
 
 - Unit: These confirm that a particular function behaves as intended. Unit test source code can be found adjacent to the corresponding source code within a given package.
-- Integration: These tests cover interactions of package components or interactions between Octopus components and Kubernetes control plane components like API server.
-- End-to-end ("e2e"): These are broad tests of overall system behavior and coherence.
+- Integration: These tests cover interactions of package components or interactions between Octopus components and Kubernetes control plane components like API server. Integration test source code can be found in `test/integration` directory.
+- End-to-end ("e2e"): These are broad tests of overall system behavior and coherence. E2E test source code can be found in `test/e2e` directory.
 
 Continuous integration will run these tests on PRs.
 
