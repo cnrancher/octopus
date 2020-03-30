@@ -262,7 +262,7 @@ function entry() {
   t | test) test "$adaptor" "$@" ;;
   v | ver | verify) verify "$adaptor" "$@" ;;
   e | e2e) e2e "$adaptor" "$@" ;;
-  *) octopus::log::error "unknown action, select from (generate,mod,lint,build,test,verify,package,deploy,e2e)" ;;
+  *) octopus::log::fatal "unknown action, select from (generate,mod,lint,build,test,verify,package,deploy,e2e)" ;;
   esac
 }
 

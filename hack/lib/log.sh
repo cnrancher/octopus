@@ -13,7 +13,7 @@ octopus::log::errexit() {
   set +o | grep -qe "-o errexit" || return
 
   set +o xtrace
-  octopus::log::fatal "${BASH_SOURCE[1]}:${BASH_LINENO[0]} '${BASH_COMMAND}' exited with status ${err}" "${1:-1}"
+  octopus::log::panic "${BASH_SOURCE[1]}:${BASH_LINENO[0]} '${BASH_COMMAND}' exited with status ${err}" "${1:-1}"
 }
 
 octopus::log::install_errexit() {
@@ -65,12 +65,27 @@ octopus::log::error() {
   done
 }
 
-# Fatal level logging, dump the error stack and exit.
+# Fatal level logging, log an error but exit with 1, don't dump the stack or exit.
+octopus::log::fatal() {
+  local message="${1:-}"
+
+  local timestamp
+  timestamp="$(date +"[%m%d %H:%M:%S]")"
+  echo "[FATA] ${timestamp} ${1-}" >&2
+  shift
+  for message; do
+    echo "       ${message}" >&2
+  done
+
+  exit 1
+}
+
+# Panic level logging, dump the error stack and exit.
 # Args:
 #   $1 Message to log with the error
 #   $2 The error code to return
 #   $3 The number of stack frames to skip when printing.
-octopus::log::fatal() {
+octopus::log::panic() {
   local message="${1:-}"
   local code="${2:-1}"
 
