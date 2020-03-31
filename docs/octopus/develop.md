@@ -26,7 +26,7 @@ Explanation of each action:
 | `lint` | Verify `octopus` via [`golangci-lint`](https://github.com/golangci/golangci-lint), roll back to `go fmt` and `go vet` if the installation fails. |
 | `build` | Compile `octopus` according to the type and architecture of the OS, generate the binary into `bin` directory. <br/><br/> Use `CROSS=true` to compile binaries of the supported platforms(search the `constant.sh` in this repo). |
 | `test` | Run unit tests. |
-| `verify` | Run integration tests. |
+| `verify` | Run integration tests with a Kubernetes cluster. <br/><br/> Use `LOCAL_CLUSTER_KIND` to specify the type for local cluster, default is `k3d`. Instead of setting up a local cluster, you can also use environment variable `USE_EXISTING_CLUSTER=true` to point out an existing cluster, and then the integration tests will use the kubeconfig of the current environment to communicate with the existing cluster. |
 | `package` | Package Docker image. |
 | `e2e` | Run E2E tests. |
 | `deploy` | Push Docker images, and create manifest images. |
@@ -35,7 +35,7 @@ Executing a stage can run `make octopus <stage name>`, for example, when executi
 
 To run an action by adding `only` command, for example, if only run `build` action, please use `make octopus build only`.
 
-Integrate with [`dapper`](https://github.com/rancher/dapper) via `BY` environment variable, for example, if only run `build` action via [`dapper`](https://github.com/rancher/dapper), please use `BY=dapper make octopus build only`
+Integrate with [`dapper`](https://github.com/rancher/dapper) via `BY` environment variable, for example, if only run `build` action via [`dapper`](https://github.com/rancher/dapper), please use `BY=dapper make octopus build only`. 
 
 ### Usage example
 
@@ -47,6 +47,12 @@ Integrate with [`dapper`](https://github.com/rancher/dapper) via `BY` environmen
 1. `REPO=somebody OS=linux ARCH=amd64 make octopus package`: execute `package` stage, then get a `linux/amd64` execution binary on `bin` directory, also get an octopus `linux/amd64` image of `somebody` repo.
 1. `CROSS=true REPO=somebody make octopus package only`: execute `package` stage, then get all execution binaries of supported platform on `bin` directory, also get all supported platform images of `somebody` repo.
 1. `REPO=somebody make octopus deploy only`: execute `deploy` stage, then push all supported platform images to Docker hub, and create manifest image for the current version and `latest`.
+
+### Notes
+
+In the dapper mode:
+- Using `USE_EXISTING_CLUSTER=true` is **NOT ALLOWED**.
+- Using `LOCAL_CLUSTER_KIND=kind` instead of `k3d` a local cluster until fixed [k3d:issue#143](https://github.com/rancher/k3d/issues/143).
 
 ## Build management of Adaptors
 

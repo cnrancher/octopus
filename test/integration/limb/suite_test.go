@@ -1,4 +1,4 @@
-package brain
+package limb
 
 import (
 	"context"
@@ -19,8 +19,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/rancher/octopus/pkg/brain"
-	"github.com/rancher/octopus/pkg/brain/controller"
+	"github.com/rancher/octopus/pkg/limb"
+	"github.com/rancher/octopus/pkg/limb/controller"
+	"github.com/rancher/octopus/pkg/suctioncup"
+	"github.com/rancher/octopus/pkg/suctioncup/adaptor"
+	"github.com/rancher/octopus/pkg/suctioncup/event"
 	"github.com/rancher/octopus/test/framework"
+	"github.com/rancher/octopus/test/util/node"
 )
 
 var (
@@ -31,6 +36,10 @@ var (
 
 	k8sCfg *rest.Config
 	k8sCli client.Client
+
+	targetNode     string
+	testAdaptors   adaptor.Adaptors
+	testEventQueue event.Queue
 )
 
 func TestAPIs(t *testing.T) {
@@ -75,32 +84,41 @@ var _ = BeforeSuite(func(done Done) {
 
 	By("creating controller manager")
 	var ctrlScheme = runtime.NewScheme()
-	err = brain.RegisterScheme(ctrlScheme)
+	err = limb.RegisterScheme(ctrlScheme)
 	Expect(err).NotTo(HaveOccurred())
 
 	controllerMgr, err := ctrl.NewManager(k8sCfg, ctrl.Options{Scheme: ctrlScheme})
 	Expect(err).ToNot(HaveOccurred())
 	Expect(controllerMgr).ToNot(BeNil())
 
-	By("creating controllers")
-	err = (&controller.DeviceLinkReconciler{
-		Client: controllerMgr.GetClient(),
-		Log:    ctrl.Log.WithName("controller").WithName("deviceLink"),
-	}).SetupWithManager(controllerMgr)
-	Expect(err).ToNot(HaveOccurred())
-	err = (&controller.NodeReconciler{
-		Client: controllerMgr.GetClient(),
-		Log:    ctrl.Log.WithName("controller").WithName("node"),
-	}).SetupWithManager(controllerMgr)
-	Expect(err).ToNot(HaveOccurred())
-	err = (&controller.ModelReconciler{
-		Client: controllerMgr.GetClient(),
-		Log:    ctrl.Log.WithName("controller").WithName("crd"),
-	}).SetupWithManager(controllerMgr)
+	By("getting a valid node")
+	targetNode, err = node.GetValidWorker(testCtx, k8sCli)
 	Expect(err).ToNot(HaveOccurred())
 
+	By("starting suctioncup manager")
+	testAdaptors = adaptor.NewAdaptors()
+	testEventQueue = event.NewQueue("adaptor.manager")
+	suctionCupMgr, err := suctioncup.NewManagerWith(testAdaptors, testEventQueue)
+	Expect(err).ToNot(HaveOccurred())
+
+	By("creating controllers")
+	err = (&controller.DeviceLinkReconciler{
+		Client:        controllerMgr.GetClient(),
+		EventRecorder: controllerMgr.GetEventRecorderFor("limb"),
+		Scheme:        controllerMgr.GetScheme(),
+		Log:           ctrl.Log.WithName("controller").WithName("deviceLink"),
+		NodeName:      targetNode,
+		SuctionCup:    suctionCupMgr.GetNeurons(),
+	}).SetupWithManager(controllerMgr, suctionCupMgr)
+	Expect(err).ToNot(HaveOccurred())
+
+	var stopCh = testCtx.Done()
 	go func() {
-		err = controllerMgr.Start(testCtx.Done())
+		err = controllerMgr.Start(stopCh)
+		Expect(err).ToNot(HaveOccurred())
+	}()
+	go func() {
+		err = suctionCupMgr.Start(stopCh)
 		Expect(err).ToNot(HaveOccurred())
 	}()
 
@@ -108,7 +126,6 @@ var _ = BeforeSuite(func(done Done) {
 }, 600)
 
 var _ = AfterSuite(func() {
-
 	By("tearing down test environment")
 	var err = framework.StopEnv(testRootDir, testEnv, GinkgoWriter)
 	Expect(err).ToNot(HaveOccurred())

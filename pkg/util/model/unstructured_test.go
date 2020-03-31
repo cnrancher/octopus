@@ -41,7 +41,7 @@ func TestNewInstanceOfTypeMeta(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
-		var ret = NewInstanceOfTypeMeta(tc.given)
+		var ret, _ = NewInstanceOfTypeMeta(tc.given)
 		if !reflect.DeepEqual(ret, tc.expect) {
 			t.Errorf("case %d: expected %s, got %s", i+1, spew.Sprintf("%#v", tc.expect), spew.Sprintf("%#v", ret))
 		}
@@ -84,7 +84,7 @@ func TestNewInstanceOfType(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
-		var ret = NewInstanceOfType(tc.given)
+		var ret, _ = NewInstanceOfType(tc.given)
 		if !reflect.DeepEqual(ret, tc.expect) {
 			t.Errorf("case %d: expected %s, got %s", i+1, spew.Sprintf("%#v", tc.expect), spew.Sprintf("%#v", ret))
 		}

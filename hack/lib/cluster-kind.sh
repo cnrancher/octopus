@@ -16,7 +16,7 @@ K8S_VERSION=${K8S_VERSION:-"v1.17.2"}
 CLUSTER_NAME=${CLUSTER_NAME:-"edge"}
 
 function octopus::cluster_kind::install() {
-  local version=${KIND_VERSION:-"v1.17.2"}
+  local version=${KIND_VERSION:-"v0.7.0"}
   local os_type=${OS_TYPE:-"$(octopus::util::get_os)"}
   local os_arch=${OS_ARCH:-"$(octopus::util::get_arch)"}
   curl -fL "https://github.com/kubernetes-sigs/kind/releases/download/${version}/kind-${os_type}-${os_arch}" >/tmp/kind
@@ -101,4 +101,18 @@ function octopus::cluster_kind::spinup() {
 
   octopus::log::warn "please input CTRL+C to stop the local cluster"
   read -r /dev/null
+}
+
+function octopus::cluster_kind::add_worker() {
+  if ! octopus::docker::validate; then
+    octopus::log::fatal "docker hasn't been installed"
+  fi
+  if ! octopus::kubectl::validate; then
+    octopus::log::fatal "kubectl hasn't been installed"
+  fi
+  if ! octopus::cluster_kind::validate; then
+    octopus::log::fatal "kind hasn't been installed"
+  fi
+
+  octopus::log::error "there is not add-node operation in kind"
 }

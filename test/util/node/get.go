@@ -10,12 +10,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var masterLabelSet = labels.SelectorFromSet(
-	map[string]string{
-		"node-role.kubernetes.io/master": "",
-	},
-)
-
 func GetValidWorker(ctx context.Context, k8sCli client.Client) (string, error) {
 	var list = corev1.NodeList{}
 	if err := k8sCli.List(ctx, &list); err != nil {
@@ -24,7 +18,7 @@ func GetValidWorker(ctx context.Context, k8sCli client.Client) (string, error) {
 
 	var workers []string
 	for _, node := range list.Items {
-		if masterLabelSet.Matches(labels.Set(node.GetLabels())) {
+		if labels.Set(node.GetLabels()).Has("node-role.kubernetes.io/master") {
 			continue
 		}
 		workers = append(workers, node.Name)
@@ -47,7 +41,7 @@ func GetInvalidWorker(ctx context.Context, k8sCli client.Client) (string, error)
 
 	var workers []string
 	for _, node := range list.Items {
-		if masterLabelSet.Matches(labels.Set(node.GetLabels())) {
+		if labels.Set(node.GetLabels()).Has("node-role.kubernetes.io/master") {
 			continue
 		}
 		workers = append(workers, node.Name)

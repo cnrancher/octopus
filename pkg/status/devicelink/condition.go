@@ -126,7 +126,7 @@ func (d deviceLinkConditions) did(t edgev1alpha1.DeviceLinkConditionType, result
 		conditionsLen = len(d)
 	)
 
-	if conditionsLen != 0 {
+	if conditionsLen > 0 {
 		i := 0
 		for _, c := range d {
 			if c.Type != t {
@@ -138,7 +138,7 @@ func (d deviceLinkConditions) did(t edgev1alpha1.DeviceLinkConditionType, result
 		previous = d[:i]
 		lastItemLTT = d[conditionsLen-1].LastUpdateTime
 		// confirm the previous status
-		if conditionsLen > 1 {
+		if i > 1 {
 			if d[i-1].Status != metav1.ConditionTrue {
 				return previous
 			}

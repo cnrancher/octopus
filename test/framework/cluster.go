@@ -17,15 +17,16 @@ const (
 )
 
 type LocalCluster interface {
-	Start(rootDir string, writer io.Writer) error
-	Stop(rootDir string, writer io.Writer) error
+	Startup(rootDir string, writer io.Writer) error
+	Cleanup(rootDir string, writer io.Writer) error
+	AddWorker(rootDir string, writer io.Writer, nodeName string) error
 }
 
 type localCluster struct {
 	kind ClusterKind
 }
 
-func (c *localCluster) Start(rootDir string, writer io.Writer) error {
+func (c *localCluster) Startup(rootDir string, writer io.Writer) error {
 	var path = fmt.Sprintf("%s/hack/cluster-%s-startup.sh", rootDir, c.kind)
 	if !isScriptExisted(path) {
 		return errors.Errorf("%s cluster startup script isn't existed in %s", c.kind, path)
@@ -38,13 +39,26 @@ func (c *localCluster) Start(rootDir string, writer io.Writer) error {
 	return cmd.Run()
 }
 
-func (c *localCluster) Stop(rootDir string, writer io.Writer) error {
+func (c *localCluster) Cleanup(rootDir string, writer io.Writer) error {
 	var path = fmt.Sprintf("%s/hack/cluster-%s-cleanup.sh", rootDir, c.kind)
 	if !isScriptExisted(path) {
 		return errors.Errorf("%s cluster cleanup script isn't existed in %s", c.kind, path)
 	}
 
 	var cmd = exec.Command("/usr/bin/env", "bash", path)
+	cmd.Dir = rootDir
+	cmd.Stdout = writer
+	cmd.Stderr = writer
+	return cmd.Run()
+}
+
+func (c *localCluster) AddWorker(rootDir string, writer io.Writer, nodeName string) error {
+	var path = fmt.Sprintf("%s/hack/cluster-%s-addworker.sh", rootDir, c.kind)
+	if !isScriptExisted(path) {
+		return errors.Errorf("%s cluster cleanup script isn't existed in %s", c.kind, path)
+	}
+
+	var cmd = exec.Command("/usr/bin/env", "bash", path, nodeName)
 	cmd.Dir = rootDir
 	cmd.Stdout = writer
 	cmd.Stderr = writer

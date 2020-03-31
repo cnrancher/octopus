@@ -241,10 +241,10 @@ function verify() {
   [[ "${1:-}" != "only" ]] && test
   octopus::log::info "running integration tests for octopus..."
 
-  CGO_ENABLED=1 go test \
-    "${CURR_DIR}/test/integration/brain/..."
-  #  CGO_ENABLED=1 go test \
-  #    "${CURR_DIR}/test/integration/limb/..."
+  CGO_ENABLED=0 go test \
+    "${CURR_DIR}/test/integration/brain/..." -v -ginkgo.v -ginkgo.progress
+  CGO_ENABLED=0 go test \
+    "${CURR_DIR}/test/integration/limb/..." -v -ginkgo.v -ginkgo.progress
 
   octopus::log::info "...done"
 }
@@ -259,7 +259,7 @@ function e2e() {
 function entry() {
   local stage
   stage="${1:-build}"
-  shift
+  shift $(($# > 0 ? 1 : 0))
 
   case $stage in
   g | gen | generate) generate ;;

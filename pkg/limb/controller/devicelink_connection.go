@@ -40,10 +40,14 @@ func (r *DeviceLinkReconciler) ReceiveConnectionStatus(req suctioncup.RequestCon
 	}
 
 	// validates device
-	var target = model.NewInstanceOfTypeMeta(link.Status.Model)
+	target, err := model.NewInstanceOfTypeMeta(link.Status.Model)
+	if err != nil {
+		log.Error(err, "Unable to get device of DeviceLink")
+		return suctioncup.Response{}, nil
+	}
 	if err := r.Get(ctx, req.Name, &target); err != nil {
 		if !apierrs.IsNotFound(err) {
-			log.Error(err, "Unable to the device of DeviceLink")
+			log.Error(err, "Unable to get the device of DeviceLink")
 			return suctioncup.Response{Requeue: true}, nil
 		}
 	}

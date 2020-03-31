@@ -78,6 +78,7 @@ function octopus::cluster_k3d::startup() {
       local kubeconfig_path="${KUBECONFIG:-}"
       if [[ -z "${kubeconfig_path}" ]]; then
         kubeconfig_path="$(cd ~ && pwd -P)/.kube/config"
+        mkdir -p "$(cd ~ && pwd -P)/.kube"
       fi
       if [[ -f "${kubeconfig_path}" ]]; then
         cp -f "${kubeconfig_path}" "${kubeconfig_path}_k3d_bak"
@@ -100,12 +101,16 @@ function octopus::cluster_k3d::startup() {
   if [[ ${workers} -lt 1 ]]; then
     workers=1
   fi
+  rm -rf /tmp/k3d/"${CLUSTER_NAME}"
   for ((i = 0; i < workers; i++)); do
     local node_name="edge-worker${i}"
     if [[ ${i} -eq 0 ]]; then
       node_name="edge-worker"
     fi
-    k3d add-node --name "${CLUSTER_NAME}" --image "${k3s_image}" --role agent --arg "--node-name=${node_name}"
+
+    local node_host_path="/tmp/k3d/${CLUSTER_NAME}/${node_name}"
+    mkdir -p "${node_host_path}"
+    k3d add-node --name "${CLUSTER_NAME}" --image "${k3s_image}" --role agent --arg "--node-name=${node_name}" --volume "${node_host_path}":/etc/rancher/node
 
     octopus::cluster_k3d::wait_node ${node_name}
   done
@@ -134,4 +139,36 @@ function octopus::cluster_k3d::spinup() {
 
   octopus::log::warn "please input CTRL+C to stop the local cluster"
   read -r /dev/null
+}
+
+function octopus::cluster_k3d::add_worker() {
+  if ! octopus::docker::validate; then
+    octopus::log::fatal "docker hasn't been installed"
+  fi
+  if ! octopus::kubectl::validate; then
+    octopus::log::fatal "kubectl hasn't been installed"
+  fi
+  if ! octopus::cluster_k3d::validate; then
+    octopus::log::fatal "k3d hasn't been installed"
+  fi
+
+  local node_name=${1}
+  if [[ -z "${node_name}" ]]; then
+    octopus::log::error "node name is required"
+  fi
+
+  # NB(thxCode) The container will not exit automatically when `kubectl delete node ...`
+  idx=${node_name//edge-worker/}
+  ((idx += 1))
+  if docker inspect "k3d-edge-worker-${idx}" >/dev/null 2>&1; then
+    docker rm -f "k3d-edge-worker-${idx}" >/dev/null 2>&1
+  fi
+
+  octopus::log::info "adding new node to ${CLUSTER_NAME} cluster"
+  local node_host_path="/tmp/k3d/${CLUSTER_NAME}/${node_name}"
+  mkdir -p "${node_host_path}"
+  local k3s_image="rancher/k3s:${K8S_VERSION}-${IMAGE_SUFFIX}"
+  k3d add-node --name "${CLUSTER_NAME}" --image "${k3s_image}" --role agent --arg "--node-name=${node_name}" --volume "${node_host_path}":/etc/rancher/node
+
+  octopus::cluster_k3d::wait_node "${node_name}"
 }

@@ -250,6 +250,7 @@ function entry() {
 
   local stage
   stage="${1:-build}"
+  shift $(($# > 0 ? 1 : 0))
 
   case $stage in
   g | gen | generate) generate "$adaptor" "$@" ;;
