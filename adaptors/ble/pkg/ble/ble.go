@@ -16,6 +16,9 @@ const (
 	Endpoint = "ble.socket"
 )
 
+// +kubebuilder:rbac:groups=devices.edge.cattle.io,resources=bluetoothdevices,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=devices.edge.cattle.io,resources=bluetoothdevices/status,verbs=get;update;patch
+
 func Run() error {
 	var stop = ctrl.SetupSignalHandler()
 	var ctx = critical.Context(stop)

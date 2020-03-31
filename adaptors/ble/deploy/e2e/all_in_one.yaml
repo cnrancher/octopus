@@ -147,7 +147,7 @@ rules:
 - apiGroups:
   - devices.edge.cattle.io
   resources:
-  - bledevices
+  - bluetoothdevices
   verbs:
   - create
   - delete
@@ -159,7 +159,7 @@ rules:
 - apiGroups:
   - devices.edge.cattle.io
   resources:
-  - bledevices/status
+  - bluetoothdevices/status
   verbs:
   - get
   - patch
