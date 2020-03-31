@@ -20,6 +20,10 @@ var log = ctrl.Log.WithName("suctioncup").WithName("manager")
 func NewManager() (Manager, error) {
 	var adaptors = adaptor.NewAdaptors()
 	var queue = event.NewQueue("adaptor.manager")
+	return NewManagerWith(adaptors, queue)
+}
+
+func NewManagerWith(adaptors adaptor.Adaptors, queue event.Queue) (Manager, error) {
 	var regSrv, err = registration.NewServer(api.LimbSocket, adaptors, queue)
 	if err != nil {
 		return nil, err

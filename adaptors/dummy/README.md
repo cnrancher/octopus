@@ -1,6 +1,6 @@
 # Dummy Adaptor
 
-This adaptor is for testing.
+This is for experience or testing
 
 ## Registration Information
 

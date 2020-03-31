@@ -18,9 +18,9 @@ const (
 var testLocalCluster LocalCluster
 
 func StartEnv(rootDir string, testEnv *envtest.Environment, writer io.Writer) (cfg *rest.Config, err error) {
-	if !isUsingExistingCluster() {
-		testLocalCluster = NewLocalCluster(getLocalClusterKind())
-		if err := testLocalCluster.Start(rootDir, writer); err != nil {
+	if !IsUsingExistingCluster() {
+		testLocalCluster = NewLocalCluster(GetLocalClusterKind())
+		if err := testLocalCluster.Startup(rootDir, writer); err != nil {
 			return nil, err
 		}
 	}
@@ -40,9 +40,9 @@ func StopEnv(rootDir string, testEnv *envtest.Environment, writer io.Writer) err
 			return err
 		}
 	}
-	if !isUsingExistingCluster() {
+	if !IsUsingExistingCluster() {
 		if testLocalCluster != nil {
-			if err := testLocalCluster.Stop(rootDir, writer); err != nil {
+			if err := testLocalCluster.Cleanup(rootDir, writer); err != nil {
 				return err
 			}
 		}
@@ -50,14 +50,18 @@ func StopEnv(rootDir string, testEnv *envtest.Environment, writer io.Writer) err
 	return nil
 }
 
-func isUsingExistingCluster() bool {
+func IsUsingExistingCluster() bool {
 	return strings.EqualFold(os.Getenv(envUseExistingCluster), "true")
 }
 
-func getLocalClusterKind() ClusterKind {
+func GetLocalClusterKind() ClusterKind {
 	var kind = os.Getenv(envLocalClusterKind)
 	if strings.EqualFold(kind, string(KindCluster)) {
 		return KindCluster
 	}
 	return K3dCluster
+}
+
+func GetLocalCluster() LocalCluster {
+	return testLocalCluster
 }

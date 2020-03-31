@@ -7,24 +7,34 @@
 *.dylib
 .dapper
 
-# Output of the dapper
-**/*.dapper*
-
 # Directories
+## Output of build progress
 dist
-.vagrant
+## bin ## the bin directory uses for docker build
+## Cache of go build/golangci-lint
 .cache
+## Cache of docker build
 .docker
+## Configuration of k3s
+.config
+## Configuration of kubectl
+.kube
+## Editor and IDE paraphernalia
+.idea
 
-# Test binary, build with `go test -c`
+# Files
+## Dapper temporary files
+**/*.dapper*
+## Test binary, build with `go test -c`
 *.test
-
-# Output of the go coverage tool, specifically when used with LiteIDE
+## Output of the go coverage tool, specifically when used with LiteIDE
 *.out
-
-# Editor and IDE paraphernalia
+## Editor and IDE paraphernalia
 .idea
 *.swp
 *.swo
 *~
+.vim*
+.bash*
+## Mac storage information
 .DS_Store

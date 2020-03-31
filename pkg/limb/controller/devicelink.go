@@ -144,7 +144,17 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		// TODO use the admission webhook to transfer this
 		return ctrl.Result{}, nil
 	case metav1.ConditionTrue:
-		device = model.NewInstanceOfTypeMeta(link.Status.Model)
+		var err error
+		device, err = model.NewInstanceOfTypeMeta(link.Status.Model)
+		if err != nil {
+			devicelink.FailOnDeviceCreated(&link.Status, "unable to update device from template")
+			r.Eventf(&link, "Warning", "FailedCreated", "cannot update device from template: %v", err)
+			if err := r.Status().Update(ctx, &link); err != nil {
+				log.Error(err, "Unable to change the status of DeviceLink")
+				return ctrl.Result{Requeue: true}, nil
+			}
+			return ctrl.Result{}, nil
+		}
 		if err := r.Get(ctx, req.NamespacedName, &device); err != nil {
 			if !apierrs.IsNotFound(err) && !meta.IsNoMatchError(err) {
 				log.Error(err, "Unable to fetch the device of DeviceLink")
@@ -161,7 +171,7 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		}
 
 		// update device
-		var updated, err = updateDevice(&link, &device)
+		updated, err := updateDevice(&link, &device)
 		if err != nil {
 			devicelink.FailOnDeviceCreated(&link.Status, "unable to update device from template")
 			r.Eventf(&link, "Warning", "FailedCreated", "cannot update device from template: %v", err)

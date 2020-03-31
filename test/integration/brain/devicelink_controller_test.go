@@ -18,76 +18,91 @@ import (
 	"github.com/rancher/octopus/test/util/node"
 )
 
+// testing scenarios:
+//	+ DeviceLink instance
+//		- validate if target link can be managed
+//	+ Corresponding node
+//		- validate if the target link unavailable when assigning to an invalid Node
+//	+ Corresponding model
+//		- validate if the target link unavailable when requesting an invalid model CRD
 var _ = Describe("DeviceLink controller", func() {
 	var (
-		namespace = "default"
-		validNode string
+		err error
+
+		targetNode      string
+		targetAdaptor   string
+		targetModel     metav1.TypeMeta
+		targetNamespace string
+		targetItem      edgev1alpha1.DeviceLink
 	)
 
-	BeforeEach(func() {
-		var err error
-		validNode, err = node.GetValidWorker(ctx, k8sCli)
-		Expect(err).ShouldNot(HaveOccurred())
+	AfterEach(func() {
+		_ = k8sCli.DeleteAllOf(testCtx, &edgev1alpha1.DeviceLink{}, client.InNamespace(targetNamespace))
 	})
 
-	AfterEach(func() {
-		_ = k8sCli.DeleteAllOf(ctx, &edgev1alpha1.DeviceLink{}, client.InNamespace(namespace))
+	BeforeEach(func() {
+		targetNode, err = node.GetValidWorker(testCtx, k8sCli)
+		Expect(err).ToNot(HaveOccurred())
+
+		targetAdaptor = "adaptors.edge.cattle.io/dummy"
+		targetModel = metav1.TypeMeta{
+			Kind:       "DummyDevice",
+			APIVersion: "devices.edge.cattle.io/v1alpha1",
+		}
+		targetNamespace = "default"
+
+		targetItem = edgev1alpha1.DeviceLink{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace:    targetNamespace,
+				GenerateName: "test-",
+			},
+			Spec: edgev1alpha1.DeviceLinkSpec{
+				Adaptor: edgev1alpha1.DeviceAdaptor{
+					Node: targetNode,
+					Name: targetAdaptor,
+					Parameters: content.ToRawExtension(
+						map[string]string{
+							"ip": "1.2.3.4",
+						},
+					),
+				},
+				Model: targetModel,
+				Template: edgev1alpha1.DeviceTemplateSpec{
+					DeviceMeta: edgev1alpha1.DeviceMeta{
+						Labels: map[string]string{
+							"l1": "v1",
+						},
+					},
+					Spec: content.ToRawExtension(
+						map[string]interface{}{
+							"gear": "slow",
+							"on":   true,
+						},
+					),
+				},
+			},
+		}
 	})
 
 	Context("DeviceLink instance", func() {
 
 		It("should be managed", func() {
-			var item = edgev1alpha1.DeviceLink{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace:    namespace,
-					GenerateName: "test-",
-				},
-				Spec: edgev1alpha1.DeviceLinkSpec{
-					Adaptor: edgev1alpha1.DeviceAdaptor{
-						Node: validNode,
-						Name: "adaptors.edge.cattle.io/dummy",
-						Parameters: content.ToRawExtension(
-							map[string]string{
-								"ip": "1.2.3.4",
-							},
-						),
-					},
-					Model: metav1.TypeMeta{
-						Kind:       "DummyDevice",
-						APIVersion: "devices.edge.cattle.io/v1alpha1",
-					},
-					Template: edgev1alpha1.DeviceTemplateSpec{
-						DeviceMeta: edgev1alpha1.DeviceMeta{
-							Labels: map[string]string{
-								"l1": "v1",
-							},
-						},
-						Spec: content.ToRawExtension(
-							map[string]interface{}{
-								"gear": "slow",
-								`"on"`: true,
-							},
-						),
-					},
-				},
-			}
-
 			// created
-			Expect(k8sCli.Create(ctx, &item)).Should(Succeed())
+			Expect(k8sCli.Create(testCtx, &targetItem)).Should(Succeed())
 
 			var key = types.NamespacedName{
-				Namespace: item.Namespace,
-				Name:      item.Name,
+				Namespace: targetItem.Namespace,
+				Name:      targetItem.Name,
 			}
 
 			// confirmed
 			Eventually(func() error {
-				if err := k8sCli.Get(ctx, key, &item); err != nil {
+				if err := k8sCli.Get(testCtx, key, &targetItem); err != nil {
 					if !apierrs.IsNotFound(err) {
 						return err
 					}
 				}
-				if !object.IsActivating(&item) {
+				if !object.IsActivating(&targetItem) {
 					return errors.Errorf("%s link isn't activated", key)
 				}
 				return nil
@@ -95,27 +110,27 @@ var _ = Describe("DeviceLink controller", func() {
 
 			// updated
 			Eventually(func() error {
-				if err := k8sCli.Get(ctx, key, &item); err != nil {
+				if err := k8sCli.Get(testCtx, key, &targetItem); err != nil {
 					if !apierrs.IsNotFound(err) {
 						return err
 					}
 				}
 
-				item.Spec.Template.Labels = map[string]string{
+				targetItem.Spec.Template.Labels = map[string]string{
 					"l2": "v2",
 				}
-				return k8sCli.Update(ctx, &item)
+				return k8sCli.Update(testCtx, &targetItem)
 			}, 30, 1).Should(Succeed())
 
 			// confirmed
 			Eventually(func() error {
-				if err := k8sCli.Get(ctx, key, &item); err != nil {
+				if err := k8sCli.Get(testCtx, key, &targetItem); err != nil {
 					return err
 				}
-				if !object.IsActivating(&item) {
+				if !object.IsActivating(&targetItem) {
 					return errors.Errorf("%s link isn't activated", key)
 				}
-				if !reflect.DeepEqual(item.Spec.Template.Labels, map[string]string{
+				if !reflect.DeepEqual(targetItem.Spec.Template.Labels, map[string]string{
 					"l2": "v2",
 				}) {
 					return errors.Errorf("%s link isn't updated", key)
@@ -124,11 +139,11 @@ var _ = Describe("DeviceLink controller", func() {
 			}, 30, 1).Should(Succeed())
 
 			// deleted
-			Expect(k8sCli.Delete(ctx, &item)).Should(Succeed())
+			Expect(k8sCli.Delete(testCtx, &targetItem)).Should(Succeed())
 
 			// confirmed
 			Eventually(func() error {
-				var err = k8sCli.Get(ctx, key, &item)
+				var err = k8sCli.Get(testCtx, key, &targetItem)
 				if !apierrs.IsNotFound(err) {
 					return errors.Wrapf(err, "link is existed")
 				}
@@ -140,64 +155,33 @@ var _ = Describe("DeviceLink controller", func() {
 
 	Context("Corresponding node", func() {
 
+		BeforeEach(func() {
+			targetNode, err = node.GetInvalidWorker(testCtx, k8sCli)
+			Expect(err).ToNot(HaveOccurred())
+
+			targetItem.Spec.Adaptor.Node = targetNode
+		})
+
 		It("should be invalidated if the node isn't existed", func() {
-			var invalidNode, err = node.GetInvalidWorker(ctx, k8sCli)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			var item = edgev1alpha1.DeviceLink{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace:    namespace,
-					GenerateName: "test-",
-				},
-				Spec: edgev1alpha1.DeviceLinkSpec{
-					Adaptor: edgev1alpha1.DeviceAdaptor{
-						Node: invalidNode,
-						Name: "adaptors.edge.cattle.io/dummy",
-						Parameters: content.ToRawExtension(
-							map[string]string{
-								"ip": "1.2.3.4",
-							},
-						),
-					},
-					Model: metav1.TypeMeta{
-						Kind:       "DummyDevice",
-						APIVersion: "devices.edge.cattle.io/v1alpha1",
-					},
-					Template: edgev1alpha1.DeviceTemplateSpec{
-						DeviceMeta: edgev1alpha1.DeviceMeta{
-							Labels: map[string]string{
-								"l1": "v1",
-							},
-						},
-						Spec: content.ToRawExtension(
-							map[string]interface{}{
-								"gear": "slow",
-								`"on"`: true,
-							},
-						),
-					},
-				},
-			}
-
 			// created
-			Expect(k8sCli.Create(ctx, &item)).Should(Succeed())
+			Expect(k8sCli.Create(testCtx, &targetItem)).Should(Succeed())
 
 			var key = types.NamespacedName{
-				Namespace: item.Namespace,
-				Name:      item.Name,
+				Namespace: targetItem.Namespace,
+				Name:      targetItem.Name,
 			}
 
 			// confirmed
 			Eventually(func() error {
-				if err := k8sCli.Get(ctx, key, &item); err != nil {
+				if err := k8sCli.Get(testCtx, key, &targetItem); err != nil {
 					if !apierrs.IsNotFound(err) {
 						return err
 					}
 				}
-				if !object.IsActivating(&item) {
+				if !object.IsActivating(&targetItem) {
 					return errors.Errorf("%s link isn't activated", key)
 				}
-				if devicelink.GetNodeExistedStatus(&item.Status) != metav1.ConditionFalse {
+				if devicelink.GetNodeExistedStatus(&targetItem.Status) != metav1.ConditionFalse {
 					return errors.Errorf("should not find the corresponding node of %s link", key)
 				}
 				return nil
@@ -208,63 +192,35 @@ var _ = Describe("DeviceLink controller", func() {
 
 	Context("Corresponding model", func() {
 
-		It("should be invalidated if the model isn't existed", func() {
-			var invalidModel = metav1.TypeMeta{
+		BeforeEach(func() {
+			targetModel = metav1.TypeMeta{
 				Kind:       "Missed",
 				APIVersion: "devices.edge.cattle.io/v1alpha1",
 			}
 
-			var item = edgev1alpha1.DeviceLink{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace:    namespace,
-					GenerateName: "test-",
-				},
-				Spec: edgev1alpha1.DeviceLinkSpec{
-					Adaptor: edgev1alpha1.DeviceAdaptor{
-						Node: validNode,
-						Name: "adaptors.edge.cattle.io/dummy",
-						Parameters: content.ToRawExtension(
-							map[string]string{
-								"ip": "1.2.3.4",
-							},
-						),
-					},
-					Model: invalidModel,
-					Template: edgev1alpha1.DeviceTemplateSpec{
-						DeviceMeta: edgev1alpha1.DeviceMeta{
-							Labels: map[string]string{
-								"l1": "v1",
-							},
-						},
-						Spec: content.ToRawExtension(
-							map[string]interface{}{
-								"gear": "slow",
-								`"on"`: true,
-							},
-						),
-					},
-				},
-			}
+			targetItem.Spec.Model = targetModel
+		})
 
+		It("should be invalidated if the model isn't existed", func() {
 			// created
-			Expect(k8sCli.Create(ctx, &item)).Should(Succeed())
+			Expect(k8sCli.Create(testCtx, &targetItem)).Should(Succeed())
 
 			var key = types.NamespacedName{
-				Namespace: item.Namespace,
-				Name:      item.Name,
+				Namespace: targetItem.Namespace,
+				Name:      targetItem.Name,
 			}
 
 			// confirmed
 			Eventually(func() error {
-				if err := k8sCli.Get(ctx, key, &item); err != nil {
+				if err := k8sCli.Get(testCtx, key, &targetItem); err != nil {
 					if !apierrs.IsNotFound(err) {
 						return err
 					}
 				}
-				if !object.IsActivating(&item) {
+				if !object.IsActivating(&targetItem) {
 					return errors.Errorf("%s link isn't activated", key)
 				}
-				if devicelink.GetModelExistedStatus(&item.Status) != metav1.ConditionFalse {
+				if devicelink.GetModelExistedStatus(&targetItem.Status) != metav1.ConditionFalse {
 					return errors.Errorf("should not find the corresponding model of %s link", key)
 				}
 				return nil

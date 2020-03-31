@@ -1,6 +1,6 @@
 FROM golang:1.13.8
 RUN apt-get update && \
-    apt-get install -y gcc ca-certificates xz-utils unzip && \
+    apt-get install -y xz-utils unzip && \
     rm -f /bin/sh && ln -s /bin/bash /bin/sh
 
 # -- for make rules
@@ -19,9 +19,10 @@ RUN GO111MODULE=on go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.5
 # -- for make rules
 
 # -- for dapper
+ENV DAPPER_RUN_ARGS --privileged --network host
 ENV GO111MODULE=off
 ENV CROSS=false
-ENV DAPPER_ENV CROSS REPO TAG OS ARCH IMAGE_NAME
+ENV DAPPER_ENV CROSS LOCAL_CLUSTER_KIND REPO TAG OS ARCH IMAGE_NAME
 ENV DAPPER_SOURCE /go/src/github.com/rancher/octopus/
 ENV DAPPER_OUTPUT ./bin ./dist
 ENV DAPPER_DOCKER_SOCKET true
