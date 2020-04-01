@@ -53,6 +53,9 @@ function entry() {
   # change Dockerfile template to expected
   sed "s#template#${adaptorNameLowercase}#g" "${adaptorPath}/Dockerfile" >/tmp/target && mv /tmp/target "${adaptorPath}/Dockerfile"
 
+  # change Makefile template to expected
+  sed "s#template#${adaptorNameLowercase}#g" "${adaptorPath}/Makefile" >/tmp/target && mv /tmp/target "${adaptorPath}/Makefile"
+
   # change README.md template to expected
   sed "s#template#${adaptorNameLowercase}#g" "${adaptorPath}/README.md" >/tmp/target && mv /tmp/target "${adaptorPath}/README.md"
   sed "s#Template#${adaptorName}#g" "${adaptorPath}/README.md" >/tmp/target && mv /tmp/target "${adaptorPath}/README.md"
@@ -61,8 +64,8 @@ function entry() {
   # gofmt
   go fmt "${adaptorPath}/..." >/dev/null 2>&1
 
-  # lint
-  make -se adaptor "${adaptorNameLowercase}" lint
+  # build
+  make -se adaptor "${adaptorNameLowercase}" build
 }
 
 entry "$@"

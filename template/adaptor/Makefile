@@ -53,9 +53,9 @@ help:
 	#   integrate with dapper via `BY=dapper`.
 	#
 	# Example:
-	#   -            make adaptor xxx  :  execute `build` stage for "xxx" adaptor.
-	#   -       make adaptor xxx test  :  execute `test` stage for "xxx" adaptor.
-	#   - make adaptor xxx build only  :  only execute `build` action for "xxx" adaptor, during `build` stage.
+	#   -            make adaptor template  :  execute `build` stage for "template" adaptor.
+	#   -       make adaptor template test  :  execute `test` stage for "template" adaptor.
+	#   - make adaptor template build only  :  only execute `build` action for "template" adaptor, during `build` stage.
 	@echo
 
 .PHONY: adaptor
