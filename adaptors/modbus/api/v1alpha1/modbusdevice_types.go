@@ -80,12 +80,35 @@ type PropertyVisitor struct {
 	// Offset indicates the starting register number to read/write data.
 	Offset uint16 `json:"offset"`
 	// The quantity of registers
-	Quantity uint16 `json:"quantity"`
+	Quantity          uint16             `json:"quantity"`
+	OrderOfOperations []ModbusOperations `json:"orderOfOperations,omitempty"`
 }
+
+type ModbusOperations struct {
+	OperationType  ArithOperationType `json:"operationType,omitempty"`
+	OperationValue string             `json:"operationValue,omitempty"`
+}
+
+// +kubebuilder:validation:Enum=Add;Subtract;Multiply;Divide
+type ArithOperationType string
+
+const (
+	OperationAdd      ArithOperationType = "Add"
+	OperationSubtract ArithOperationType = "Subtract"
+	OperationMultiply ArithOperationType = "Multiply"
+	OperationDivide   ArithOperationType = "Divide"
+)
 
 // ModbusDeviceStatus defines the observed state of ModbusDevice
 type ModbusDeviceStatus struct {
-	Properties []DeviceProperty `json:"properties,omitempty"`
+	Properties []StatusProperties `json:"properties,omitempty"`
+}
+
+type StatusProperties struct {
+	Name      string           `json:"name,omitempty"`
+	Value     string           `json:"value,omitempty"`
+	DataType  PropertyDataType `json:"dataType,omitempty"`
+	UpdatedAt metav1.Time      `json:"updatedAt,omitempty"`
 }
 
 // +kubebuilder:object:root=true

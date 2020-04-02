@@ -4,7 +4,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.2.5
+    controller-gen.kubebuilder.io/version: v0.2.4
   creationTimestamp: null
   name: modbusdevices.devices.edge.cattle.io
 spec:
@@ -79,6 +79,20 @@ spec:
                           description: Offset indicates the starting register number
                             to read/write data.
                           type: integer
+                        orderOfOperations:
+                          items:
+                            properties:
+                              operationType:
+                                enum:
+                                - Add
+                                - Subtract
+                                - Multiply
+                                - Divide
+                                type: string
+                              operationValue:
+                                type: string
+                            type: object
+                          type: array
                         quantity:
                           description: The quantity of registers
                           type: integer
@@ -162,54 +176,22 @@ spec:
             properties:
               properties:
                 items:
-                  description: DeviceProperty describes an individual device property
-                    / attribute like temperature / humidity etc.
                   properties:
                     dataType:
-                      description: PropertyDataType represents the type and data validation
-                        of the property.
+                      description: The property data type.
                       enum:
                       - float
                       - int
                       - string
                       - boolean
                       type: string
-                    description:
-                      description: The device property description.
-                      type: string
                     name:
-                      description: The device property name.
                       type: string
-                    readOnly:
-                      type: boolean
+                    updatedAt:
+                      format: date-time
+                      type: string
                     value:
                       type: string
-                    visitor:
-                      properties:
-                        offset:
-                          description: Offset indicates the starting register number
-                            to read/write data.
-                          type: integer
-                        quantity:
-                          description: The quantity of registers
-                          type: integer
-                        register:
-                          description: Type of register
-                          enum:
-                          - CoilRegister
-                          - DiscreteInputRegister
-                          - InputRegister
-                          - HoldingRegister
-                          type: string
-                      required:
-                      - offset
-                      - quantity
-                      - register
-                      type: object
-                  required:
-                  - dataType
-                  - name
-                  - visitor
                   type: object
                 type: array
             type: object

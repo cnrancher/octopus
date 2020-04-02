@@ -24,8 +24,15 @@ spec:
           volumeMounts:
             - mountPath: /var/lib/octopus/adaptors/
               name: sockets
+            - mountPath: /dev
+              name: dev
+          securityContext:
+            privileged: true
       volumes:
         - name: sockets
           hostPath:
             path: /var/lib/octopus/adaptors/
             type: DirectoryOrCreate
+        - name: dev
+          hostPath:
+            path: /dev

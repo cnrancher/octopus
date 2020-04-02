@@ -11,8 +11,9 @@ import (
 
 func TestByteArrayToString(t *testing.T) {
 	type given struct {
-		input    []byte
-		dataType v1alpha1.PropertyDataType
+		input      []byte
+		dataType   v1alpha1.PropertyDataType
+		operations []v1alpha1.ModbusOperations
 	}
 	type expect struct {
 		result string
@@ -54,7 +55,7 @@ func TestByteArrayToString(t *testing.T) {
 		},
 	}
 	for i, tc := range testCases {
-		var ret, err = ByteArrayToString(tc.given.input, tc.given.dataType)
+		var ret, err = ByteArrayToString(tc.given.input, tc.given.dataType, tc.given.operations)
 		if !reflect.DeepEqual(ret, tc.expect.result) {
 			t.Errorf("case %v: expected %s, got %s", i+1, spew.Sprintf("%#v", tc.expect), spew.Sprintf("%#v", ret))
 		}
@@ -86,17 +87,6 @@ func TestStringToByteArray(t *testing.T) {
 			},
 			expect: expect{
 				result: []byte{3},
-				err:    nil,
-			},
-		},
-		{
-			given: given{
-				input:    "3.3",
-				dataType: "float",
-				length:   8,
-			},
-			expect: expect{
-				result: []byte{64, 10, 102, 102, 102, 102, 102, 102},
 				err:    nil,
 			},
 		},

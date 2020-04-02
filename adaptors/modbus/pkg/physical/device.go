@@ -7,9 +7,9 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/goburrow/modbus"
-	"k8s.io/apimachinery/pkg/types"
-
 	"github.com/rancher/octopus/adaptors/modbus/api/v1alpha1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 type Device interface {
@@ -18,13 +18,14 @@ type Device interface {
 	Shutdown()
 }
 
-func NewDevice(log logr.Logger, name types.NamespacedName, handler DataHandler, modbusHandler modbus.ClientHandler, syncInterval time.Duration) Device {
+func NewDevice(log logr.Logger, name types.NamespacedName, handler DataHandler, modbusHandler modbus.ClientHandler, syncInterval time.Duration, spec v1alpha1.ModbusDeviceSpec) Device {
 	return &device{
 		log:           log,
 		name:          name,
 		handler:       handler,
 		modbusHandler: modbusHandler,
 		syncInterval:  syncInterval,
+		spec:          spec,
 	}
 }
 
@@ -37,19 +38,26 @@ type device struct {
 	name    types.NamespacedName
 	handler DataHandler
 
-	status        v1alpha1.ModbusDeviceStatus
+	status v1alpha1.ModbusDeviceStatus
+	spec   v1alpha1.ModbusDeviceSpec
+
 	modbusHandler modbus.ClientHandler
 	syncInterval  time.Duration
 }
 
 func (d *device) Configure(spec v1alpha1.ModbusDeviceSpec) {
+	d.spec = spec
+
 	properties := spec.Properties
 	for _, property := range properties {
-		if err := d.WriteProperty(property.DataType, property.Visitor, property.Value); err != nil {
+		if property.ReadOnly {
+			continue
+		}
+		if err := d.writeProperty(property.DataType, property.Visitor, property.Value); err != nil {
 			d.log.Error(err, "Error write property", "property", property.Name)
 		}
 	}
-	d.UpdateStatus(properties)
+	d.updateStatus(properties)
 }
 
 func (d *device) On() {
@@ -63,14 +71,13 @@ func (d *device) On() {
 
 	// periodically sync device status
 	for {
-		d.UpdateStatus(d.status.Properties)
-		d.log.Info("Sync modbus device status", "device", d.name)
 		select {
 		case <-d.stop:
 			return
 		case <-ticker.C:
 		}
-
+		d.updateStatus(d.spec.Properties)
+		d.log.Info("Sync modbus device status", "device", d.name)
 	}
 }
 
@@ -82,7 +89,7 @@ func (d *device) Shutdown() {
 }
 
 // write data of a property to coil register or holding register
-func (d *device) WriteProperty(dataType v1alpha1.PropertyDataType, visitor v1alpha1.PropertyVisitor, value string) error {
+func (d *device) writeProperty(dataType v1alpha1.PropertyDataType, visitor v1alpha1.PropertyVisitor, value string) error {
 	register := visitor.Register
 	quantity := visitor.Quantity
 	address := visitor.Offset
@@ -122,7 +129,7 @@ func (d *device) WriteProperty(dataType v1alpha1.PropertyDataType, visitor v1alp
 }
 
 // read data of a property from its corresponding register
-func (d *device) ReadProperty(dataType v1alpha1.PropertyDataType, visitor v1alpha1.PropertyVisitor) (string, error) {
+func (d *device) readProperty(dataType v1alpha1.PropertyDataType, visitor v1alpha1.PropertyVisitor) (string, error) {
 	register := visitor.Register
 	quantity := visitor.Quantity
 	address := visitor.Offset
@@ -160,7 +167,7 @@ func (d *device) ReadProperty(dataType v1alpha1.PropertyDataType, visitor v1alph
 		}
 
 	}
-	result, err = ByteArrayToString(data, dataType)
+	result, err = ByteArrayToString(data, dataType, visitor.OrderOfOperations)
 	if err != nil {
 		d.log.Error(err, "Error converting to string", "datatype", dataType)
 	}
@@ -168,22 +175,39 @@ func (d *device) ReadProperty(dataType v1alpha1.PropertyDataType, visitor v1alph
 }
 
 // update the properties from physical device to status
-func (d *device) UpdateStatus(properties []v1alpha1.DeviceProperty) {
+func (d *device) updateStatus(properties []v1alpha1.DeviceProperty) {
 	d.Lock()
 	defer d.Unlock()
-	for i, property := range properties {
-		value, err := d.ReadProperty(property.DataType, property.Visitor)
+	for _, property := range properties {
+		value, err := d.readProperty(property.DataType, property.Visitor)
 		if err != nil {
 			d.log.Error(err, "Error sync device property", "property", property)
 			continue
 		}
-
-		properties[i] = v1alpha1.DeviceProperty{Name: property.Name, DataType: property.DataType, Visitor: property.Visitor, Value: value}
+		d.updateStatusProperty(property.Name, value, property.DataType)
 	}
-	d.status = v1alpha1.ModbusDeviceStatus{Properties: properties}
 	d.handler(d.name, d.status)
 }
 
+func (d *device) updateStatusProperty(name, value string, dataType v1alpha1.PropertyDataType) {
+	sp := v1alpha1.StatusProperties{
+		Name:      name,
+		Value:     value,
+		DataType:  dataType,
+		UpdatedAt: metav1.Time{Time: time.Now()},
+	}
+	found := false
+	for i, property := range d.status.Properties {
+		if property.Name == sp.Name {
+			d.status.Properties[i] = sp
+			found = true
+			break
+		}
+	}
+	if !found {
+		d.status.Properties = append(d.status.Properties, sp)
+	}
+}
 func NewModbusHandler(config *v1alpha1.ModbusProtocolConfig, timeout time.Duration) (modbus.ClientHandler, error) {
 	var TCPConfig = config.TCP
 	var RTUConfig = config.RTU

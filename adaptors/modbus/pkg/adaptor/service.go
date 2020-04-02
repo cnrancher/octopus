@@ -61,8 +61,8 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 		}
 
 		// validate parameters
-		var parameters physical.Parameters
-		if req.Parameters != nil {
+		var parameters = physical.DefaultParameters()
+		if req.GetParameters() != nil {
 			if err := jsoniter.Unmarshal(req.GetParameters(), &parameters); err != nil {
 				return status.Errorf(codes.InvalidArgument, "failed to unmarshal parameters: %v", err)
 			}
@@ -110,6 +110,7 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 				dataHandler,
 				modbusHandler,
 				parameters.SyncInterval,
+				modbus.Spec,
 			)
 
 			go device.On()

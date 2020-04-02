@@ -19,24 +19,21 @@ spec:
     spec:
       protocol:
         rtu:
-          serialPort: /dev/ttys008
+          serialPort: /dev/tty.usbserial-1410
           slaveID: 1
+          parity: "N"
+          stopBits: 1
+          dataBits: 8
+          baudRate: 9600
       properties:
-        - name: temperature-enable
-          description: enable data collection of temperature sensor
-          readOnly: false
-          visitor:
-            register: CoilRegister
-            offset: 2
-            quantity: 1
-          value: "true"
-          dataType: boolean
         - name: temperature
-          description: enable data collection of temperature sensor
-          readOnly: false
+          description: data collection of temperature sensor
+          readOnly: true
           visitor:
             register: HoldingRegister
-            offset: 2
-            quantity: 8
-          value: "33.3"
+            offset: 0
+            quantity: 1
+            orderOfOperations:
+              - operationType: Divide
+                operationValue: "10"
           dataType: float
