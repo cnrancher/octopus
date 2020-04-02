@@ -15,12 +15,14 @@ type Parameters struct {
 }
 
 func (p *Parameters) Validate() error {
-	// set default values
-	if p == nil || p.SyncInterval == 0 {
-		p.SyncInterval = defaultSyncInterval
-	}
-	if p == nil || p.Timeout == 0 {
-		p.Timeout = defaultTimeout
-	}
+	// nothing to do
+
 	return nil
+}
+
+func DefaultParameters() Parameters {
+	return Parameters{
+		SyncInterval: defaultSyncInterval,
+		Timeout:      defaultTimeout,
+	}
 }

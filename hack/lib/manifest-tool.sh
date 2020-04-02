@@ -39,7 +39,7 @@ function octopus::manifest_tool::validate() {
 
 function octopus::manifest_tool::run() {
   if ! octopus::manifest_tool::validate; then
-    octopus::log::warn "cannot execute manifest-tool as it hasn't installed"
+    octopus::log::error "cannot execute manifest-tool as it hasn't installed"
     return
   fi
 

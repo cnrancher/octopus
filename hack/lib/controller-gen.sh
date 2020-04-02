@@ -25,7 +25,7 @@ function octopus::controller_gen::validate() {
 
 function octopus::controller_gen::generate() {
   if ! octopus::controller_gen::validate; then
-    octopus::log::warn "cannot execute controller-gen as it hasn't installed"
+    octopus::log::error "cannot execute controller-gen as it hasn't installed"
     return
   fi
   controller-gen "$@"

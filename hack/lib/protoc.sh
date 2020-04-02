@@ -31,34 +31,38 @@ function octopus::protoc::validate() {
   return 0
 }
 
-function octopus::protoc::protoc() {
-  if ! octopus::protoc::validate; then
-    octopus::log::warn "cannot execute protoc as it hasn't installed"
-    return
-  fi
-
+function octopus::protoc::generate() {
   if ! octopus::protoc::validate_gen_gogfaster; then
     octopus::log::fatal "protoc-gen-gogfaster hasn't been installed"
   fi
 
-  local pkg_path=${1}
-  protoc \
-    --proto_path="${pkg_path}" \
-    --proto_path="${ROOT_DIR}/vendor" \
-    --gogofaster_out=plugins=grpc:"${pkg_path}" \
-    "${pkg_path}/api.proto"
-}
-
-function octopus::protoc::format() {
-  local pkg_path=${1}
-  cat "${ROOT_DIR}/hack/boilerplate.go.txt" "${pkg_path}/api.pb.go" >tmpfile && mv tmpfile "${pkg_path}/api.pb.go"
-  go fmt "${pkg_path}/api.pb.go" >/dev/null 2>&1
-}
-
-function octopus::protoc::generate() {
-  local pkg_path=${1}
-  if [[ -f "${pkg_path}/api.proto" ]]; then
-    octopus::protoc::protoc "${pkg_path}"
-    octopus::protoc::format "${pkg_path}"
+  if ! octopus::protoc::validate; then
+    octopus::log::error "cannot execute protoc as it hasn't installed"
+    return
   fi
+
+  local filepath="${1:-}"
+  if [[ ! -f ${filepath} ]]; then
+    octopus::log::warn "${filepath} isn't existed"
+    return
+  fi
+  local filedir
+  filedir=$(dirname "${filepath}")
+  local filename
+  filename=$(basename "${filepath}" ".proto")
+
+  # generate
+  protoc \
+    --proto_path="${filedir}" \
+    --proto_path="${ROOT_DIR}/vendor" \
+    --gogofaster_out=plugins=grpc:"${filedir}" \
+    "${filepath}"
+
+  # format
+  local tmpfile
+  tmpfile=$(mktemp)
+  local generated_file="${filedir}/${filename}.pb.go"
+  sed "2d" "${generated_file}" >"${tmpfile}" && mv "${tmpfile}" "${generated_file}"
+  cat "${ROOT_DIR}/hack/boilerplate.go.txt" "${generated_file}" >"${tmpfile}" && mv "${tmpfile}" "${generated_file}"
+  go fmt "${generated_file}" >/dev/null 2>&1
 }
