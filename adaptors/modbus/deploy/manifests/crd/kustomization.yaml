@@ -1,5 +1,6 @@
 commonAnnotations:
   devices.edge.cattle.io/enable: "true"
+  devices.edge.cattle.io/status-property: '{"name":"string","dataType":"string","value":"string","updatedAt":"date"}'
 
 resources:
   - base/devices.edge.cattle.io_modbusdevices.yaml

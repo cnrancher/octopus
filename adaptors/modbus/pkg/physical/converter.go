@@ -4,32 +4,29 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"math"
 	"strconv"
 
 	"github.com/rancher/octopus/adaptors/modbus/api/v1alpha1"
+	"github.com/sirupsen/logrus"
 )
 
 // convert read data to string value
-func ByteArrayToString(input []byte, dataType v1alpha1.PropertyDataType) (string, error) {
+func ByteArrayToString(input []byte, dataType v1alpha1.PropertyDataType, operations []v1alpha1.ModbusOperations) (string, error) {
 	var result string
 	switch dataType {
 	case v1alpha1.PropertyDataTypeString:
 		result = string(input)
-	case v1alpha1.PropertyDataTypeFloat:
+	case v1alpha1.PropertyDataTypeInt, v1alpha1.PropertyDataTypeFloat:
 		arr, err := toTargetLength(input, 8)
 		if err != nil {
 			return "", err
 		}
 		value := binary.BigEndian.Uint64(arr)
-		result = fmt.Sprint(math.Float64frombits(value))
-	case v1alpha1.PropertyDataTypeInt:
-		arr, err := toTargetLength(input, 8)
-		if err != nil {
-			return "", err
+		converted := convertReadData(float64(value), operations)
+		result = fmt.Sprint(converted)
+		if dataType == v1alpha1.PropertyDataTypeInt {
+			result = fmt.Sprint(int(converted))
 		}
-		value := binary.BigEndian.Uint64(arr)
-		result = strconv.Itoa(int(value))
 	case v1alpha1.PropertyDataTypeBoolean:
 		b := input[len(input)-1]
 		if b == 0 {
@@ -61,20 +58,13 @@ func StringToByteArray(input string, dataType v1alpha1.PropertyDataType, length 
 		} else {
 			data = []byte{0}
 		}
-	case v1alpha1.PropertyDataTypeInt:
+	case v1alpha1.PropertyDataTypeInt, v1alpha1.PropertyDataTypeFloat:
 		data = make([]byte, 8)
 		i, err := strconv.ParseUint(input, 10, 64)
 		if err != nil {
 			return nil, err
 		}
 		binary.BigEndian.PutUint64(data, i)
-	case v1alpha1.PropertyDataTypeFloat:
-		data = make([]byte, 8)
-		f, err := strconv.ParseFloat(input, 64)
-		if err != nil {
-			return nil, err
-		}
-		binary.BigEndian.PutUint64(data, math.Float64bits(f))
 	default:
 		return nil, errors.New("invalid data type")
 	}
@@ -97,4 +87,25 @@ func toTargetLength(input []byte, length int) ([]byte, error) {
 	tmp := make([]byte, length)
 	copy(tmp[length-l:], input)
 	return tmp, nil
+}
+
+// ConvertReadData helps to convert the number read from the device into meaningful data
+func convertReadData(result float64, operations []v1alpha1.ModbusOperations) float64 {
+	for _, executeOperation := range operations {
+		operationValue, err := strconv.ParseFloat(executeOperation.OperationValue, 64)
+		if err != nil {
+			logrus.Error(err, "failed to parse operation value")
+		}
+		switch executeOperation.OperationType {
+		case v1alpha1.OperationAdd:
+			result = result + operationValue
+		case v1alpha1.OperationSubtract:
+			result = result - operationValue
+		case v1alpha1.OperationMultiply:
+			result = result * operationValue
+		case v1alpha1.OperationDivide:
+			result = result / operationValue
+		}
+	}
+	return result
 }
