@@ -4,11 +4,6 @@ import (
 	"github.com/bettercap/gatt"
 	"github.com/bettercap/gatt/examples/option"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/rancher/octopus/adaptors/ble/api/v1alpha1"
-	"github.com/rancher/octopus/adaptors/ble/pkg/physical"
-	api "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
-	"github.com/rancher/octopus/pkg/adaptor/connection"
-	"github.com/rancher/octopus/pkg/util/object"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,6 +13,12 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	logr "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+
+	"github.com/rancher/octopus/adaptors/ble/api/v1alpha1"
+	"github.com/rancher/octopus/adaptors/ble/pkg/physical"
+	api "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
+	"github.com/rancher/octopus/pkg/adaptor/connection"
+	"github.com/rancher/octopus/pkg/util/object"
 )
 
 var log = logr.NewDelegatingLogger(zap.New(zap.UseDevMode(true)))
@@ -57,15 +58,16 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 		if err != nil {
 			if !connection.IsClosed(err) {
 				log.Error(err, "failed to receive connect request from Limb")
+				return status.Errorf(codes.Unknown, "shutdown connection as receiving error from Limb")
 			}
 			return nil
 		}
 
 		//validate parameters
-		var parameters physical.Parameters
-		if req.Parameters != nil {
+		var parameters = physical.DefaultParameters()
+		if req.GetParameters() != nil {
 			if err := jsoniter.Unmarshal(req.GetParameters(), &parameters); err != nil {
-				return status.Errorf(codes.Internal, "failed to unmarshal parameters: %v", err)
+				return status.Errorf(codes.InvalidArgument, "failed to unmarshal parameters: %v", err)
 			}
 		}
 		if err := parameters.Validate(); err != nil {
@@ -75,7 +77,7 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 		// validate device
 		var bleDevice v1alpha1.BluetoothDevice
 		if err := jsoniter.Unmarshal(req.GetDevice(), &bleDevice); err != nil {
-			return status.Errorf(codes.Internal, "failed to unmarshal device: %v", err)
+			return status.Errorf(codes.InvalidArgument, "failed to unmarshal device: %v", err)
 		}
 
 		// process device

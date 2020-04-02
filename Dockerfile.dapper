@@ -22,6 +22,9 @@ RUN if [[ "$(go env GOARCH)" == "amd64" ]]; then \
         curl -sSfL "https://github.com/protocolbuffers/protobuf/releases/download/v3.11.3/protoc-3.11.3-linux-aarch_64.zip">/tmp/protoc.zip && unzip /tmp/protoc.zip -d /usr/local; \
         protoc --version; \
     fi
+## install mockgen
+RUN GO111MODULE=on go get github.com/golang/mock/mockgen@v1.4.3; \
+    mockgen --version
 ## install controller-gen
 RUN GO111MODULE=on go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.5; \
     controller-gen --version

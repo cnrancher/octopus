@@ -10,6 +10,7 @@ require (
 	github.com/goburrow/modbus v0.1.0
 	github.com/goburrow/serial v0.1.0 // indirect
 	github.com/gogo/protobuf v1.3.1
+	github.com/golang/mock v1.2.0
 	github.com/json-iterator/go v1.1.8
 	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
 	github.com/mgutz/logxi v0.0.0-20161027140823-aebf8a7d67ab // indirect

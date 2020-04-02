@@ -9,13 +9,13 @@ type Parameters struct {
 }
 
 func (p *Parameters) Validate() error {
-	if p == nil {
-		return errors.New("parameter instance is nil")
-	}
-
 	if p.IP == "" {
 		return errors.New("ip is required")
 	}
 
 	return nil
+}
+
+func DefaultParameters() Parameters {
+	return Parameters{}
 }

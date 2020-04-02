@@ -231,6 +231,9 @@ function verify() {
 
   octopus::log::info "running integration tests for adaptor $adaptor..."
 
+  CGO_ENABLED=0 go test \
+    "${CURR_DIR}/test/integration/adaptor/..." -v -ginkgo.v -ginkgo.progress
+
   octopus::log::info "...done"
 }
 

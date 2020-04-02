@@ -23,7 +23,14 @@ function generate() {
   rm -f "${CURR_DIR}/pkg/adaptor/api/*/*.pb.go"
   for d in $(octopus::util::find_subdirs "${CURR_DIR}/pkg/adaptor/api"); do
     octopus::protoc::generate \
-      "${CURR_DIR}/pkg/adaptor/api/${d}"
+      "${CURR_DIR}/pkg/adaptor/api/${d}/api.proto"
+  done
+
+  octopus::log::info "generating mocks"
+  rm -f "${CURR_DIR}/pkg/adaptor/api/*/*.pb_mock.go"
+  for d in $(octopus::util::find_subdirs "${CURR_DIR}/pkg/adaptor/api"); do
+    octopus::mockgen::generate \
+      "${CURR_DIR}/pkg/adaptor/api/${d}/api.pb.go"
   done
 
   octopus::log::info "generating manifests"

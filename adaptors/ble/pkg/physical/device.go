@@ -6,9 +6,10 @@ import (
 
 	"github.com/bettercap/gatt"
 	"github.com/go-logr/logr"
-	"github.com/rancher/octopus/adaptors/ble/api/v1alpha1"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/rancher/octopus/adaptors/ble/api/v1alpha1"
 )
 
 type Device interface {
@@ -37,8 +38,8 @@ func NewDevice(log logr.Logger, name types.NamespacedName, handler DataHandler, 
 		log:          log,
 		name:         name,
 		handler:      handler,
-		syncInterval: param.syncInterval,
-		timeout:      param.timeout,
+		syncInterval: param.SyncInterval,
+		timeout:      param.Timeout,
 		gattDevice:   gattDevice,
 	}
 }

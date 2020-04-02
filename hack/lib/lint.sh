@@ -14,7 +14,6 @@ function octopus::lint::validate() {
     octopus::log::info "$(golangci-lint --version)"
     return 0
   fi
-  octopus::log::warn "no golangci-lint available, using go fmt/vet instead"
   return 1
 }
 
