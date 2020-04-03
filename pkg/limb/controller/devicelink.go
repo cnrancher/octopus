@@ -292,7 +292,7 @@ func updateDevice(from *edgev1alpha1.DeviceLink, target *unstructured.Unstructur
 	target.Object["spec"] = updatedSpec
 	// another way to update spec:
 	// _ = unstructured.SetNestedMap(target.Object, updatedSpec, "spec")
-	return reflect.DeepEqual(target, original), nil
+	return !reflect.DeepEqual(target, original), nil
 }
 
 func constructDevice(from *edgev1alpha1.DeviceLink, scheme *k8sruntime.Scheme) (unstructured.Unstructured, error) {
