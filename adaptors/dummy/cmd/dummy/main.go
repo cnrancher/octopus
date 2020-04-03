@@ -9,11 +9,17 @@ import (
 	"github.com/rancher/octopus/pkg/util/version/verflag"
 )
 
+const (
+	name        = "dummy"
+	description = ``
+)
+
 func newCommand() *cobra.Command {
 	var c = &cobra.Command{
-		Use: "dummy",
+		Use:  name,
+		Long: description,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			verflag.PrintAndExitIfRequested()
+			verflag.PrintAndExitIfRequested(name)
 			return dummy.Run()
 		},
 	}

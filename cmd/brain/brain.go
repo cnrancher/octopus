@@ -22,7 +22,7 @@ func NewCommand() *cobra.Command {
 		Use:  name,
 		Long: description,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			verflag.PrintAndExitIfRequested()
+			verflag.PrintAndExitIfRequested(name)
 			logflag.Configure()
 
 			return brain.Run(name, opts)

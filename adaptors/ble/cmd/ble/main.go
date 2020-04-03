@@ -3,15 +3,23 @@ package main
 import (
 	"os"
 
+	"github.com/spf13/cobra"
+
 	"github.com/rancher/octopus/adaptors/ble/pkg/ble"
 	"github.com/rancher/octopus/pkg/util/version/verflag"
-	"github.com/spf13/cobra"
+)
+
+const (
+	name        = "ble"
+	description = ``
 )
 
 func newCommand() *cobra.Command {
 	var c = &cobra.Command{
-		Use: "ble",
+		Use:  name,
+		Long: description,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			verflag.PrintAndExitIfRequested(name)
 			return ble.Run()
 		},
 	}

@@ -24,13 +24,13 @@ func AddFlags(fs *flag.FlagSet) {
 
 // PrintAndExitIfRequested will check if the -version flag was passed
 // and, if so, print the version and exit.
-func PrintAndExitIfRequested() {
+func PrintAndExitIfRequested(name string) {
 	if version.detail {
-		fmt.Printf("%#v\n", ldflagsv.Get())
+		fmt.Printf("%s %#v\n", name, ldflagsv.Get())
 		os.Exit(0)
 	}
 	if version.print {
-		fmt.Printf("Rancher Octopus %s\n", ldflagsv.Get().String())
+		fmt.Printf("%s %s\n", name, ldflagsv.Get().String())
 		os.Exit(0)
 	}
 }

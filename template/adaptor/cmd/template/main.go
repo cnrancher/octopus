@@ -9,11 +9,17 @@ import (
 	"github.com/rancher/octopus/template/adaptor/pkg/template"
 )
 
+const (
+	name        = "template"
+	description = ``
+)
+
 func newCommand() *cobra.Command {
 	var c = &cobra.Command{
-		Use: "template",
+		Use:  name,
+		Long: description,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			verflag.PrintAndExitIfRequested()
+			verflag.PrintAndExitIfRequested(name)
 			return template.Run()
 		},
 	}
