@@ -27,7 +27,7 @@ func main() {
 		Use:  name,
 		Long: description,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			verflag.PrintAndExitIfRequested()
+			verflag.PrintAndExitIfRequested(name)
 
 			var (
 				basename  = filepath.Base(os.Args[0])

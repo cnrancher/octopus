@@ -3,16 +3,23 @@ package main
 import (
 	"os"
 
+	"github.com/spf13/cobra"
+
 	"github.com/rancher/octopus/adaptors/modbus/pkg/modbus"
 	"github.com/rancher/octopus/pkg/util/version/verflag"
-	"github.com/spf13/cobra"
+)
+
+const (
+	name        = "modbus"
+	description = ``
 )
 
 func newCommand() *cobra.Command {
 	var c = &cobra.Command{
-		Use: "modbus",
+		Use:  name,
+		Long: description,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			verflag.PrintAndExitIfRequested()
+			verflag.PrintAndExitIfRequested(name)
 			return modbus.Run()
 		},
 	}
