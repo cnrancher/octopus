@@ -142,6 +142,10 @@ function package() {
 
   pushd "${CURR_DIR}" >/dev/null 2>&1
   for platform in "${platforms[@]}"; do
+    if [[ "${platform}" =~ darwin/* ]]; then
+      octopus::log::fatal "package into Darwin OS image is unavailable, please use CROSS=true env to containerize multiple arch images or use OS=linux ARCH=amd64 env to containerize linux/amd64 image"
+    fi
+    
     octopus::log::info "packaging ${platform}"
     octopus::docker::build \
       --platform "${platform}" \
