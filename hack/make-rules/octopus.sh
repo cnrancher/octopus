@@ -10,6 +10,9 @@ ROOT_DIR="${CURR_DIR}"
 source "${ROOT_DIR}/hack/lib/init.sh"
 source "${CURR_DIR}/hack/lib/constant.sh"
 
+mkdir -p "${CURR_DIR}/bin"
+mkdir -p "${CURR_DIR}/dist"
+
 function generate() {
   octopus::log::info "generating octopus..."
 
@@ -59,8 +62,9 @@ function generate() {
   kubectl kustomize "${CURR_DIR}/deploy/manifests/overlays/without_webhook" \
     >"${CURR_DIR}/deploy/e2e/all_in_one_without_webhook.yaml"
   # replace the admissionregistration version
-  sed "s#admissionregistration.k8s.io/v1beta1#admissionregistration.k8s.io/v1#g" "${CURR_DIR}/deploy/e2e/all_in_one.yaml" >/tmp/all_in_one.yaml
-  mv /tmp/all_in_one.yaml "${CURR_DIR}/deploy/e2e/all_in_one.yaml"
+  local tmpfile
+  tmpfile=$(mktemp)
+  sed "s#admissionregistration.k8s.io/v1beta1#admissionregistration.k8s.io/v1#g" "${CURR_DIR}/deploy/e2e/all_in_one.yaml" >"${tmpfile}" && mv "${tmpfile}" "${CURR_DIR}/deploy/e2e/all_in_one.yaml"
 
   octopus::log::info "...done"
 }
@@ -101,15 +105,14 @@ function lint() {
 
 function build() {
   [[ "${1:-}" != "only" ]] && lint
-  octopus::log::info "building octopus..."
 
-  mkdir -p "${CURR_DIR}/bin"
+  octopus::log::info "building octopus(${GIT_VERSION},${GIT_COMMIT},${GIT_TREE_STATE},${BUILD_DATE})..."
 
   local version_flags="
-    -X k8s.io/client-go/pkg/version.gitVersion=${OCTOPUS_GIT_VERSION}
-    -X k8s.io/client-go/pkg/version.gitCommit=${OCTOPUS_GIT_COMMIT}
-    -X k8s.io/client-go/pkg/version.gitTreeState=${OCTOPUS_GIT_TREE_STATE}
-    -X k8s.io/client-go/pkg/version.buildDate=${OCTOPUS_BUILD_DATE}"
+    -X k8s.io/client-go/pkg/version.gitVersion=${GIT_VERSION}
+    -X k8s.io/client-go/pkg/version.gitCommit=${GIT_COMMIT}
+    -X k8s.io/client-go/pkg/version.gitTreeState=${GIT_TREE_STATE}
+    -X k8s.io/client-go/pkg/version.buildDate=${BUILD_DATE}"
   local flags="
     -w -s"
   local ext_flags="
@@ -148,7 +151,7 @@ function package() {
 
   local repo=${REPO:-rancher}
   local image_name=${IMAGE_NAME:-octopus}
-  local tag=${TAG:-${OCTOPUS_GIT_VERSION}}
+  local tag=${TAG:-${GIT_VERSION}}
 
   local platforms
   if [[ "${CROSS:-false}" == "true" ]]; then
@@ -165,11 +168,12 @@ function package() {
     if [[ "${platform}" =~ darwin/* ]]; then
       octopus::log::fatal "package into Darwin OS image is unavailable, please use CROSS=true env to containerize multiple arch images or use OS=linux ARCH=amd64 env to containerize linux/amd64 image"
     fi
-    
-    octopus::log::info "packaging ${platform}"
+
+    local image_tag="${repo}/${image_name}:${tag}-${platform////-}"
+    octopus::log::info "packaging ${image_tag}"
     octopus::docker::build \
       --platform "${platform}" \
-      -t "${repo}/${image_name}:${tag}-${platform////-}" .
+      -t "${image_tag}" .
   done
   popd >/dev/null 2>&1
 
@@ -182,33 +186,68 @@ function deploy() {
 
   local repo=${REPO:-rancher}
   local image_name=${IMAGE_NAME:-octopus}
-  local tag=${TAG:-${OCTOPUS_GIT_VERSION}}
+  local tag=${TAG:-${GIT_VERSION}}
+
+  local platforms
+  if [[ "${CROSS:-false}" == "true" ]]; then
+    octopus::log::info "crossed deploying"
+    platforms=("${SUPPORTED_PLATFORMS[@]}")
+  else
+    local os="${OS:-$(go env GOOS)}"
+    local arch="${ARCH:-$(go env GOARCH)}"
+    platforms=("${os}/${arch}")
+  fi
   local images=()
-  for platform in "${SUPPORTED_PLATFORMS[@]}"; do
+  for platform in "${platforms[@]}"; do
+    if [[ "${platform}" =~ darwin/* ]]; then
+      octopus::log::fatal "package into Darwin OS image is unavailable, please use CROSS=true env to containerize multiple arch images or use OS=linux ARCH=amd64 env to containerize linux/amd64 image"
+    fi
+
     images+=("${repo}/${image_name}:${tag}-${platform////-}")
   done
 
-  # docker login
-  if [[ -n ${DOCKER_USERNAME} ]] && [[ -n ${DOCKER_PASSWORD} ]]; then
-    docker login -u "${DOCKER_USERNAME}" -p "${DOCKER_PASSWORD}"
-  fi
+  local only_manifest=${ONLY_MANIFEST:-false}
+  local without_manifest=${WITHOUT_MANIFEST:-false}
+  local ignore_missing=${IGNORE_MISSING:-false}
 
   # docker push
-  for image in "${images[@]}"; do
-    octopus::log::info "deploying image ${image}"
-    docker push "${image}"
-  done
+  if [[ "${only_manifest}" == "false" ]]; then
+    octopus::docker::push "${images[@]}"
+  else
+    octopus::log::warn "deploying images has been stopped by ONLY_MANIFEST"
+    # execute manifest forcibly
+    without_manifest="false"
+  fi
 
   # docker manifest
-  local targets=(
-    "${repo}/${image_name}:${tag}"
-    "${repo}/${image_name}:latest"
-  )
-  for target in "${targets[@]}"; do
-    octopus::log::info "deploying manifest image ${target}"
-    octopus::docker::manifest_create "${target}" "${images[@]}"
-    octopus::docker::manifest_push "${target}"
-  done
+  if [[ "${without_manifest}" == "false" ]]; then
+    if [[ "${ignore_missing}" == "false" ]]; then
+      octopus::docker::manifest "${repo}/${image_name}:${tag}" "${images[@]}"
+    else
+      octopus::manifest_tool::push from-args \
+        --ignore-missing \
+        --target="${repo}/${image_name}:${tag}" \
+        --template="${repo}/${image_name}:${tag}-OS-ARCH" \
+        --platforms="$(octopus::util::join_array "," "${platforms[@]}")"
+    fi
+
+    # generate tested yaml
+    local tmpfile
+    tmpfile=$(mktemp)
+    cp -f "${CURR_DIR}/deploy/e2e/all_in_one.yaml" "${CURR_DIR}/dist/octopus_all_in_one.yaml"
+    sed "s#app.kubernetes.io/version: master#app.kubernetes.io/version: ${tag}#g" \
+      "${CURR_DIR}/dist/octopus_all_in_one.yaml" >"${tmpfile}" && mv "${tmpfile}" "${CURR_DIR}/dist/octopus_all_in_one.yaml"
+    sed "s#image: rancher/octopus:master#image: ${repo}/${image_name}:${tag}#g" \
+      "${CURR_DIR}/dist/octopus_all_in_one.yaml" >"${tmpfile}" && mv "${tmpfile}" "${CURR_DIR}/dist/octopus_all_in_one.yaml"
+
+    cp -f "${CURR_DIR}/deploy/e2e/all_in_one_without_webhook.yaml" "${CURR_DIR}/dist/octopus_all_in_one_without_webhook.yaml"
+    sed "s#app.kubernetes.io/version: master#app.kubernetes.io/version: ${tag}#g" \
+      "${CURR_DIR}/dist/octopus_all_in_one_without_webhook.yaml" >"${tmpfile}" && mv "${tmpfile}" "${CURR_DIR}/dist/octopus_all_in_one_without_webhook.yaml"
+    sed "s#image: rancher/octopus:master#image: ${repo}/${image_name}:${tag}#g" \
+      "${CURR_DIR}/dist/octopus_all_in_one_without_webhook.yaml" >"${tmpfile}" && mv "${tmpfile}" "${CURR_DIR}/dist/octopus_all_in_one_without_webhook.yaml"
+  else
+    octopus::log::warn "deploying manifest images has been stopped by WITHOUT_MANIFEST"
+  fi
 
   octopus::log::info "...done"
 }
@@ -265,11 +304,12 @@ function e2e() {
 }
 
 function entry() {
-  local stage
-  stage="${1:-build}"
+  local stage="${1:-build}"
   shift $(($# > 0 ? 1 : 0))
 
-  case $stage in
+  octopus::log::info "make octopus ${stage} $*"
+
+  case ${stage} in
   g | gen | generate) generate ;;
   m | mod) mod "$@" ;;
   l | lint) lint "$@" ;;
@@ -279,12 +319,12 @@ function entry() {
   t | test) test "$@" ;;
   v | ver | verify) verify "$@" ;;
   e | e2e) e2e "$@" ;;
-  *) octopus::log::fatal "unknown action, select from (generate,mod,lint,build,test,verify,package,deploy,e2e)" ;;
+  *) octopus::log::fatal "unknown action '${stage}', select from generate,mod,lint,build,test,verify,package,deploy,e2e" ;;
   esac
 }
 
 if [[ ${BY:-} == "dapper" ]]; then
-  octopus::dapper::run -C "${CURR_DIR}" -f "Dockerfile.dapper" -m bind "$@"
+  octopus::dapper::run -C "${CURR_DIR}" -f "Dockerfile.dapper" "$@"
 else
   entry "$@"
 fi

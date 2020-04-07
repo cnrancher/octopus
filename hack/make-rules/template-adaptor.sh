@@ -56,6 +56,9 @@ function entry() {
   # change Dockerfile template to expected
   sed "s#template#${adaptorNameLowercase}#g" "${adaptorPath}/Dockerfile" >"${tmpfile}" && mv "${tmpfile}" "${adaptorPath}/Dockerfile"
 
+  # change Dockerfile.dapper template to expected
+  sed "s#template#${adaptorNameLowercase}#g" "${adaptorPath}/Dockerfile.dapper" >"${tmpfile}" && mv "${tmpfile}" "${adaptorPath}/Dockerfile.dapper"
+
   # change Makefile template to expected
   sed "s#template#${adaptorNameLowercase}#g" "${adaptorPath}/Makefile" >"${tmpfile}" && mv "${tmpfile}" "${adaptorPath}/Makefile"
 

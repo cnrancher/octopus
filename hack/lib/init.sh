@@ -6,7 +6,6 @@ set -o pipefail
 
 unset CDPATH
 
-export PATH="$PATH:$(go env GOPATH)/bin"
 # Set no_proxy for localhost if behind a proxy, otherwise,
 # the connections to localhost in scripts will time out
 export no_proxy=127.0.0.1,localhost

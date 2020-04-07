@@ -4,8 +4,6 @@
 # Kind cluster variables helpers. These functions need the
 # following variables:
 #
-#    OS_TYPE         -  The type for the localhost OS, default is automatically discovered.
-#    OS_ARCH         -  The arch for the localhost OS, default is automatically discovered.
 #    KIND_VERSION    -  The Kind version for running, default is v0.7.0.
 #    K8S_VERSION     -  The Kubernetes version for the cluster, default is v1.17.2.
 #    CLUSTER_NAME    -  The name for the cluster, default is edge.
@@ -17,9 +15,7 @@ CLUSTER_NAME=${CLUSTER_NAME:-"edge"}
 
 function octopus::cluster_kind::install() {
   local version=${KIND_VERSION:-"v0.7.0"}
-  local os_type=${OS_TYPE:-"$(octopus::util::get_os)"}
-  local os_arch=${OS_ARCH:-"$(octopus::util::get_arch)"}
-  curl -fL "https://github.com/kubernetes-sigs/kind/releases/download/${version}/kind-${os_type}-${os_arch}" >/tmp/kind
+  curl -fL "https://github.com/kubernetes-sigs/kind/releases/download/${version}/kind-$(octopus::util::get_os)-$(octopus::util::get_arch)" -o /tmp/kind
   chmod +x /tmp/kind && mv /tmp/kind /usr/local/bin/kind
 }
 

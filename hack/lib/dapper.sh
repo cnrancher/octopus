@@ -4,15 +4,11 @@
 # Dapper variables helpers. These functions need the
 # following variables:
 #
-#    OS_TYPE          -  The type for the localhost OS, default is automatically discovered.
-#    OS_ARCH          -  The arch for the localhost OS, default is automatically discovered.
 #    DAPPER_VERSION   -  The dapper version for running, default is v0.4.2.
 
 function octopus::dapper::install() {
   local version=${DAPPER_VERSION:-"v0.4.2"}
-  local os_type=${OS_TYPE:-"$(uname -s)"}
-  local os_arch=${OS_ARCH:-"$(uname -m)"}
-  curl -fL "https://releases.rancher.com/dapper/${version}/dapper-${os_type}-${os_arch}" >/tmp/dapper
+  curl -fL "https://github.com/rancher/dapper/releases/download/${version}/dapper-$(uname -s)-$(uname -m)" -o /tmp/dapper
   chmod +x /tmp/dapper && mv /tmp/dapper /usr/local/bin/dapper
 }
 
@@ -31,8 +27,12 @@ function octopus::dapper::validate() {
 }
 
 function octopus::dapper::run() {
+  if ! octopus::docker::validate; then
+    octopus::log::fatal "docker hasn't been installed"
+  fi
   if ! octopus::dapper::validate; then
     octopus::log::fatal "dapper hasn't been installed"
   fi
+
   dapper "$@"
 }
