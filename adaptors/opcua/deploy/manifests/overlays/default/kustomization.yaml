@@ -11,13 +11,13 @@ namePrefix: octopus-adaptor-opcua-
 # Labels to add to all resources and selectors.
 commonLabels:
   app.kubernetes.io/name: "octopus-adaptor-opcua"
-  app.kubernetes.io/version: "0.0.1"
+  app.kubernetes.io/version: "master"
 
 ## Images to overwrite the default images.
 images:
   - name: rancher/octopus-adaptor-opcua
     newName: rancher/octopus-adaptor-opcua
-    newTag: latest
+    newTag: master
 
 bases:
   - ../../crd

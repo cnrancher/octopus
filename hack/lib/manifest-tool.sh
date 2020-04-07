@@ -3,8 +3,6 @@
 # -----------------------------------------------------------------------------
 # Manifest tool variables helpers. These functions need the
 # following variables:
-#    OS_TYPE                -  The type for the localhost OS, default is automatically discovered.
-#    OS_ARCH                -  The arch for the localhost OS, default is automatically discovered.
 #    MANIFEST_TOOL_VERSION  -  The manifest tool version for running, default is v0.7.0.
 #    DOCKER_USERNAME        -  The username of Docker.
 #    DOCKER_PASSWORD        -  The password of Docker.
@@ -14,12 +12,7 @@ DOCKER_PASSWORD=${DOCKER_PASSWORD:-}
 
 function octopus::manifest_tool::install() {
   local version=${MANIFEST_TOOL_VERSION:-"v1.0.1"}
-  local os_type=${OS_TYPE:-"$(octopus::util::get_os)"}
-  local os_arch=${OS_ARCH:-"$(octopus::util::get_arch)"}
-  if [[ "${os_arch}" == "arm" ]]; then
-    os_arch="armv7"
-  fi
-  curl -fL "https://github.com/estesp/manifest-tool/releases/download/${version}/manifest-tool-${os_type}-${os_arch}" >/tmp/manifest-tool
+  curl -fL "https://github.com/estesp/manifest-tool/releases/download/${version}/manifest-tool-$(octopus::util::get_os)-$(octopus::util::get_arch ---full-name)" -o /tmp/manifest-tool
   chmod +x /tmp/manifest-tool && mv /tmp/manifest-tool /usr/local/bin/manifest-tool
 }
 
@@ -37,22 +30,23 @@ function octopus::manifest_tool::validate() {
   return 1
 }
 
-function octopus::manifest_tool::run() {
+function octopus::manifest_tool::push() {
   if ! octopus::manifest_tool::validate; then
     octopus::log::error "cannot execute manifest-tool as it hasn't installed"
     return
   fi
 
-  if [[ ${OS_TYPE} == "Darwin" ]]; then
+  if [[ $(octopus::util::get_os) == "darwin" ]]; then
     if [[ -z ${DOCKER_USERNAME} ]] && [[ -z ${DOCKER_PASSWORD} ]]; then
       # NB(thxCode): since 17.03, Docker for Mac stores credentials in the OSX/macOS keychain and not in config.json, which means the above variables need to specify if using on Mac.
-      octopus::log::fatal "must set 'DOCKER_USERNAME' & 'DOCKER_PASSWORD' environment variables"
+      octopus::log::fatal "must set 'DOCKER_USERNAME' & 'DOCKER_PASSWORD' environment variables in Darwin platform"
     fi
   fi
 
+  octopus::log::info "manifest-tool push $*"
   if [[ -n ${DOCKER_USERNAME} ]] && [[ -n ${DOCKER_PASSWORD} ]]; then
-    manifest-tool --username="${DOCKER_USERNAME}" --password="${DOCKER_PASSWORD}" "$@"
+    manifest-tool --username="${DOCKER_USERNAME}" --password="${DOCKER_PASSWORD}" push "$@"
   else
-    manifest-tool "$@"
+    manifest-tool push "$@"
   fi
 }

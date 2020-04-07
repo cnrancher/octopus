@@ -4,8 +4,6 @@
 # K3d cluster variables helpers. These functions need the
 # following variables:
 #
-#    OS_TYPE         -  The type for the localhost OS, default is automatically discovered.
-#    OS_ARCH         -  The arch for the localhost OS, default is automatically discovered.
 #    K3D_VERSION     -  The k3d version for running, default is v1.7.0.
 #    K8S_VERSION     -  The Kubernetes version for the cluster, default is v1.17.2.
 #    CLUSTER_NAME    -  The name for the cluster, default is edge.
@@ -19,9 +17,7 @@ IMAGE_SUFFIX=${IMAGE_SUFFIX:-"k3s1"}
 
 function octopus::cluster_k3d::install() {
   local version=${K3D_VERSION:-"v1.7.0"}
-  local os_type=${OS_TYPE:-"$(octopus::util::get_os)"}
-  local os_arch=${OS_ARCH:-"$(octopus::util::get_arch)"}
-  curl -fL "https://github.com/rancher/k3d/releases/download/${version}/k3d-${os_type}-${os_arch}" >/tmp/k3d
+  curl -fL "https://github.com/rancher/k3d/releases/download/${version}/k3d-$(octopus::util::get_os)-$(octopus::util::get_arch)" -o /tmp/k3d
   chmod +x /tmp/k3d && mv /tmp/k3d /usr/local/bin/k3d
 }
 

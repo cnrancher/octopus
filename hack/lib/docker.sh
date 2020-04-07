@@ -18,6 +18,15 @@ function octopus::docker::validate() {
   return 1
 }
 
+function octopus::docker::login() {
+  if [[ -n ${DOCKER_USERNAME} ]] && [[ -n ${DOCKER_PASSWORD} ]]; then
+    if ! docker login -u "${DOCKER_USERNAME}" -p "${DOCKER_PASSWORD}" >/dev/null 2>&1; then
+      return 1
+    fi
+  fi
+  return 0
+}
+
 function octopus::docker::build() {
   if ! octopus::docker::validate; then
     octopus::log::fatal "docker hasn't been installed"
@@ -27,22 +36,37 @@ function octopus::docker::build() {
   DOCKER_BUILDKIT=1 docker build "$@"
 }
 
-function octopus::docker::manifest_create() {
+function octopus::docker::manifest() {
   if ! octopus::docker::validate; then
     octopus::log::fatal "docker hasn't been installed"
   fi
+  if ! octopus::docker::login; then
+    octopus::log::fatal "failed to login docker"
+  fi
+
   # NB(thxCode): use Docker manifest needs to enable client experimental feature, ref to:
   # - https://docs.docker.com/engine/reference/commandline/manifest_create/
   # - https://docs.docker.com/engine/reference/commandline/cli/#experimental-features#environment-variables
+  octopus::log::info "docker manifest create --amend $*"
   DOCKER_CLI_EXPERIMENTAL=enabled docker manifest create --amend "$@"
-}
 
-function octopus::docker::manifest_push() {
-  if ! octopus::docker::validate; then
-    octopus::log::fatal "docker hasn't been installed"
-  fi
   # NB(thxCode): use Docker manifest needs to enable client experimental feature, ref to:
   # - https://docs.docker.com/engine/reference/commandline/manifest_push/
   # - https://docs.docker.com/engine/reference/commandline/cli/#experimental-features#environment-variables
-  DOCKER_CLI_EXPERIMENTAL=enabled docker manifest push --purge "$@"
+  octopus::log::info "docker manifest push --purge ${1}"
+  DOCKER_CLI_EXPERIMENTAL=enabled docker manifest push --purge "${1}"
+}
+
+function octopus::docker::push() {
+  if ! octopus::docker::validate; then
+    octopus::log::fatal "docker hasn't been installed"
+  fi
+  if ! octopus::docker::login; then
+    octopus::log::fatal "failed to login docker"
+  fi
+
+  for image in "$@"; do
+    octopus::log::info "docker push ${image}"
+    docker push "${image}"
+  done
 }

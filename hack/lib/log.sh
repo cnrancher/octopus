@@ -33,7 +33,7 @@ octopus::log::info() {
   local timestamp
   timestamp="$(date +"[%m%d %H:%M:%S]")"
   echo "[INFO] ${timestamp} ${1-}"
-  shift
+  shift 1
   for message; do
     echo "       ${message}"
   done
@@ -46,7 +46,7 @@ octopus::log::warn() {
   local timestamp
   timestamp="$(date +"[%m%d %H:%M:%S]")"
   echo "[WARN] ${timestamp} ${1-}"
-  shift
+  shift 1
   for message; do
     echo "       ${message}"
   done
@@ -59,7 +59,7 @@ octopus::log::error() {
   local timestamp
   timestamp="$(date +"[%m%d %H:%M:%S]")"
   echo "[ERRO] ${timestamp} ${1-}" >&2
-  shift
+  shift 1
   for message; do
     echo "       ${message}" >&2
   done
@@ -72,7 +72,7 @@ octopus::log::fatal() {
   local timestamp
   timestamp="$(date +"[%m%d %H:%M:%S]")"
   echo "[FATA] ${timestamp} ${1-}" >&2
-  shift
+  shift 1
   for message; do
     echo "       ${message}" >&2
   done

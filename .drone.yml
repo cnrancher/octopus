@@ -1,0 +1,1545 @@
+---
+kind: pipeline
+name: octopus-linux-amd64
+platform:
+  os: linux
+  arch: amd64
+steps:
+  - name: verify
+    image: rancher/dapper:v0.4.2
+    privileged: true
+    environment:
+      BY: dapper
+      LOCAL_CLUSTER_KIND: kind
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make octopus verify
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+  - name: build
+    image: rancher/dapper:v0.4.2
+    privileged: true
+    environment:
+      BY: dapper
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make octopus build only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+        - tag
+  - name: package
+    image: rancher/dapper:v0.4.2
+    environment:
+      BY: dapper
+      REPO:
+        from_secret: image_repo
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make octopus package only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+        - tag
+  - name: deploy-without-manifest
+    image: rancher/dapper:v0.4.2
+    environment:
+      DOCKER_USERNAME:
+        from_secret: docker_username
+      DOCKER_PASSWORD:
+        from_secret: docker_password
+      BY: dapper
+      REPO:
+        from_secret: image_repo
+      WITHOUT_MANIFEST: true
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make octopus deploy only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      ref:
+        include:
+          - "refs/heads/master"
+          - "refs/heads/release/v*"
+          - "refs/tags/v*"
+      event:
+        - push
+        - tag
+volumes:
+  - name: docker
+    host:
+      path: /var/run/docker.sock
+trigger:
+  event:
+    exclude:
+      - promote
+node:
+  instance: agent-amd64
+---
+kind: pipeline
+name: octopus-linux-arm64
+platform:
+  os: linux
+  arch: arm64
+steps:
+  - name: test
+    image: rancher/dapper:v0.4.2
+    privileged: true
+    environment:
+      BY: dapper
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make octopus test only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+  - name: build
+    image: rancher/dapper:v0.4.2
+    privileged: true
+    environment:
+      BY: dapper
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make octopus build only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+        - tag
+  - name: package
+    image: rancher/dapper:v0.4.2
+    environment:
+      BY: dapper
+      REPO:
+        from_secret: image_repo
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make octopus package only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+        - tag
+  - name: deploy-without-manifest
+    image: rancher/dapper:v0.4.2
+    environment:
+      DOCKER_USERNAME:
+        from_secret: docker_username
+      DOCKER_PASSWORD:
+        from_secret: docker_password
+      BY: dapper
+      REPO:
+        from_secret: image_repo
+      WITHOUT_MANIFEST: true
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make octopus deploy only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      ref:
+        include:
+          - "refs/heads/master"
+          - "refs/heads/release/v*"
+          - "refs/tags/v*"
+      event:
+        - push
+        - tag
+volumes:
+  - name: docker
+    host:
+      path: /var/run/docker.sock
+trigger:
+  event:
+    exclude:
+      - promote
+node:
+  instance: agent-arm64
+---
+kind: pipeline
+name: octopus-linux-arm
+platform:
+  os: linux
+  arch: arm
+steps:
+  - name: test
+    image: rancher/dapper:v0.4.2
+    privileged: true
+    environment:
+      BY: dapper
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make octopus test only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+  - name: build
+    image: rancher/dapper:v0.4.2
+    privileged: true
+    environment:
+      BY: dapper
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make octopus build only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+        - tag
+  - name: package
+    image: rancher/dapper:v0.4.2
+    environment:
+      BY: dapper
+      REPO:
+        from_secret: image_repo
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make octopus package only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+        - tag
+  - name: deploy-without-manifest
+    image: rancher/dapper:v0.4.2
+    environment:
+      DOCKER_USERNAME:
+        from_secret: docker_username
+      DOCKER_PASSWORD:
+        from_secret: docker_password
+      BY: dapper
+      REPO:
+        from_secret: image_repo
+      WITHOUT_MANIFEST: true
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make octopus deploy only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      ref:
+        include:
+          - "refs/heads/master"
+          - "refs/heads/release/v*"
+          - "refs/tags/v*"
+      event:
+        - push
+        - tag
+volumes:
+  - name: docker
+    host:
+      path: /var/run/docker.sock
+trigger:
+  event:
+    exclude:
+      - promote
+node:
+  instance: agent-arm
+
+
+---
+kind: pipeline
+name: adaptor-dummy-linux-amd64
+platform:
+  os: linux
+  arch: amd64
+steps:
+  - name: verify
+    image: rancher/dapper:v0.4.2
+    privileged: true
+    environment:
+      BY: dapper
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor dummy verify
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+  - name: build
+    image: rancher/dapper:v0.4.2
+    privileged: true
+    environment:
+      BY: dapper
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor dummy build only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+        - tag
+  - name: package
+    image: rancher/dapper:v0.4.2
+    environment:
+      BY: dapper
+      REPO:
+        from_secret: image_repo
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor dummy package only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+        - tag
+  - name: deploy-without-manifest
+    image: rancher/dapper:v0.4.2
+    environment:
+      DOCKER_USERNAME:
+        from_secret: docker_username
+      DOCKER_PASSWORD:
+        from_secret: docker_password
+      BY: dapper
+      REPO:
+        from_secret: image_repo
+      WITHOUT_MANIFEST: true
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor dummy deploy only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      ref:
+        include:
+          - "refs/heads/master"
+          - "refs/heads/release/v*"
+          - "refs/tags/v*"
+      event:
+        - push
+        - tag
+volumes:
+  - name: docker
+    host:
+      path: /var/run/docker.sock
+trigger:
+  event:
+    exclude:
+      - promote
+node:
+  instance: agent-amd64
+---
+kind: pipeline
+name: adaptor-dummy-linux-arm64
+platform:
+  os: linux
+  arch: arm64
+steps:
+  - name: test
+    image: rancher/dapper:v0.4.2
+    privileged: true
+    environment:
+      BY: dapper
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor dummy test only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+  - name: build
+    image: rancher/dapper:v0.4.2
+    privileged: true
+    environment:
+      BY: dapper
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor dummy build only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+        - tag
+  - name: package
+    image: rancher/dapper:v0.4.2
+    environment:
+      BY: dapper
+      REPO:
+        from_secret: image_repo
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor dummy package only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+        - tag
+  - name: deploy-without-manifest
+    image: rancher/dapper:v0.4.2
+    environment:
+      DOCKER_USERNAME:
+        from_secret: docker_username
+      DOCKER_PASSWORD:
+        from_secret: docker_password
+      BY: dapper
+      REPO:
+        from_secret: image_repo
+      WITHOUT_MANIFEST: true
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor dummy deploy only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      ref:
+        include:
+          - "refs/heads/master"
+          - "refs/heads/release/v*"
+          - "refs/tags/v*"
+      event:
+        - push
+        - tag
+volumes:
+  - name: docker
+    host:
+      path: /var/run/docker.sock
+trigger:
+  event:
+    exclude:
+      - promote
+node:
+  instance: agent-arm64
+---
+kind: pipeline
+name: adaptor-dummy-linux-arm
+platform:
+  os: linux
+  arch: arm
+steps:
+  - name: test
+    image: rancher/dapper:v0.4.2
+    privileged: true
+    environment:
+      BY: dapper
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor dummy test only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+  - name: build
+    image: rancher/dapper:v0.4.2
+    privileged: true
+    environment:
+      BY: dapper
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor dummy build only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+        - tag
+  - name: package
+    image: rancher/dapper:v0.4.2
+    environment:
+      BY: dapper
+      REPO:
+        from_secret: image_repo
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor dummy package only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+        - tag
+  - name: deploy-without-manifest
+    image: rancher/dapper:v0.4.2
+    environment:
+      DOCKER_USERNAME:
+        from_secret: docker_username
+      DOCKER_PASSWORD:
+        from_secret: docker_password
+      BY: dapper
+      REPO:
+        from_secret: image_repo
+      WITHOUT_MANIFEST: true
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor dummy deploy only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      ref:
+        include:
+          - "refs/heads/master"
+          - "refs/heads/release/v*"
+          - "refs/tags/v*"
+      event:
+        - push
+        - tag
+volumes:
+  - name: docker
+    host:
+      path: /var/run/docker.sock
+trigger:
+  event:
+    exclude:
+      - promote
+node:
+  instance: agent-arm
+
+
+---
+kind: pipeline
+name: adaptor-ble-linux-amd64
+platform:
+  os: linux
+  arch: amd64
+steps:
+  - name: verify
+    image: rancher/dapper:v0.4.2
+    privileged: true
+    environment:
+      BY: dapper
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor ble verify
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+  - name: build
+    image: rancher/dapper:v0.4.2
+    privileged: true
+    environment:
+      BY: dapper
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor ble build only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+        - tag
+  - name: package
+    image: rancher/dapper:v0.4.2
+    environment:
+      BY: dapper
+      REPO:
+        from_secret: image_repo
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor ble package only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+        - tag
+  - name: deploy-without-manifest
+    image: rancher/dapper:v0.4.2
+    environment:
+      DOCKER_USERNAME:
+        from_secret: docker_username
+      DOCKER_PASSWORD:
+        from_secret: docker_password
+      BY: dapper
+      REPO:
+        from_secret: image_repo
+      WITHOUT_MANIFEST: true
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor ble deploy only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      ref:
+        include:
+          - "refs/heads/master"
+          - "refs/heads/release/v*"
+          - "refs/tags/v*"
+      event:
+        - push
+        - tag
+volumes:
+  - name: docker
+    host:
+      path: /var/run/docker.sock
+trigger:
+  event:
+    exclude:
+      - promote
+node:
+  instance: agent-amd64
+---
+kind: pipeline
+name: adaptor-ble-linux-arm64
+platform:
+  os: linux
+  arch: arm64
+steps:
+  - name: test
+    image: rancher/dapper:v0.4.2
+    privileged: true
+    environment:
+      BY: dapper
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor ble test only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+  - name: build
+    image: rancher/dapper:v0.4.2
+    privileged: true
+    environment:
+      BY: dapper
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor ble build only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+        - tag
+  - name: package
+    image: rancher/dapper:v0.4.2
+    environment:
+      BY: dapper
+      REPO:
+        from_secret: image_repo
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor ble package only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+        - tag
+  - name: deploy-without-manifest
+    image: rancher/dapper:v0.4.2
+    environment:
+      DOCKER_USERNAME:
+        from_secret: docker_username
+      DOCKER_PASSWORD:
+        from_secret: docker_password
+      BY: dapper
+      REPO:
+        from_secret: image_repo
+      WITHOUT_MANIFEST: true
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor ble deploy only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      ref:
+        include:
+          - "refs/heads/master"
+          - "refs/heads/release/v*"
+          - "refs/tags/v*"
+      event:
+        - push
+        - tag
+volumes:
+  - name: docker
+    host:
+      path: /var/run/docker.sock
+trigger:
+  event:
+    exclude:
+      - promote
+node:
+  instance: agent-arm64
+---
+kind: pipeline
+name: adaptor-ble-linux-arm
+platform:
+  os: linux
+  arch: arm
+steps:
+  - name: test
+    image: rancher/dapper:v0.4.2
+    privileged: true
+    environment:
+      BY: dapper
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor ble test only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+  - name: build
+    image: rancher/dapper:v0.4.2
+    privileged: true
+    environment:
+      BY: dapper
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor ble build only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+        - tag
+  - name: package
+    image: rancher/dapper:v0.4.2
+    environment:
+      BY: dapper
+      REPO:
+        from_secret: image_repo
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor ble package only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+        - tag
+  - name: deploy-without-manifest
+    image: rancher/dapper:v0.4.2
+    environment:
+      DOCKER_USERNAME:
+        from_secret: docker_username
+      DOCKER_PASSWORD:
+        from_secret: docker_password
+      BY: dapper
+      REPO:
+        from_secret: image_repo
+      WITHOUT_MANIFEST: true
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor ble deploy only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      ref:
+        include:
+          - "refs/heads/master"
+          - "refs/heads/release/v*"
+          - "refs/tags/v*"
+      event:
+        - push
+        - tag
+volumes:
+  - name: docker
+    host:
+      path: /var/run/docker.sock
+trigger:
+  event:
+    exclude:
+      - promote
+node:
+  instance: agent-arm
+
+
+
+---
+kind: pipeline
+name: adaptor-modbus-linux-amd64
+platform:
+  os: linux
+  arch: amd64
+steps:
+  - name: verify
+    image: rancher/dapper:v0.4.2
+    privileged: true
+    environment:
+      BY: dapper
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor modbus verify
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+  - name: build
+    image: rancher/dapper:v0.4.2
+    privileged: true
+    environment:
+      BY: dapper
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor modbus build only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+        - tag
+  - name: package
+    image: rancher/dapper:v0.4.2
+    environment:
+      BY: dapper
+      REPO:
+        from_secret: image_repo
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor modbus package only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+        - tag
+  - name: deploy-without-manifest
+    image: rancher/dapper:v0.4.2
+    environment:
+      DOCKER_USERNAME:
+        from_secret: docker_username
+      DOCKER_PASSWORD:
+        from_secret: docker_password
+      BY: dapper
+      REPO:
+        from_secret: image_repo
+      WITHOUT_MANIFEST: true
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor modbus deploy only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      ref:
+        include:
+          - "refs/heads/master"
+          - "refs/heads/release/v*"
+          - "refs/tags/v*"
+      event:
+        - push
+        - tag
+volumes:
+  - name: docker
+    host:
+      path: /var/run/docker.sock
+trigger:
+  event:
+    exclude:
+      - promote
+node:
+  instance: agent-amd64
+---
+kind: pipeline
+name: adaptor-modbus-linux-arm64
+platform:
+  os: linux
+  arch: arm64
+steps:
+  - name: test
+    image: rancher/dapper:v0.4.2
+    privileged: true
+    environment:
+      BY: dapper
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor modbus test only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+  - name: build
+    image: rancher/dapper:v0.4.2
+    privileged: true
+    environment:
+      BY: dapper
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor modbus build only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+        - tag
+  - name: package
+    image: rancher/dapper:v0.4.2
+    environment:
+      BY: dapper
+      REPO:
+        from_secret: image_repo
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor modbus package only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+        - tag
+  - name: deploy-without-manifest
+    image: rancher/dapper:v0.4.2
+    environment:
+      DOCKER_USERNAME:
+        from_secret: docker_username
+      DOCKER_PASSWORD:
+        from_secret: docker_password
+      BY: dapper
+      REPO:
+        from_secret: image_repo
+      WITHOUT_MANIFEST: true
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor modbus deploy only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      ref:
+        include:
+          - "refs/heads/master"
+          - "refs/heads/release/v*"
+          - "refs/tags/v*"
+      event:
+        - push
+        - tag
+volumes:
+  - name: docker
+    host:
+      path: /var/run/docker.sock
+trigger:
+  event:
+    exclude:
+      - promote
+node:
+  instance: agent-arm64
+---
+kind: pipeline
+name: adaptor-modbus-linux-arm
+platform:
+  os: linux
+  arch: arm
+steps:
+  - name: test
+    image: rancher/dapper:v0.4.2
+    privileged: true
+    environment:
+      BY: dapper
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor modbus test only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+  - name: build
+    image: rancher/dapper:v0.4.2
+    privileged: true
+    environment:
+      BY: dapper
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor modbus build only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+        - tag
+  - name: package
+    image: rancher/dapper:v0.4.2
+    environment:
+      BY: dapper
+      REPO:
+        from_secret: image_repo
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor modbus package only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+        - tag
+  - name: deploy-without-manifest
+    image: rancher/dapper:v0.4.2
+    environment:
+      DOCKER_USERNAME:
+        from_secret: docker_username
+      DOCKER_PASSWORD:
+        from_secret: docker_password
+      BY: dapper
+      REPO:
+        from_secret: image_repo
+      WITHOUT_MANIFEST: true
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor modbus deploy only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      ref:
+        include:
+          - "refs/heads/master"
+          - "refs/heads/release/v*"
+          - "refs/tags/v*"
+      event:
+        - push
+        - tag
+volumes:
+  - name: docker
+    host:
+      path: /var/run/docker.sock
+trigger:
+  event:
+    exclude:
+      - promote
+node:
+  instance: agent-arm
+
+
+
+---
+kind: pipeline
+name: adaptor-opcua-linux-amd64
+platform:
+  os: linux
+  arch: amd64
+steps:
+  - name: verify
+    image: rancher/dapper:v0.4.2
+    privileged: true
+    environment:
+      BY: dapper
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor opcua verify
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+  - name: build
+    image: rancher/dapper:v0.4.2
+    privileged: true
+    environment:
+      BY: dapper
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor opcua build only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+        - tag
+  - name: package
+    image: rancher/dapper:v0.4.2
+    environment:
+      BY: dapper
+      REPO:
+        from_secret: image_repo
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor opcua package only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+        - tag
+  - name: deploy-without-manifest
+    image: rancher/dapper:v0.4.2
+    environment:
+      DOCKER_USERNAME:
+        from_secret: docker_username
+      DOCKER_PASSWORD:
+        from_secret: docker_password
+      BY: dapper
+      REPO:
+        from_secret: image_repo
+      WITHOUT_MANIFEST: true
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor opcua deploy only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      ref:
+        include:
+          - "refs/heads/master"
+          - "refs/heads/release/v*"
+          - "refs/tags/v*"
+      event:
+        - push
+        - tag
+volumes:
+  - name: docker
+    host:
+      path: /var/run/docker.sock
+trigger:
+  event:
+    exclude:
+      - promote
+node:
+  instance: agent-amd64
+---
+kind: pipeline
+name: adaptor-opcua-linux-arm64
+platform:
+  os: linux
+  arch: arm64
+steps:
+  - name: test
+    image: rancher/dapper:v0.4.2
+    privileged: true
+    environment:
+      BY: dapper
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor opcua test only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+  - name: build
+    image: rancher/dapper:v0.4.2
+    privileged: true
+    environment:
+      BY: dapper
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor opcua build only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+        - tag
+  - name: package
+    image: rancher/dapper:v0.4.2
+    environment:
+      BY: dapper
+      REPO:
+        from_secret: image_repo
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor opcua package only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+        - tag
+  - name: deploy-without-manifest
+    image: rancher/dapper:v0.4.2
+    environment:
+      DOCKER_USERNAME:
+        from_secret: docker_username
+      DOCKER_PASSWORD:
+        from_secret: docker_password
+      BY: dapper
+      REPO:
+        from_secret: image_repo
+      WITHOUT_MANIFEST: true
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor opcua deploy only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      ref:
+        include:
+          - "refs/heads/master"
+          - "refs/heads/release/v*"
+          - "refs/tags/v*"
+      event:
+        - push
+        - tag
+volumes:
+  - name: docker
+    host:
+      path: /var/run/docker.sock
+trigger:
+  event:
+    exclude:
+      - promote
+node:
+  instance: agent-arm64
+---
+kind: pipeline
+name: adaptor-opcua-linux-arm
+platform:
+  os: linux
+  arch: arm
+steps:
+  - name: test
+    image: rancher/dapper:v0.4.2
+    privileged: true
+    environment:
+      BY: dapper
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor opcua test only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+  - name: build
+    image: rancher/dapper:v0.4.2
+    privileged: true
+    environment:
+      BY: dapper
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor opcua build only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+        - tag
+  - name: package
+    image: rancher/dapper:v0.4.2
+    environment:
+      BY: dapper
+      REPO:
+        from_secret: image_repo
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor opcua package only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - pull_request
+        - tag
+  - name: deploy-without-manifest
+    image: rancher/dapper:v0.4.2
+    environment:
+      DOCKER_USERNAME:
+        from_secret: docker_username
+      DOCKER_PASSWORD:
+        from_secret: docker_password
+      BY: dapper
+      REPO:
+        from_secret: image_repo
+      WITHOUT_MANIFEST: true
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor opcua deploy only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      ref:
+        include:
+          - "refs/heads/master"
+          - "refs/heads/release/v*"
+          - "refs/tags/v*"
+      event:
+        - push
+        - tag
+volumes:
+  - name: docker
+    host:
+      path: /var/run/docker.sock
+trigger:
+  event:
+    exclude:
+      - promote
+node:
+  instance: agent-arm
+
+
+
+---
+kind: pipeline
+name: manifest
+platform:
+  os: linux
+  arch: amd64
+steps:
+  - name: octopus-image
+    image: rancher/dapper:v0.4.2
+    environment:
+      DOCKER_USERNAME:
+        from_secret: docker_username
+      DOCKER_PASSWORD:
+        from_secret: docker_password
+      BY: dapper
+      REPO:
+        from_secret: image_repo
+      CROSS: true
+      ONLY_MANIFEST: true
+      IGNORE_MISSING: true
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make octopus deploy only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - tag
+  - name: adaptor-dummy-image
+    image: rancher/dapper:v0.4.2
+    environment:
+      DOCKER_USERNAME:
+        from_secret: docker_username
+      DOCKER_PASSWORD:
+        from_secret: docker_password
+      BY: dapper
+      REPO:
+        from_secret: image_repo
+      CROSS: true
+      ONLY_MANIFEST: true
+      IGNORE_MISSING: true
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor dummy deploy only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - tag
+  - name: adaptor-ble-image
+    image: rancher/dapper:v0.4.2
+    environment:
+      DOCKER_USERNAME:
+        from_secret: docker_username
+      DOCKER_PASSWORD:
+        from_secret: docker_password
+      BY: dapper
+      REPO:
+        from_secret: image_repo
+      CROSS: true
+      ONLY_MANIFEST: true
+      IGNORE_MISSING: true
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor ble deploy only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - tag
+  - name: adaptor-modbus-image
+    image: rancher/dapper:v0.4.2
+    environment:
+      DOCKER_USERNAME:
+        from_secret: docker_username
+      DOCKER_PASSWORD:
+        from_secret: docker_password
+      BY: dapper
+      REPO:
+        from_secret: image_repo
+      CROSS: true
+      ONLY_MANIFEST: true
+      IGNORE_MISSING: true
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor modbus deploy only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - tag
+  - name: adaptor-opcua-image
+    image: rancher/dapper:v0.4.2
+    environment:
+      DOCKER_USERNAME:
+        from_secret: docker_username
+      DOCKER_PASSWORD:
+        from_secret: docker_password
+      BY: dapper
+      REPO:
+        from_secret: image_repo
+      CROSS: true
+      ONLY_MANIFEST: true
+      IGNORE_MISSING: true
+    commands:
+      - apk add -U --no-cache make curl bash
+      - make adaptor opcua deploy only
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    when:
+      event:
+        - push
+        - tag
+  - name: deployment-yamls
+    image: plugins/github-release
+    settings:
+      api_key:
+        from_secret: github_token
+      file_exists: fail
+      files:
+        - "dist/octopus_*.yaml"
+        - "adaptors/*/dist/octopus_*.yaml"
+      prerelease: true
+    when:
+      event:
+        - tag
+volumes:
+  - name: docker
+    host:
+      path: /var/run/docker.sock
+trigger:
+  ref:
+    include:
+      - "refs/heads/master"
+      - "refs/heads/release/v*"
+      - "refs/tags/v*"
+  event:
+    exclude:
+      - promote
+node:
+  instance: agent-amd64
+depends_on:
+  - octopus-linux-amd64
+  - octopus-linux-arm64
+  - octopus-linux-arm
+  - adaptor-dummy-linux-amd64
+  - adaptor-dummy-linux-arm64
+  - adaptor-dummy-linux-arm
+  - adaptor-ble-linux-amd64
+  - adaptor-ble-linux-arm64
+  - adaptor-ble-linux-arm
+  - adaptor-modbus-linux-amd64
+  - adaptor-modbus-linux-arm64
+  - adaptor-modbus-linux-arm
+  - adaptor-opcua-linux-amd64
+  - adaptor-opcua-linux-arm64
+  - adaptor-opcua-linux-arm

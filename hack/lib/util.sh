@@ -11,16 +11,22 @@ function octopus::util::find_subdirs() {
 
 function octopus::util::join_array() {
   local IFS="$1"
-  shift
+  shift 1
   echo "$*"
 }
 
 function octopus::util::get_os() {
   local os
-  os=$(echo -n "$(uname -s)" | tr '[:upper:]' '[:lower:]')
+  if go env GOOS >/dev/null 2>&1; then
+    os=$(go env GOOS)
+  else
+    os=$(echo -n "$(uname -s)" | tr '[:upper:]' '[:lower:]')
+  fi
 
   case ${os} in
+  cygwin_nt*) os="windows" ;;
   mingw*) os="windows" ;;
+  msys_nt*) os="windows" ;;
   esac
 
   echo -n "${os}"
@@ -28,18 +34,30 @@ function octopus::util::get_os() {
 
 function octopus::util::get_arch() {
   local arch
-  arch=$(uname -m)
+  if go env GOARCH >/dev/null 2>&1; then
+    arch=$(go env GOARCH)
+    if [[ "${arch}" == "arm" ]]; then
+      arch="${arch}v$(go env GOARM)"
+    fi
+  else
+    arch=$(uname -m)
+  fi
 
   case ${arch} in
   armv5*) arch="armv5" ;;
   armv6*) arch="armv6" ;;
-  armv7*) arch="arm" ;;
+  armv7*)
+    if [[ "${1:-}" == "--full-name" ]]; then
+      arch="armv7"
+    else
+      arch="arm"
+    fi
+    ;;
   aarch64) arch="arm64" ;;
   x86) arch="386" ;;
   i686) arch="386" ;;
   i386) arch="386" ;;
   x86_64) arch="amd64" ;;
-  amd64) arch="amd64" ;;
   esac
 
   echo -n "${arch}"
