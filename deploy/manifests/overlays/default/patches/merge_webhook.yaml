@@ -1,0 +1,29 @@
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: mutating-webhook-configuration
+  annotations:
+    # inject the CA by cert-manager
+    cert-manager.io/inject-ca-from: $(CERTIFICATE_NAMESPACE)/$(CERTIFICATE_NAME)
+webhooks:
+  - name: mdevicelinks.edge.cattle.io
+    sideEffects: None
+    admissionReviewVersions:
+      - "v1beta1"
+      - "v1"
+
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: validating-webhook-configuration
+  annotations:
+    # inject the CA by cert-manager
+    cert-manager.io/inject-ca-from: $(CERTIFICATE_NAMESPACE)/$(CERTIFICATE_NAME)
+webhooks:
+  - name: vdevicelinks.edge.cattle.io
+    sideEffects: None
+    admissionReviewVersions:
+      - "v1beta1"
+      - "v1"

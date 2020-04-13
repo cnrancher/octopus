@@ -1,0 +1,2 @@
+resources:
+  - base/edge.cattle.io_devicelinks.yaml

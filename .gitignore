@@ -1,0 +1,40 @@
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+.dapper
+
+# Directories
+## Output of build progress
+dist
+bin
+## Cache of go build/golangci-lint
+.cache
+## Cache of docker build
+.docker
+## Configuration of k3s
+.config
+## Configuration of kubectl
+.kube
+## Editor and IDE paraphernalia
+.idea
+
+# Files
+## Dapper temporary files
+**/Dockerfile.dapper*
+!**/Dockerfile.dapper
+## Test binary, build with `go test -c`
+*.test
+## Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+## Editor and IDE paraphernalia
+*.swp
+*.swo
+*~
+.vim*
+.bash*
+## Mac storage information
+.DS_Store
