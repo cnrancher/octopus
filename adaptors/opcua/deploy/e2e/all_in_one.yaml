@@ -1,0 +1,258 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.2.5
+    devices.edge.cattle.io/enable: "true"
+    devices.edge.cattle.io/status-property: '{"name":"string","dataType":"string","value":"string","updatedAt":"date"}'
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/name: octopus-adaptor-opcua
+    app.kubernetes.io/version: master
+  name: opcuadevices.devices.edge.cattle.io
+spec:
+  group: devices.edge.cattle.io
+  names:
+    kind: OPCUADevice
+    listKind: OPCUADeviceList
+    plural: opcuadevices
+    singular: opcuadevice
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .metadata.creationTimestamp
+      name: AGE
+      type: date
+    - jsonPath: .spec.protocol.url
+      name: ENDPOINT
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: OPCUADevice is the Schema for the OPCUA device API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: OPCUADeviceSpec defines the desired state of OPCUADevice
+            properties:
+              properties:
+                items:
+                  description: DeviceProperty describes an individual device property
+                    / attribute like temperature / humidity etc.
+                  properties:
+                    dataType:
+                      description: PropertyDataType represents the type and data validation
+                        of the property.
+                      enum:
+                      - float
+                      - double
+                      - int64
+                      - int32
+                      - int16
+                      - uint64
+                      - uint32
+                      - uint16
+                      - string
+                      - boolean
+                      type: string
+                    description:
+                      description: The device property description.
+                      type: string
+                    name:
+                      description: The device property name.
+                      type: string
+                    readOnly:
+                      type: boolean
+                    value:
+                      type: string
+                    visitor:
+                      properties:
+                        browseName:
+                          description: The name of opc-ua node
+                          type: string
+                        nodeID:
+                          description: 'Required: The ID of opc-ua node, e.g. "ns=1,i=1005"'
+                          type: string
+                      type: object
+                  required:
+                  - dataType
+                  - name
+                  - visitor
+                  type: object
+                type: array
+              protocol:
+                properties:
+                  certificateFile:
+                    description: Certificate file for accessing opc-ua server.
+                    type: string
+                  password:
+                    description: Password for accessing opc-ua server.
+                    type: string
+                  privateKeyFile:
+                    description: PrivateKey file for accessing opc-ua server.
+                    type: string
+                  securityMode:
+                    description: Defaults to "None". Valid values are "None", "Sign",
+                      and "SignAndEncrypt".
+                    enum:
+                    - None
+                    - Sign
+                    - SignAndEncrypt
+                    type: string
+                  securityPolicy:
+                    description: Defaults to "None". Valid values are "None", "Basic128Rsa15",
+                      "Basic256", "Basic256Sha256", "Aes128Sha256RsaOaep", "Aes256Sha256RsaPss".
+                    enum:
+                    - None
+                    - Basic128Rsa15
+                    - Basic256
+                    - Basic256Sha256
+                    - Aes128Sha256RsaOaep
+                    - Aes256Sha256RsaPss
+                    type: string
+                  url:
+                    description: 'Required: The URL for opc-ua server endpoint.'
+                    type: string
+                  userName:
+                    description: Username for accessing opc-ua server.
+                    type: string
+                required:
+                - url
+                type: object
+            type: object
+          status:
+            description: OPCUADeviceStatus defines the observed state of OPCUADevice
+            properties:
+              properties:
+                items:
+                  properties:
+                    dataType:
+                      description: The property data type.
+                      enum:
+                      - float
+                      - double
+                      - int64
+                      - int32
+                      - int16
+                      - uint64
+                      - uint32
+                      - uint16
+                      - string
+                      - boolean
+                      type: string
+                    name:
+                      type: string
+                    updatedAt:
+                      format: date-time
+                      type: string
+                    value:
+                      type: string
+                  type: object
+                type: array
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/name: octopus-adaptor-opcua
+    app.kubernetes.io/version: master
+  name: octopus-adaptor-opcua-manager-role
+rules:
+- apiGroups:
+  - devices.edge.cattle.io
+  resources:
+  - opcuadevices
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - devices.edge.cattle.io
+  resources:
+  - opcuadevices/status
+  verbs:
+  - get
+  - patch
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/name: octopus-adaptor-opcua
+    app.kubernetes.io/version: master
+  name: octopus-adaptor-opcua-manager-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: octopus-adaptor-opcua-manager-role
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: octopus-system
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app.kubernetes.io/component: adaptor
+    app.kubernetes.io/name: octopus-adaptor-opcua
+    app.kubernetes.io/version: master
+  name: octopus-adaptor-opcua-adaptor
+  namespace: octopus-system
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: adaptor
+      app.kubernetes.io/name: octopus-adaptor-opcua
+      app.kubernetes.io/version: master
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: adaptor
+        app.kubernetes.io/name: octopus-adaptor-opcua
+        app.kubernetes.io/version: master
+    spec:
+      containers:
+      - image: rancher/octopus-adaptor-opcua:master
+        name: octopus
+        volumeMounts:
+        - mountPath: /var/lib/octopus/adaptors/
+          name: sockets
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+      volumes:
+      - hostPath:
+          path: /var/lib/octopus/adaptors/
+          type: DirectoryOrCreate
+        name: sockets
