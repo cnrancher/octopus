@@ -1,0 +1,302 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.2.5
+    devices.edge.cattle.io/enable: "true"
+    devices.edge.cattle.io/status-property: '{"name":"string","dataType":"string","value":"string","updatedAt":"date"}'
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/name: octopus-adaptor-modbus
+    app.kubernetes.io/version: master
+  name: modbusdevices.devices.edge.cattle.io
+spec:
+  group: devices.edge.cattle.io
+  names:
+    kind: ModbusDevice
+    listKind: ModbusDeviceList
+    plural: modbusdevices
+    singular: modbusdevice
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .metadata.creationTimestamp
+      name: AGE
+      type: date
+    - jsonPath: .spec.protocol.tcp.ip
+      name: IP
+      type: string
+    - jsonPath: .spec.protocol.tcp.port
+      name: PORT
+      type: integer
+    - jsonPath: .spec.protocol.rtu.serialPort
+      name: SERIAL PORT
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: ModbusDevice is the Schema for the modbus device API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ModbusDeviceSpec defines the desired state of ModbusDevice
+            properties:
+              properties:
+                items:
+                  description: DeviceProperty describes an individual device property
+                    / attribute like temperature / humidity etc.
+                  properties:
+                    dataType:
+                      description: PropertyDataType represents the type and data validation
+                        of the property.
+                      enum:
+                      - float
+                      - int
+                      - string
+                      - boolean
+                      type: string
+                    description:
+                      description: The device property description.
+                      type: string
+                    name:
+                      description: The device property name.
+                      type: string
+                    readOnly:
+                      type: boolean
+                    value:
+                      type: string
+                    visitor:
+                      properties:
+                        offset:
+                          description: Offset indicates the starting register number
+                            to read/write data.
+                          type: integer
+                        orderOfOperations:
+                          items:
+                            properties:
+                              operationType:
+                                enum:
+                                - Add
+                                - Subtract
+                                - Multiply
+                                - Divide
+                                type: string
+                              operationValue:
+                                type: string
+                            type: object
+                          type: array
+                        quantity:
+                          description: The quantity of registers
+                          type: integer
+                        register:
+                          description: Type of register
+                          enum:
+                          - CoilRegister
+                          - DiscreteInputRegister
+                          - InputRegister
+                          - HoldingRegister
+                          type: string
+                      required:
+                      - offset
+                      - quantity
+                      - register
+                      type: object
+                  required:
+                  - dataType
+                  - name
+                  - visitor
+                  type: object
+                type: array
+              protocol:
+                description: Only one of its members may be specified.
+                properties:
+                  rtu:
+                    properties:
+                      baudRate:
+                        description: Baud rate (default 19200)
+                        type: integer
+                      dataBits:
+                        description: 'Data bits: 5, 6, 7 or 8 (default 8)'
+                        enum:
+                        - 5
+                        - 6
+                        - 7
+                        - 8
+                        type: integer
+                      parity:
+                        description: The parity. N - None, E - Even, O - Odd, default
+                          E.
+                        enum:
+                        - O
+                        - E
+                        - "N"
+                        type: string
+                      serialPort:
+                        description: Device path (/dev/ttyS0)
+                        type: string
+                      slaveID:
+                        type: integer
+                      stopBits:
+                        description: 'Stop bits: 1 or 2 (default 1)'
+                        enum:
+                        - 1
+                        - 2
+                        type: integer
+                    required:
+                    - serialPort
+                    - slaveID
+                    type: object
+                  tcp:
+                    properties:
+                      ip:
+                        type: string
+                      port:
+                        type: integer
+                      slaveID:
+                        type: integer
+                    required:
+                    - ip
+                    - port
+                    - slaveID
+                    type: object
+                type: object
+            required:
+            - protocol
+            type: object
+          status:
+            description: ModbusDeviceStatus defines the observed state of ModbusDevice
+            properties:
+              properties:
+                items:
+                  properties:
+                    dataType:
+                      description: The property data type.
+                      enum:
+                      - float
+                      - int
+                      - string
+                      - boolean
+                      type: string
+                    name:
+                      type: string
+                    updatedAt:
+                      format: date-time
+                      type: string
+                    value:
+                      type: string
+                  type: object
+                type: array
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/name: octopus-adaptor-modbus
+    app.kubernetes.io/version: master
+  name: octopus-adaptor-modbus-manager-role
+rules:
+- apiGroups:
+  - devices.edge.cattle.io
+  resources:
+  - modbusdevices
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - devices.edge.cattle.io
+  resources:
+  - modbusdevices/status
+  verbs:
+  - get
+  - patch
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/name: octopus-adaptor-modbus
+    app.kubernetes.io/version: master
+  name: octopus-adaptor-modbus-manager-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: octopus-adaptor-modbus-manager-role
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: octopus-system
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app.kubernetes.io/component: adaptor
+    app.kubernetes.io/name: octopus-adaptor-modbus
+    app.kubernetes.io/version: master
+  name: octopus-adaptor-modbus-adaptor
+  namespace: octopus-system
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: adaptor
+      app.kubernetes.io/name: octopus-adaptor-modbus
+      app.kubernetes.io/version: master
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: adaptor
+        app.kubernetes.io/name: octopus-adaptor-modbus
+        app.kubernetes.io/version: master
+    spec:
+      containers:
+      - image: rancher/octopus-adaptor-modbus:master
+        name: octopus
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - mountPath: /var/lib/octopus/adaptors/
+          name: sockets
+        - mountPath: /dev
+          name: dev
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+      volumes:
+      - hostPath:
+          path: /var/lib/octopus/adaptors/
+          type: DirectoryOrCreate
+        name: sockets
+      - hostPath:
+          path: /dev
+        name: dev

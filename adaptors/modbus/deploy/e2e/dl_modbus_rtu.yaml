@@ -1,0 +1,39 @@
+apiVersion: edge.cattle.io/v1alpha1
+kind: DeviceLink
+metadata:
+  name: modbus-rtu
+spec:
+  adaptor:
+    node: edge-worker
+    name: adaptors.edge.cattle.io/modbus
+    parameters:
+      syncInterval: 5
+      timout: 10
+  model:
+    apiVersion: "devices.edge.cattle.io/v1alpha1"
+    kind: "ModbusDevice"
+  template:
+    metadata:
+      labels:
+        device: modbus-rtu
+    spec:
+      protocol:
+        rtu:
+          serialPort: /dev/tty.usbserial-1410
+          slaveID: 1
+          parity: "N"
+          stopBits: 1
+          dataBits: 8
+          baudRate: 9600
+      properties:
+        - name: temperature
+          description: data collection of temperature sensor
+          readOnly: true
+          visitor:
+            register: HoldingRegister
+            offset: 0
+            quantity: 1
+            orderOfOperations:
+              - operationType: Divide
+                operationValue: "10"
+          dataType: float
