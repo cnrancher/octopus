@@ -3,11 +3,14 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.2.5
+    devices.edge.cattle.io/description: ""
+    devices.edge.cattle.io/device-property: '{"name":"string","dataType":"string","value":"string","updatedAt":"date"}'
     devices.edge.cattle.io/enable: "true"
+    devices.edge.cattle.io/icon: ""
   creationTimestamp: null
   labels:
     app.kubernetes.io/name: octopus-adaptor-template
-    app.kubernetes.io/version: 0.0.1
+    app.kubernetes.io/version: master
   name: templatedevices.devices.edge.cattle.io
 spec:
   group: devices.edge.cattle.io
@@ -60,7 +63,7 @@ metadata:
   labels:
     app.kubernetes.io/component: rbac
     app.kubernetes.io/name: octopus-adaptor-template
-    app.kubernetes.io/version: 0.0.1
+    app.kubernetes.io/version: master
   name: octopus-adaptor-template-manager-role
 rules:
 - apiGroups:
@@ -90,7 +93,7 @@ metadata:
   labels:
     app.kubernetes.io/component: rbac
     app.kubernetes.io/name: octopus-adaptor-template
-    app.kubernetes.io/version: 0.0.1
+    app.kubernetes.io/version: master
   name: octopus-adaptor-template-manager-rolebinding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -107,7 +110,7 @@ metadata:
   labels:
     app.kubernetes.io/component: adaptor
     app.kubernetes.io/name: octopus-adaptor-template
-    app.kubernetes.io/version: 0.0.1
+    app.kubernetes.io/version: master
   name: octopus-adaptor-template-adaptor
   namespace: octopus-system
 spec:
@@ -115,22 +118,20 @@ spec:
     matchLabels:
       app.kubernetes.io/component: adaptor
       app.kubernetes.io/name: octopus-adaptor-template
-      app.kubernetes.io/version: 0.0.1
+      app.kubernetes.io/version: master
   template:
     metadata:
       labels:
         app.kubernetes.io/component: adaptor
         app.kubernetes.io/name: octopus-adaptor-template
-        app.kubernetes.io/version: 0.0.1
+        app.kubernetes.io/version: master
     spec:
       containers:
-      - image: rancher/octopus-adaptor-template:latest
+      - image: rancher/octopus-adaptor-template:master
         name: octopus
         volumeMounts:
         - mountPath: /var/lib/octopus/adaptors/
           name: sockets
-      nodeSelector:
-        beta.kubernetes.io/os: linux
       volumes:
       - hostPath:
           path: /var/lib/octopus/adaptors/

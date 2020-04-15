@@ -16,11 +16,12 @@ spec:
       labels:
         app.kubernetes.io/component: "adaptor"
     spec:
-      nodeSelector:
-        beta.kubernetes.io/os: linux
+      hostNetwork: true
       containers:
         - name: octopus
           image: rancher/octopus-adaptor-ble:latest
+          securityContext:
+            privileged: true
           volumeMounts:
             - mountPath: /var/lib/octopus/adaptors/
               name: sockets
