@@ -16,8 +16,6 @@ spec:
       labels:
         app.kubernetes.io/component: "adaptor"
     spec:
-      nodeSelector:
-        beta.kubernetes.io/os: linux
       containers:
         - name: octopus
           image: rancher/octopus-adaptor-template:latest

@@ -1,5 +1,8 @@
 commonAnnotations:
   devices.edge.cattle.io/enable: "true"
+  devices.edge.cattle.io/device-property: '{"name":"string","dataType":"string","value":"string","updatedAt":"date"}'
+  devices.edge.cattle.io/icon: "https://octopus-assets.oss-cn-beijing.aliyuncs.com/adaptor-icons/ble-logo.svg"
+  devices.edge.cattle.io/description: "BLE stands for Bluetooth Low Energy (Bluetooth LE, , and marketed as Bluetooth Smart). BLE is a form of wireless communication designed for short-range communications. The BLE adaptor defines the device configuration and the attributes of connected BLE device."
 
 resources:
   - base/devices.edge.cattle.io_bluetoothdevices.yaml

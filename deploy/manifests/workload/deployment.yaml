@@ -17,8 +17,16 @@ spec:
       labels:
         app.kubernetes.io/component: "brain"
     spec:
-      nodeSelector:
-        beta.kubernetes.io/os: linux
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1
+            preference:
+              matchExpressions:
+              - key: beta.kubernetes.io/os
+                operator: In
+                values:
+                - linux
       containers:
         - name: octopus
           args:

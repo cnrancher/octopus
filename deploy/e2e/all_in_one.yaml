@@ -445,6 +445,16 @@ spec:
         app.kubernetes.io/name: octopus
         app.kubernetes.io/version: master
     spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: beta.kubernetes.io/os
+                operator: In
+                values:
+                - linux
+            weight: 1
       containers:
       - args:
         - brain
@@ -460,8 +470,6 @@ spec:
         - mountPath: /tmp/k8s-webhook-server/serving-certs
           name: cert
           readOnly: true
-      nodeSelector:
-        beta.kubernetes.io/os: linux
       terminationGracePeriodSeconds: 10
       volumes:
       - name: cert
@@ -504,8 +512,6 @@ spec:
         volumeMounts:
         - mountPath: /var/lib/octopus/adaptors/
           name: sockets
-      nodeSelector:
-        beta.kubernetes.io/os: linux
       volumes:
       - hostPath:
           path: /var/lib/octopus/adaptors/

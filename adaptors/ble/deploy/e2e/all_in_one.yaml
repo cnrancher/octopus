@@ -3,7 +3,13 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.2.5
+    devices.edge.cattle.io/description: BLE stands for Bluetooth Low Energy (Bluetooth
+      LE, , and marketed as Bluetooth Smart). BLE is a form of wireless communication
+      designed for short-range communications. The BLE adaptor defines the device
+      configuration and the attributes of connected BLE device.
+    devices.edge.cattle.io/device-property: '{"name":"string","dataType":"string","value":"string","updatedAt":"date"}'
     devices.edge.cattle.io/enable: "true"
+    devices.edge.cattle.io/icon: https://octopus-assets.oss-cn-beijing.aliyuncs.com/adaptor-icons/ble-logo.svg
   creationTimestamp: null
   labels:
     app.kubernetes.io/name: octopus-adaptor-ble
@@ -207,11 +213,12 @@ spec:
       containers:
       - image: rancher/octopus-adaptor-ble:master
         name: octopus
+        securityContext:
+          privileged: true
         volumeMounts:
         - mountPath: /var/lib/octopus/adaptors/
           name: sockets
-      nodeSelector:
-        beta.kubernetes.io/os: linux
+      hostNetwork: true
       volumes:
       - hostPath:
           path: /var/lib/octopus/adaptors/

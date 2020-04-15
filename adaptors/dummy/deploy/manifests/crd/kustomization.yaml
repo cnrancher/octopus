@@ -1,5 +1,8 @@
 commonAnnotations:
   devices.edge.cattle.io/enable: "true"
+  devices.edge.cattle.io/device-property: "" # specify device property to display in the UI
+  devices.edge.cattle.io/icon: "" # specify display icon for the UI
+  devices.edge.cattle.io/description: "dummy device description"
 
 resources:
   - base/devices.edge.cattle.io_dummydevices.yaml
