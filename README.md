@@ -83,10 +83,10 @@ In this walkthrough, we try to use Octopus to manage a dummy device. We will per
 
 ### Deploy Octopus
 
-There are [two ways](docs/octopus/deployment.md) to deploy Octopus, for convenience, we use the deployment manifest file to bring up the Octopus. The installer YAML file is under the [`deploy/e2e`](./deploy/e2e) directory, we need to clone the Octopus at first, and then apply the all-in-one installer:
+There are [two ways](docs/octopus/deployment.md) to deploy Octopus, for convenience, we use the deployment manifest file to bring up the Octopus. The installer YAML file is under the [`deploy/e2e`](./deploy/e2e) directory:
 
 ```shell script
-$ kubectl apply -f deploy/e2e/all_in_one_without_webhook.yaml
+$ kubectl apply -f https://raw.githubusercontent.com/cnrancher/octopus/master/deploy/e2e/all_in_one_without_webhook.yaml
 namespace/octopus-system created
 customresourcedefinition.apiextensions.k8s.io/devicelinks.edge.cattle.io created
 role.rbac.authorization.k8s.io/octopus-leader-election-role created
@@ -194,7 +194,7 @@ status:
 The dummy adaptor installer YAML file is under the [`adaptors/dummy/deploy/e2e`](./adaptors/dummy/deploy/e2e) directory, the `all_in_one.yaml` includes the device model and the device adaptor, we can apply them into the cluster directly:
 
 ```shell script
-$ kubectl apply -f adaptors/dummy/deploy/e2e/all_in_one.yaml
+$ kubectl apply -f https://raw.githubusercontent.com/cnrancher/octopus/master/adaptors/dummy/deploy/e2e/all_in_one.yaml
 customresourcedefinition.apiextensions.k8s.io/dummydevices.devices.edge.cattle.io created
 clusterrole.rbac.authorization.k8s.io/octopus-adaptor-dummy-manager-role created
 clusterrolebinding.rbac.authorization.k8s.io/octopus-adaptor-dummy-manager-rolebinding created
@@ -307,6 +307,7 @@ example                  1m12s
 - Octopus
     - [How to deploy](./docs/octopus/deployment.md)
     - [How to develop](./docs/octopus/develop.md)
+    - [How to monitor](./docs/octopus/monitoring.md)
     - [The state transition of DeviceLink](./docs/octopus/state_of_devicelink.md)
 - Adaptors
     - [How it works](./docs/adaptors/design_of_adaptor.md)
