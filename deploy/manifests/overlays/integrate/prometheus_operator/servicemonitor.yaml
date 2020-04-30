@@ -1,0 +1,58 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    app.kubernetes.io/component: "brain"
+  name: brain-metrics-monitor
+  namespace: system
+spec:
+  endpoints:
+    - path: /metrics
+      port: metrics
+      honorLabels: false
+      relabelings:
+        - sourceLabels:
+            - __meta_kubernetes_pod_host_ip
+          targetLabel: host_ip
+          action: replace
+          regex: (.+)
+          replacement: $1
+        - sourceLabels:
+            - __meta_kubernetes_pod_node_name
+          targetLabel: node
+          action: replace
+          regex: (.+)
+          replacement: $1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: "brain"
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    app.kubernetes.io/component: "limb"
+  name: limb-metrics-monitor
+  namespace: system
+spec:
+  endpoints:
+    - path: /metrics
+      port: metrics
+      honorLabels: false
+      relabelings:
+        - sourceLabels:
+            - __meta_kubernetes_pod_host_ip
+          targetLabel: host_ip
+          action: replace
+          regex: (.+)
+          replacement: $1
+        - sourceLabels:
+            - __meta_kubernetes_pod_node_name
+          targetLabel: node
+          action: replace
+          regex: (.+)
+          replacement: $1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: "limb"

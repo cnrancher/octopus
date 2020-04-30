@@ -250,11 +250,12 @@ func (a fakeDummyAdaptor) Stop() error {
 	return nil
 }
 
-func (a fakeDummyAdaptor) CreateConnection(name types.NamespacedName) error {
-	return nil
+func (a fakeDummyAdaptor) CreateConnection(name types.NamespacedName) (bool, error) {
+	return false, nil
 }
 
-func (a fakeDummyAdaptor) DeleteConnection(name types.NamespacedName) {
+func (a fakeDummyAdaptor) DeleteConnection(name types.NamespacedName) bool {
+	return false
 }
 
 func (a fakeDummyAdaptor) GetConnection(name types.NamespacedName) connection.Connection {

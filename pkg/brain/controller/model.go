@@ -129,7 +129,7 @@ func (r *ModelReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
-		Named("CRD").
+		Named("brain_crd").
 		For(&apiextensionsv1.CustomResourceDefinition{}).
 		WithEventFilter(predicate.ModelChangedFuncs).
 		Complete(r)

@@ -155,7 +155,7 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 
 func (r *DeviceLinkReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		Named("DeviceLink").
+		Named("brain_dl").
 		For(&edgev1alpha1.DeviceLink{}).
 		Complete(r)
 }

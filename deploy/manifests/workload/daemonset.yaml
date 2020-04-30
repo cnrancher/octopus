@@ -1,4 +1,18 @@
-
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: "limb"
+  name: limb
+  namespace: system
+spec:
+  ports:
+    - name: metrics
+      port: 8080
+      targetPort: metrics
+  selector:
+    app.kubernetes.io/component: "limb"
 ---
 apiVersion: apps/v1
 kind: DaemonSet
@@ -16,6 +30,20 @@ spec:
       labels:
         app.kubernetes.io/component: "limb"
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: beta.kubernetes.io/os
+                    operator: In
+                    values:
+                      - linux
+              - matchExpressions:
+                  - key: kubernetes.io/os
+                    operator: In
+                    values:
+                      - linux
       containers:
         - name: octopus
           args:
@@ -26,9 +54,16 @@ spec:
                 fieldRef:
                   fieldPath: spec.nodeName
           image: rancher/octopus:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              name: metrics
           volumeMounts:
             - mountPath: /var/lib/octopus/adaptors/
               name: sockets
+      tolerations:
+        - operator: Exists
+      terminationGracePeriodSeconds: 30
       volumes:
         - name: sockets
           hostPath:

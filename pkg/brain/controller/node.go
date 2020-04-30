@@ -122,7 +122,7 @@ func (r *NodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
-		Named("Node").
+		Named("brain_node").
 		For(&corev1.Node{}).
 		WithEventFilter(predicate.NodeChangedFuncs).
 		Complete(r)

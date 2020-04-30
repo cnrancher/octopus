@@ -27,10 +27,10 @@ type Adaptor interface {
 	Stop() error
 
 	// CreateConnection creates a connection by name
-	CreateConnection(name types.NamespacedName) error
+	CreateConnection(name types.NamespacedName) (overwrite bool, err error)
 
 	// DeleteConnection deletes the connection of name
-	DeleteConnection(name types.NamespacedName)
+	DeleteConnection(name types.NamespacedName) (exist bool)
 
 	// GetConnection returns the connection of name
 	GetConnection(name types.NamespacedName) connection.Connection
@@ -95,18 +95,17 @@ func (a *adaptor) Stop() error {
 	return err
 }
 
-func (a *adaptor) CreateConnection(name types.NamespacedName) error {
+func (a *adaptor) CreateConnection(name types.NamespacedName) (bool, error) {
 	var conn, err = connection.NewConnection(a.name, name, a.clientConn, a.notifier)
 	if err != nil {
-		return err
+		return false, err
 	}
-	a.conns.Put(conn)
-
-	return nil
+	var overwrite = a.conns.Put(conn)
+	return overwrite, nil
 }
 
-func (a *adaptor) DeleteConnection(name types.NamespacedName) {
-	a.conns.Delete(name)
+func (a *adaptor) DeleteConnection(name types.NamespacedName) bool {
+	return a.conns.Delete(name)
 }
 
 func (a *adaptor) GetConnection(name types.NamespacedName) connection.Connection {

@@ -416,14 +416,53 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
+    app.kubernetes.io/component: brain
+    app.kubernetes.io/name: octopus
+    app.kubernetes.io/version: master
+  name: octopus-brain
+  namespace: octopus-system
+spec:
+  ports:
+  - name: metrics
+    port: 8080
+    targetPort: metrics
+  selector:
+    app.kubernetes.io/component: brain
+    app.kubernetes.io/name: octopus
+    app.kubernetes.io/version: master
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: limb
+    app.kubernetes.io/name: octopus
+    app.kubernetes.io/version: master
+  name: octopus-limb
+  namespace: octopus-system
+spec:
+  ports:
+  - name: metrics
+    port: 8080
+    targetPort: metrics
+  selector:
+    app.kubernetes.io/component: limb
+    app.kubernetes.io/name: octopus
+    app.kubernetes.io/version: master
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
     app.kubernetes.io/name: octopus
     app.kubernetes.io/version: master
   name: octopus-webhook-service
   namespace: octopus-system
 spec:
   ports:
-  - port: 443
-    targetPort: 443
+  - name: webhook
+    port: 443
+    targetPort: webhook
   selector:
     app.kubernetes.io/component: brain
     app.kubernetes.io/name: octopus
@@ -454,25 +493,32 @@ spec:
     spec:
       affinity:
         nodeAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - preference:
-              matchExpressions:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
               - key: beta.kubernetes.io/os
                 operator: In
                 values:
                 - linux
-            weight: 1
+            - matchExpressions:
+              - key: kubernetes.io/os
+                operator: In
+                values:
+                - linux
       containers:
       - args:
         - brain
         - --admission-webhook-addr=443
         - --enable-leader-election
         image: rancher/octopus:master
+        imagePullPolicy: Always
         name: octopus
         ports:
         - containerPort: 443
           name: webhook
           protocol: TCP
+        - containerPort: 8080
+          name: metrics
         volumeMounts:
         - mountPath: /tmp/k8s-webhook-server/serving-certs
           name: cert
@@ -506,6 +552,20 @@ spec:
         app.kubernetes.io/name: octopus
         app.kubernetes.io/version: master
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: beta.kubernetes.io/os
+                operator: In
+                values:
+                - linux
+            - matchExpressions:
+              - key: kubernetes.io/os
+                operator: In
+                values:
+                - linux
       containers:
       - args:
         - limb
@@ -515,10 +575,17 @@ spec:
             fieldRef:
               fieldPath: spec.nodeName
         image: rancher/octopus:master
+        imagePullPolicy: Always
         name: octopus
+        ports:
+        - containerPort: 8080
+          name: metrics
         volumeMounts:
         - mountPath: /var/lib/octopus/adaptors/
           name: sockets
+      terminationGracePeriodSeconds: 30
+      tolerations:
+      - operator: Exists
       volumes:
       - hostPath:
           path: /var/lib/octopus/adaptors/

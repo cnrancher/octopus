@@ -19,7 +19,7 @@ var log = ctrl.Log.WithName("suctioncup").WithName("manager")
 
 func NewManager() (Manager, error) {
 	var adaptors = adaptor.NewAdaptors()
-	var queue = event.NewQueue("adaptor.manager")
+	var queue = event.NewQueue()
 	return NewManagerWith(adaptors, queue)
 }
 

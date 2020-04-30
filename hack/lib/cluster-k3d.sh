@@ -68,7 +68,7 @@ function octopus::cluster_k3d::startup() {
   for ((i = 0; i < control_planes; i++)); do
     if [[ ${i} -eq 0 ]]; then
       local node_name="edge-control-plane"
-      k3d create --name "${CLUSTER_NAME}" --image "${k3s_image}" --server-arg "--node-name=${node_name}" --wait 60
+      k3d create --publish 80:80 --name "${CLUSTER_NAME}" --image "${k3s_image}" --server-arg "--node-name=${node_name}" --wait 60
 
       # backup kubeconfig
       local kubeconfig_path="${KUBECONFIG:-}"

@@ -97,7 +97,7 @@ var _ = BeforeSuite(func(done Done) {
 
 	By("starting suctioncup manager")
 	testAdaptors = adaptor.NewAdaptors()
-	testEventQueue = event.NewQueue("adaptor.manager")
+	testEventQueue = event.NewQueue()
 	suctionCupMgr, err := suctioncup.NewManagerWith(testAdaptors, testEventQueue)
 	Expect(err).ToNot(HaveOccurred())
 
