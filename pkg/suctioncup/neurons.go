@@ -12,27 +12,28 @@ func (m *manager) ExistAdaptor(name string) bool {
 	return m.adaptors.Get(name) != nil
 }
 
-func (m *manager) Connect(by *edgev1alpha1.DeviceLink) error {
+func (m *manager) Connect(by *edgev1alpha1.DeviceLink) (bool, error) {
 	var adaptor = m.adaptors.Get(by.Spec.Adaptor.Name)
 	if adaptor == nil {
-		return errors.Errorf("could not find adaptor %s", by.Spec.Adaptor.Name)
+		return false, errors.Errorf("could not find adaptor %s", by.Spec.Adaptor.Name)
 	}
 
 	var name = object.GetNamespacedName(by)
-	if err := adaptor.CreateConnection(name); err != nil {
-		return errors.Wrapf(err, "failed to link %s", name)
+	var overwrite, err = adaptor.CreateConnection(name)
+	if err != nil {
+		return false, errors.Wrapf(err, "failed to link %s", name)
 	}
-	return nil
+	return overwrite, nil
 }
 
-func (m *manager) Disconnect(by *edgev1alpha1.DeviceLink) {
+func (m *manager) Disconnect(by *edgev1alpha1.DeviceLink) bool {
 	var adaptor = m.adaptors.Get(by.Spec.Adaptor.Name)
 	if adaptor == nil {
-		return
+		return false
 	}
 
 	var name = object.GetNamespacedName(by)
-	adaptor.DeleteConnection(name)
+	return adaptor.DeleteConnection(name)
 }
 
 func (m *manager) Send(data *unstructured.Unstructured, by *edgev1alpha1.DeviceLink) error {

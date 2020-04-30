@@ -16,10 +16,10 @@ type Queue interface {
 	GetConnectionNotifier() ConnectionNotifier
 }
 
-func NewQueue(name string) Queue {
+func NewQueue() Queue {
 	var q = workqueue.NewNamedRateLimitingQueue(
 		workqueue.DefaultControllerRateLimiter(),
-		name,
+		"suctioncup_event",
 	)
 	return &queue{
 		queue: q,

@@ -93,6 +93,8 @@ role.rbac.authorization.k8s.io/octopus-leader-election-role created
 clusterrole.rbac.authorization.k8s.io/octopus-manager-role created
 rolebinding.rbac.authorization.k8s.io/octopus-leader-election-rolebinding created
 clusterrolebinding.rbac.authorization.k8s.io/octopus-manager-rolebinding created
+service/octopus-brain created
+service/octopus-limb created
 deployment.apps/octopus-brain created
 daemonset.apps/octopus-limb created
 
@@ -102,20 +104,25 @@ After installed, we can verify the status of Octopus as below:
 
 ```shell script
 $ kubectl get all -n octopus-system
-NAME                                      READY   STATUS    RESTARTS   AGE
-pod/octopus-brain-7bdb66d9d9-mql4j        1/1     Running   0          17s
-pod/octopus-limb-75xr8                    1/1     Running   0          17s
-pod/octopus-limb-fvhm9                    1/1     Running   0          17s
-pod/octopus-limb-wksp2                    1/1     Running   0          17s
+NAME                                 READY   STATUS    RESTARTS   AGE
+pod/octopus-limb-d4nbz               1/1     Running   0          40s
+pod/octopus-limb-5g9q8               1/1     Running   0          40s
+pod/octopus-limb-zsx7c               1/1     Running   0          40s
+pod/octopus-brain-7767fcc4cf-g8str   1/1     Running   0          40s
+pod/octopus-limb-mcv5v               1/1     Running   0          40s
 
-NAME                             DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR                 AGE
-daemonset.apps/octopus-limb      3         3         3       3            3           beta.kubernetes.io/os=linux   17s
+NAME                    TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+service/octopus-brain   ClusterIP   10.43.150.114   <none>        8080/TCP   40s
+service/octopus-limb    ClusterIP   10.43.64.223    <none>        8080/TCP   40s
+
+NAME                          DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR   AGE
+daemonset.apps/octopus-limb   4         4         4       4            4           <none>          40s
 
 NAME                            READY   UP-TO-DATE   AVAILABLE   AGE
-deployment.apps/octopus-brain   1/1     1            1           17s
+deployment.apps/octopus-brain   1/1     1            1           40s
 
 NAME                                       DESIRED   CURRENT   READY   AGE
-replicaset.apps/octopus-brain-7bdb66d9d9   1         1         1       17s
+replicaset.apps/octopus-brain-7767fcc4cf   1         1         1       40s
 
 ```
 
@@ -195,23 +202,29 @@ daemonset.apps/octopus-adaptor-dummy-adaptor created
 
 $ kubectl get all -n octopus-system
 NAME                                      READY   STATUS    RESTARTS   AGE
-pod/octopus-adaptor-dummy-adaptor-89jfl   1/1     Running   0          6m11s
-pod/octopus-adaptor-dummy-adaptor-fpvhh   1/1     Running   0          6m11s
-pod/octopus-adaptor-dummy-adaptor-nzgqd   1/1     Running   0          6m11s
-pod/octopus-brain-7bdb66d9d9-mql4j        1/1     Running   0          9m17s
-pod/octopus-limb-75xr8                    1/1     Running   0          9m17s
-pod/octopus-limb-fvhm9                    1/1     Running   0          9m17s
-pod/octopus-limb-wksp2                    1/1     Running   0          9m17s
+pod/octopus-limb-d4nbz                    1/1     Running   0          4m56s
+pod/octopus-limb-5g9q8                    1/1     Running   0          4m56s
+pod/octopus-limb-zsx7c                    1/1     Running   0          4m56s
+pod/octopus-brain-7767fcc4cf-g8str        1/1     Running   0          4m56s
+pod/octopus-limb-mcv5v                    1/1     Running   0          4m56s
+pod/octopus-adaptor-dummy-adaptor-vgpgf   1/1     Running   0          24s
+pod/octopus-adaptor-dummy-adaptor-kg5rw   1/1     Running   0          25s
+pod/octopus-adaptor-dummy-adaptor-2m4xf   1/1     Running   0          26s
+pod/octopus-adaptor-dummy-adaptor-tn5kz   1/1     Running   0          24s
 
-NAME                                           DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR                 AGE
-daemonset.apps/octopus-adaptor-dummy-adaptor   3         3         3       3            3           beta.kubernetes.io/os=linux   6m11s
-daemonset.apps/octopus-limb                    3         3         3       3            3           beta.kubernetes.io/os=linux   9m17s
+NAME                    TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+service/octopus-brain   ClusterIP   10.43.150.114   <none>        8080/TCP   4m56s
+service/octopus-limb    ClusterIP   10.43.64.223    <none>        8080/TCP   4m56s
+
+NAME                                           DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR   AGE
+daemonset.apps/octopus-limb                    4         4         4       4            4           <none>          4m56s
+daemonset.apps/octopus-adaptor-dummy-adaptor   4         4         4       4            4           <none>          3m19s
 
 NAME                            READY   UP-TO-DATE   AVAILABLE   AGE
-deployment.apps/octopus-brain   1/1     1            1           9m17s
+deployment.apps/octopus-brain   1/1     1            1           4m56s
 
 NAME                                       DESIRED   CURRENT   READY   AGE
-replicaset.apps/octopus-brain-7bdb66d9d9   1         1         1       9m17s
+replicaset.apps/octopus-brain-7767fcc4cf   1         1         1       4m56s
 
 ```
 
@@ -219,8 +232,8 @@ It is worth noting that we have granted the permission to Octopus for managing `
 
 ```shell script
 $ kubectl get clusterrolebinding | grep octopus
-octopus-adaptor-dummy-manager-rolebinding              6m11s
-octopus-manager-rolebinding                            9m17s
+octopus-manager-rolebinding                            6m42s
+octopus-adaptor-dummy-manager-rolebinding              5m5s
 
 ```
 

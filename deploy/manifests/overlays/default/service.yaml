@@ -6,7 +6,8 @@ metadata:
   namespace: system
 spec:
   ports:
-    - port: 443
-      targetPort: 443
+    - name: webhook
+      port: 443
+      targetPort: webhook
   selector:
     app.kubernetes.io/component: "brain"

@@ -1,0 +1,65 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    app.kubernetes.io/component: brain
+    app.kubernetes.io/name: octopus
+    app.kubernetes.io/version: master
+  name: octopus-brain-metrics-monitor
+  namespace: octopus-system
+spec:
+  endpoints:
+  - honorLabels: false
+    path: /metrics
+    port: metrics
+    relabelings:
+    - action: replace
+      regex: (.+)
+      replacement: $1
+      sourceLabels:
+      - __meta_kubernetes_pod_host_ip
+      targetLabel: host_ip
+    - action: replace
+      regex: (.+)
+      replacement: $1
+      sourceLabels:
+      - __meta_kubernetes_pod_node_name
+      targetLabel: node
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: brain
+      app.kubernetes.io/name: octopus
+      app.kubernetes.io/version: master
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    app.kubernetes.io/component: limb
+    app.kubernetes.io/name: octopus
+    app.kubernetes.io/version: master
+  name: octopus-limb-metrics-monitor
+  namespace: octopus-system
+spec:
+  endpoints:
+  - honorLabels: false
+    path: /metrics
+    port: metrics
+    relabelings:
+    - action: replace
+      regex: (.+)
+      replacement: $1
+      sourceLabels:
+      - __meta_kubernetes_pod_host_ip
+      targetLabel: host_ip
+    - action: replace
+      regex: (.+)
+      replacement: $1
+      sourceLabels:
+      - __meta_kubernetes_pod_node_name
+      targetLabel: node
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: limb
+      app.kubernetes.io/name: octopus
+      app.kubernetes.io/version: master

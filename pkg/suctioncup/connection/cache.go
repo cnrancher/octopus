@@ -19,6 +19,7 @@ func NewConnections() Connections {
 	}
 }
 
+// Get returns a connection by name
 func (c Connections) Get(name types.NamespacedName) Connection {
 	if cc, exist := c.index.Load(name); exist {
 		return cc.(Connection)
@@ -26,25 +27,32 @@ func (c Connections) Get(name types.NamespacedName) Connection {
 	return nil
 }
 
-func (c Connections) Delete(name types.NamespacedName) {
+// Delete deletes the connection by name, the return value represents whether there is a deleted target.
+func (c Connections) Delete(name types.NamespacedName) (exist bool) {
 	if cc, exist := c.index.Load(name); exist {
 		var conn = cc.(Connection)
 		if err := conn.Stop(); err != nil {
 			log.Error(err, "Failed to stop connection", "connection", conn.GetName())
 		}
 		c.index.Delete(name)
+		return true
 	}
+	return false
 }
 
-func (c Connections) Put(conn Connection) {
+// Put puts a connection in index, then return value represents whether to overwrite an existing connection.
+func (c Connections) Put(conn Connection) (overwrite bool) {
 	if cc, exist := c.index.LoadOrStore(conn.GetName(), conn); exist {
 		var staleConn = cc.(Connection)
 		if err := staleConn.Stop(); err != nil {
 			log.Error(err, "Failed to stop stable connection", "connection", staleConn.GetName())
 		}
+		return true
 	}
+	return false
 }
 
+// Cleanup cleans all connections of index
 func (c Connections) Cleanup() {
 	c.index.Range(func(name, cc interface{}) bool {
 		// delete

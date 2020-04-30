@@ -25,11 +25,11 @@ type Neurons interface {
 	// ExistAdaptor judges whether the adaptor of target exist.
 	ExistAdaptor(name string) bool
 
-	// Connect starts a connection by link
-	Connect(by *edgev1alpha1.DeviceLink) error
+	// Connect starts a connection by link, the return "overwrite" represents whether to overwrite an existing connection.
+	Connect(by *edgev1alpha1.DeviceLink) (overwrite bool, err error)
 
-	// Disconnect stops a connection by link.
-	Disconnect(by *edgev1alpha1.DeviceLink)
+	// Disconnect stops a connection by link, the return value represents whether there is a disconnected target.
+	Disconnect(by *edgev1alpha1.DeviceLink) (exist bool)
 
 	// Send sends the data by link
 	Send(data *unstructured.Unstructured, by *edgev1alpha1.DeviceLink) error

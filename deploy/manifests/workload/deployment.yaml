@@ -1,4 +1,18 @@
-
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: "brain"
+  name: brain
+  namespace: system
+spec:
+  ports:
+    - name: metrics
+      port: 8080
+      targetPort: metrics
+  selector:
+    app.kubernetes.io/component: "brain"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -19,14 +33,18 @@ spec:
     spec:
       affinity:
         nodeAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 1
-            preference:
-              matchExpressions:
-              - key: beta.kubernetes.io/os
-                operator: In
-                values:
-                - linux
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: beta.kubernetes.io/os
+                    operator: In
+                    values:
+                      - linux
+              - matchExpressions:
+                  - key: kubernetes.io/os
+                    operator: In
+                    values:
+                      - linux
       containers:
         - name: octopus
           args:
@@ -34,4 +52,8 @@ spec:
             - --enable-leader-election
             - --disable-admission-webhook
           image: rancher/octopus:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              name: metrics
       terminationGracePeriodSeconds: 10

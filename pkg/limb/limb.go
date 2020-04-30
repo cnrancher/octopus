@@ -5,14 +5,17 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/errgroup"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	ctrlmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
 	"github.com/rancher/octopus/cmd/limb/options"
 	"github.com/rancher/octopus/pkg/limb/controller"
+	"github.com/rancher/octopus/pkg/metrics"
 	"github.com/rancher/octopus/pkg/suctioncup"
 	"github.com/rancher/octopus/pkg/util/critical"
 	"github.com/rancher/octopus/pkg/util/log/handler"
@@ -21,6 +24,12 @@ import (
 func Run(name string, opts *options.Options) error {
 	var log = ctrl.Log.WithName(name).WithName("setup")
 	defer runtime.HandleCrash(handler.NewPanicsLogHandler(log))
+
+	log.V(0).Info("Registering metrics")
+	if err := RegisterMetrics(ctrlmetrics.Registry); err != nil {
+		log.Error(err, "Unable to register metrics")
+		return err
+	}
 
 	log.V(0).Info("Registering APIs scheme")
 	var scheme = k8sruntime.NewScheme()
@@ -91,8 +100,9 @@ func Run(name string, opts *options.Options) error {
 }
 
 func RegisterScheme(scheme *k8sruntime.Scheme) error {
-	if err := edgev1alpha1.AddToScheme(scheme); err != nil {
-		return err
-	}
-	return nil
+	return edgev1alpha1.AddToScheme(scheme)
+}
+
+func RegisterMetrics(registry prometheus.Registerer) error {
+	return metrics.RegisterLimbMetrics(registry)
 }

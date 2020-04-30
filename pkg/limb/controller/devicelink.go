@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"reflect"
+	"time"
 
 	"github.com/go-logr/logr"
 	jsoniter "github.com/json-iterator/go"
@@ -18,6 +19,7 @@ import (
 
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
 	"github.com/rancher/octopus/pkg/limb/index"
+	"github.com/rancher/octopus/pkg/metrics"
 	"github.com/rancher/octopus/pkg/status/devicelink"
 	"github.com/rancher/octopus/pkg/suctioncup"
 	"github.com/rancher/octopus/pkg/util/collection"
@@ -48,6 +50,7 @@ type DeviceLinkReconciler struct {
 func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	var ctx = context.Background()
 	var log = r.Log.WithValues("deviceLink", req.NamespacedName)
+	var metricsRecorder = metrics.GetLimbMetricsRecorder()
 
 	// fetches link
 	var link edgev1alpha1.DeviceLink
@@ -76,7 +79,9 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		}
 
 		// disconnect
-		r.SuctionCup.Disconnect(&link)
+		if exist := r.SuctionCup.Disconnect(&link); exist {
+			metricsRecorder.DecreaseConnections(link.Status.Adaptor.Name)
+		}
 
 		// remove finalizer
 		link.Finalizers = collection.StringSliceRemove(link.Finalizers, ReconcilingDeviceLink)
@@ -224,7 +229,14 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		// this status changes maybe can drive by suction cup.
 		return ctrl.Result{}, nil
 	case metav1.ConditionTrue:
+		sendStartTS := time.Now()
+		defer func() {
+			metricsRecorder.ObserveSendLatency(link.Status.Adaptor.Name, time.Since(sendStartTS))
+		}()
+
 		if err := r.SuctionCup.Send(&device, &link); err != nil {
+			metricsRecorder.IncreaseSendErrors(link.Status.Adaptor.Name)
+
 			devicelink.FailOnDeviceConnected(&link.Status, "cannot send data to adaptor")
 			r.Eventf(&link, "Warning", "FailedSent", "cannot send data to adaptor: %v", err)
 
@@ -235,10 +247,16 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		}
 		return ctrl.Result{}, nil
 	default:
-		if err := r.SuctionCup.Connect(&link); err != nil {
+		if overwrite, err := r.SuctionCup.Connect(&link); err != nil {
+			metricsRecorder.IncreaseConnectErrors(link.Status.Adaptor.Name)
+
 			devicelink.FailOnDeviceConnected(&link.Status, "unable to connect to adaptor")
 			r.Eventf(&link, "Warning", "FailedConnected", "cannot connect to adaptor: %v", err)
 		} else {
+			if !overwrite {
+				metricsRecorder.IncreaseConnections(link.Status.Adaptor.Name)
+			}
+
 			devicelink.SuccessOnDeviceConnected(&link.Status)
 			r.Eventf(&link, "Normal", "Connected", "connected to adaptor")
 		}
@@ -266,7 +284,7 @@ func (r *DeviceLinkReconciler) SetupWithManager(ctrlMgr ctrl.Manager, suctionCup
 	}
 
 	return ctrl.NewControllerManagedBy(ctrlMgr).
-		Named("DeviceLink").
+		Named("limb_dl").
 		For(&edgev1alpha1.DeviceLink{}).
 		Complete(r)
 }
