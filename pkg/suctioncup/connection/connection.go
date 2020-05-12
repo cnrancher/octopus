@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"google.golang.org/grpc"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	api "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
@@ -17,8 +18,8 @@ type Connection interface {
 	// GetName returns the name of connection
 	GetName() types.NamespacedName
 
-	// Send sends the parameters and desired data to connection
-	Send(parameters, desired []byte) error
+	// Send sends the parameters, device model and desired data to connection
+	Send(parameters []byte, model *metav1.TypeMeta, device []byte) error
 
 	// Stop stops the connection
 	Stop() error
@@ -60,9 +61,10 @@ func (c *connection) Stop() error {
 	return c.stop()
 }
 
-func (c *connection) Send(parameters, device []byte) error {
+func (c *connection) Send(parameters []byte, model *metav1.TypeMeta, device []byte) error {
 	return c.conn.Send(&api.ConnectRequest{
 		Parameters: parameters,
+		Model:      model,
 		Device:     device,
 	})
 }

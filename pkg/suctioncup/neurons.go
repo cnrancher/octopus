@@ -55,5 +55,6 @@ func (m *manager) Send(data *unstructured.Unstructured, by *edgev1alpha1.DeviceL
 	if err != nil {
 		return errors.Wrapf(err, "could not marshal data as JSON")
 	}
-	return conn.Send(parametersBytes, dataBytes)
+
+	return conn.Send(parametersBytes, &by.Status.Model, dataBytes)
 }

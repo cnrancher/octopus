@@ -3,6 +3,7 @@ syntax = 'proto3';
 package v1alpha1;
 
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+import "k8s.io/apimachinery/pkg/apis/meta/v1/generated.proto";
 
 option (gogoproto.goproto_stringer_all) = false;
 option (gogoproto.stringer_all) = true;
@@ -23,11 +24,11 @@ service Registration {
 }
 
 message RegisterRequest {
-    // Name of the adaptor in the form `adaptor-vendor.com/adaptor-vendor`
+    // Name of the adaptor in the form `adaptor-vendor.com/adaptor-vendor`.
     string name = 1;
-    // Version of the API the adaptor was built against
+    // Version of the API the adaptor was built against.
     string version = 2;
-    // Name of the unix socket the adaptor is listening on, it's in the form `*.socket`
+    // Name of the unix socket the adaptor is listening on, it's in the form `*.socket`.
     string endpoint = 3;
 }
 
@@ -38,13 +39,15 @@ service Connection {
 }
 
 message ConnectRequest {
-    // Parameters for the connection, it's in form JSON bytes
+    // Parameters for the connection, it's in form JSON bytes.
     bytes parameters = 1;
-    // Desired device, it's in form JSON bytes
-    bytes device = 2;
+    // Model for the device.
+    k8s.io.apimachinery.pkg.apis.meta.v1.TypeMeta model = 2;
+    // Desired device, it's in form JSON bytes.
+    bytes device = 3;
 }
 
 message ConnectResponse {
-    // Observed device, it's in form JSON bytes
+    // Observed device, it's in form JSON bytes.
     bytes device = 1;
 }

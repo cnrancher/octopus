@@ -78,51 +78,55 @@ At the same time, the implementation of adapter can be connected to a single dev
                                                                          adaptors.edge.cattle.io/modbus     
 ```
 
+Please view [here](./develop.md) for more detail about developing an adaptor.
 
 The access management of adaptors takes inspiration from [Kubernetes Device Plugins management](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/device-plugins/). The workflow includes the following steps:
 
-1. The `limb` starts a gRPC service with a Unix socket on host path to receive registration requests from adaptors:
-
-```proto
-service Registration {
-    rpc Register (RegisterRequest) returns (Empty) {}
-}
-
-message RegisterRequest {
-    // Name of the adaptor in the form `adaptor-vendor.com/adaptor-vendor`
-    string name = 1;
-    // Version of the API the adaptor was built against
-    string version = 2;
-    // Name of the unix socket the adaptor is listening on, it's in the form `*.socket`
-    string endpoint = 3;
-}
-```
-
-2. The adaptor starts a gRPC service with a Unix socket under host path `/var/lib/octopus/adaptors`, that implements the following interfaces:
-
-```proto
-service Connection {
-    rpc Connect (stream ConnectRequest) returns (stream ConnectResponse) {}
-}
-
-message ConnectRequest {
-    // Parameters for the connection, it's in form JSON bytes
-    bytes parameters = 1;
-    // Desired device, it's in form JSON bytes
-    bytes device = 2;
-}
-
-message ConnectResponse {
-    // Observed device, it's in form JSON bytes
-    bytes device = 1;
-}
-```
-
-3. The adaptor registers itself with the `limb` through the Unix socket at host path `/var/lib/octopus/adaptors/limb.socket`.
-
-4. After successfully registering itself, the adaptor runs in serving mode, during which it keeps connecting devices and reports back to the `limb` upon any device state changes.
+1. The `limb` starts a gRPC service with a Unix socket on host path to receive registration requests from adaptors: <a id="registration"></a>
+    ```proto
+    // Registration is the service advertised by the Limb,
+    // any adaptor start its service until Limb approved this register request.
+    service Registration {
+        rpc Register (RegisterRequest) returns (Empty) {}
+    }
+    
+    message RegisterRequest {
+        // Name of the adaptor in the form `adaptor-vendor.com/adaptor-vendor`.
+        string name = 1;
+        // Version of the API the adaptor was built against.
+        string version = 2;
+        // Name of the unix socket the adaptor is listening on, it's in the form `*.socket`.
+        string endpoint = 3;
+    }
+    ```
+1. The adaptor starts a gRPC service with a Unix socket under host path `/var/lib/octopus/adaptors`, that implements the following interfaces: <a id="connection"></a>
+    ```proto
+    // Connection is the service advertised by the adaptor.
+    service Connection {
+        rpc Connect (stream ConnectRequest) returns (stream ConnectResponse) {}
+    }
+    
+    message ConnectRequest {
+        // Parameters for the connection, it's in form JSON bytes.
+        bytes parameters = 1;
+        // Model for the device.
+        k8s.io.apimachinery.pkg.apis.meta.v1.TypeMeta model = 2;
+        // Desired device, it's in form JSON bytes.
+        bytes device = 3;
+    }
+    
+    message ConnectResponse {
+        // Observed device, it's in form JSON bytes.
+        bytes device = 1;
+    }
+    ```
+1. The adaptor registers itself with the `limb` through the Unix socket at host path `/var/lib/octopus/adaptors/limb.socket`.
+1. After successfully registering itself, the adaptor runs in serving mode, during which it keeps connecting devices and reports back to the `limb` upon any device state changes.
 
 ## Available Adaptor List
 
 - [dummy](../../adaptors/dummy)
-
+- [ble](../../adaptors/ble)
+- [modbus](../../adaptors/modbus)
+- [opcua](../../adaptors/opcua)
+- [mqtt](../../adaptors/mqtt)
