@@ -276,6 +276,6 @@ func (c fakeDummyConnection) Stop() error {
 	return nil
 }
 
-func (c fakeDummyConnection) Send(parameters, device []byte) error {
+func (c fakeDummyConnection) Send(parameters []byte, model *metav1.TypeMeta, desired []byte) error {
 	return nil
 }
