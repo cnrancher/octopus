@@ -125,6 +125,46 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 				return status.Errorf(codes.InvalidArgument, "failed to configure the device: %v", err)
 			}
 
+		case "DummyProtocolDevice":
+			// get device spec
+			var device v1alpha1.DummyProtocolDevice
+			if err := jsoniter.Unmarshal(req.GetDevice(), &device); err != nil {
+				return status.Errorf(codes.InvalidArgument, "failed to unmarshal device: %v", err)
+			}
+
+			// create device handler
+			if holder == nil {
+				// get device NamespacedName
+				var deviceName = object.GetNamespacedName(&device)
+				if deviceName.Namespace == "" || deviceName.Name == "" {
+					return status.Error(codes.InvalidArgument, "failed to recognize the empty device as the namespace/name is blank")
+				}
+
+				// create handler for sync to limb
+				var toLimb = func(in *v1alpha1.DummyProtocolDevice) {
+					// convert device to json bytes
+					var respBytes = s.toJSON(in)
+
+					// send device to limb
+					if err := server.Send(&api.ConnectResponse{Device: respBytes}); err != nil {
+						if !connection.IsClosed(err) {
+							log.Error(err, "Failed to send response to connection", "device", deviceName)
+						}
+					}
+				}
+
+				holder = physical.NewProtocolDevice(
+					log.WithValues("device", deviceName),
+					&device,
+					toLimb,
+				)
+			}
+
+			// configure device
+			if err := holder.Configure(device.Spec); err != nil {
+				return status.Errorf(codes.InvalidArgument, "failed to configure the device: %v", err)
+			}
+
 		default:
 			return status.Errorf(codes.InvalidArgument, "invalid model kind: %s", modelGVK.Kind)
 		}

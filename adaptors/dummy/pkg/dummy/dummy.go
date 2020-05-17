@@ -19,6 +19,8 @@ const (
 
 // +kubebuilder:rbac:groups=devices.edge.cattle.io,resources=dummyspecialdevices,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=devices.edge.cattle.io,resources=dummyspecialdevices/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=devices.edge.cattle.io,resources=dummyprotocoldevices,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=devices.edge.cattle.io,resources=dummyprotocoldevices/status,verbs=get;update;patch
 
 func Run() error {
 	var stop = ctrl.SetupSignalHandler()

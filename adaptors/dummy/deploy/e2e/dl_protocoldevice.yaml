@@ -1,0 +1,42 @@
+apiVersion: edge.cattle.io/v1alpha1
+kind: DeviceLink
+metadata:
+  name: localhost-robot
+spec:
+  adaptor:
+    node: edge-worker
+    name: adaptors.edge.cattle.io/dummy
+  model:
+    apiVersion: "devices.edge.cattle.io/v1alpha1"
+    kind: "DummyProtocolDevice"
+  template:
+    metadata:
+      labels:
+        device: localhost-robot
+    spec:
+      protocol:
+        ip: "127.0.0.1"
+      props:
+        name:
+          type: string
+          description: "The name (unique identifier) of the robot."
+          readOnly: true
+        gender:
+          type: object
+          description: "The gender of the robot."
+          objectProps:
+            name:
+              type: string
+              description: "The name of the gender."
+            code:
+              type: int
+              description: "The code of the gender."
+        friends:
+          type: array
+          description: "The name list of the robot's friends."
+          arrayProps:
+            type: string
+            description: "The name of the friend."
+        power:
+          type: float
+          description: "The power of the robot."
