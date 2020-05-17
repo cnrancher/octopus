@@ -48,7 +48,7 @@ var _ = Describe("Model controller", func() {
 
 		targetAdaptor = "adaptors.edge.cattle.io/dummy"
 		targetModel = metav1.TypeMeta{
-			Kind:       "DummyDevice",
+			Kind:       "DummySpecialDevice",
 			APIVersion: "devices.edge.cattle.io/v1alpha1",
 		}
 		targetNamespace = "default"
@@ -62,11 +62,6 @@ var _ = Describe("Model controller", func() {
 				Adaptor: edgev1alpha1.DeviceAdaptor{
 					Node: targetNode,
 					Name: targetAdaptor,
-					Parameters: content.ToRawExtension(
-						map[string]string{
-							"ip": "1.2.3.4",
-						},
-					),
 				},
 				Model: targetModel,
 				Template: edgev1alpha1.DeviceTemplateSpec{
@@ -77,6 +72,9 @@ var _ = Describe("Model controller", func() {
 					},
 					Spec: content.ToRawExtension(
 						map[string]interface{}{
+							"protocol": map[string]interface{}{
+								"location": "living-room-fan",
+							},
 							"gear": "slow",
 							"on":   true,
 						},

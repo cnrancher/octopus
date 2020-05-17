@@ -9,7 +9,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	logr "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -56,10 +55,10 @@ func (s *Service) toJSON(in metav1.Object) []byte {
 }
 
 func (s *Service) Connect(server api.Connection_ConnectServer) error {
-	var device physical.Device
+	var holder physical.Device
 	defer func() {
-		if device != nil {
-			device.Shutdown()
+		if holder != nil {
+			holder.Shutdown()
 		}
 	}()
 
@@ -68,54 +67,66 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 		if err != nil {
 			if !connection.IsClosed(err) {
 				log.Error(err, "Failed to receive connect request from Limb")
-				return status.Errorf(codes.Unknown, "shutdown connection as receiving error from Limb")
+				return status.Error(codes.Unknown, "shutdown connection as receiving error from Limb")
 			}
 			return nil
 		}
 
-		// validate parameters
-		var parameters = physical.DefaultParameters()
-		if req.GetParameters() != nil {
-			if err := jsoniter.Unmarshal(req.GetParameters(), &parameters); err != nil {
-				return status.Errorf(codes.InvalidArgument, "failed to unmarshal parameters: %v", err)
-			}
+		// validate model GVK
+		var model = req.GetModel()
+		if model == nil {
+			return status.Error(codes.InvalidArgument, "invalid empty model")
 		}
-		if err := parameters.Validate(); err != nil {
-			return status.Errorf(codes.InvalidArgument, "failed to validate parameters: %v", err)
+		var modelGVK = model.GroupVersionKind()
+		if modelGVK.Group != v1alpha1.GroupVersion.Group {
+			return status.Errorf(codes.InvalidArgument, "invalid model group: %s", modelGVK.Group)
 		}
-
-		// validate device
-		var dummy v1alpha1.DummyDevice
-		if err := jsoniter.Unmarshal(req.GetDevice(), &dummy); err != nil {
-			return status.Errorf(codes.InvalidArgument, "failed to unmarshal device: %v", err)
-		}
+		// NB(thxCode) the version of model can use to make compatible, the kind of model can use to determine the type of object.
 
 		// process device
-		if device == nil {
-			var deviceName = object.GetNamespacedName(&dummy)
-			var dataHandler = func(name types.NamespacedName, status v1alpha1.DummyDeviceStatus) {
-				// send device by {name, namespace, status} tuple
-				var resp v1alpha1.DummyDevice
-				resp.Namespace = name.Namespace
-				resp.Name = name.Name
-				resp.Status = status
+		switch modelGVK.Kind {
+		case "DummySpecialDevice":
+			// get device spec
+			var device v1alpha1.DummySpecialDevice
+			if err := jsoniter.Unmarshal(req.GetDevice(), &device); err != nil {
+				return status.Errorf(codes.InvalidArgument, "failed to unmarshal device: %v", err)
+			}
 
-				// convert device to json bytes
-				var respBytes = s.toJSON(&resp)
+			// create device handler
+			if holder == nil {
+				// get device NamespacedName
+				var deviceName = object.GetNamespacedName(&device)
+				if deviceName.Namespace == "" || deviceName.Name == "" {
+					return status.Error(codes.InvalidArgument, "failed to recognize the empty device as the namespace/name is blank")
+				}
 
-				// send device
-				if err := server.Send(&api.ConnectResponse{Device: respBytes}); err != nil {
-					if !connection.IsClosed(err) {
-						log.Error(err, "Failed to send response to connection")
+				// create handler for sync to limb
+				var toLimb = func(in *v1alpha1.DummySpecialDevice) {
+					// convert device to json bytes
+					var respBytes = s.toJSON(in)
+
+					// send device to limb
+					if err := server.Send(&api.ConnectResponse{Device: respBytes}); err != nil {
+						if !connection.IsClosed(err) {
+							log.Error(err, "Failed to send response to connection", "device", deviceName)
+						}
 					}
 				}
+
+				holder = physical.NewSpecialDevice(
+					log.WithValues("device", deviceName),
+					&device,
+					toLimb,
+				)
 			}
-			device = physical.NewDevice(
-				log.WithValues("device", deviceName),
-				deviceName,
-				dataHandler,
-			)
+
+			// configure device
+			if err := holder.Configure(device.Spec); err != nil {
+				return status.Errorf(codes.InvalidArgument, "failed to configure the device: %v", err)
+			}
+
+		default:
+			return status.Errorf(codes.InvalidArgument, "invalid model kind: %s", modelGVK.Kind)
 		}
-		device.Configure(dummy.Spec)
 	}
 }

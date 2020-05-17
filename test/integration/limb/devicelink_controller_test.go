@@ -38,7 +38,7 @@ var _ = Describe("DeviceLink controller", func() {
 
 	BeforeEach(func() {
 		targetModel = metav1.TypeMeta{
-			Kind:       "DummyDevice",
+			Kind:       "DummySpecialDevice",
 			APIVersion: "devices.edge.cattle.io/v1alpha1",
 		}
 		targetNamespace = "default"
@@ -52,11 +52,6 @@ var _ = Describe("DeviceLink controller", func() {
 				Adaptor: edgev1alpha1.DeviceAdaptor{
 					Node: targetNode,
 					Name: mockingDummyAdaptor.GetName(),
-					Parameters: content.ToRawExtension(
-						map[string]string{
-							"ip": "1.2.3.4",
-						},
-					),
 				},
 				Model: targetModel,
 				Template: edgev1alpha1.DeviceTemplateSpec{
@@ -67,6 +62,9 @@ var _ = Describe("DeviceLink controller", func() {
 					},
 					Spec: content.ToRawExtension(
 						map[string]interface{}{
+							"protocol": map[string]interface{}{
+								"location": "living-room-fan",
+							},
 							"gear": "slow",
 							"on":   true,
 						},
@@ -276,6 +274,6 @@ func (c fakeDummyConnection) Stop() error {
 	return nil
 }
 
-func (c fakeDummyConnection) Send(parameters []byte, model *metav1.TypeMeta, desired []byte) error {
+func (c fakeDummyConnection) Send(parameters []byte, model *metav1.TypeMeta, device []byte) error {
 	return nil
 }
