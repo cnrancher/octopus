@@ -2,6 +2,8 @@ package adaptor
 
 import (
 	jsoniter "github.com/json-iterator/go"
+	uberzap "go.uber.org/zap"
+	uberzapcore "go.uber.org/zap/zapcore"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -9,9 +11,8 @@ import (
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-
 	logr "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/rancher/octopus/adaptors/dummy/api/v1alpha1"
 	"github.com/rancher/octopus/adaptors/dummy/pkg/physical"
@@ -20,7 +21,17 @@ import (
 	"github.com/rancher/octopus/pkg/util/object"
 )
 
-var log = logr.NewDelegatingLogger(zap.New(zap.UseDevMode(true)))
+var log = logr.NewDelegatingLogger(nil)
+
+func init() {
+	log.Fulfill(zap.New(
+		zap.UseDevMode(true),
+		zap.Level(func() *uberzap.AtomicLevel {
+			level := uberzap.NewAtomicLevelAt(uberzapcore.DebugLevel)
+			return &level
+		}()),
+	))
+}
 
 func NewService() *Service {
 	var scheme = k8sruntime.NewScheme()

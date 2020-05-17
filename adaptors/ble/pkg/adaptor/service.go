@@ -4,6 +4,8 @@ import (
 	"github.com/bettercap/gatt"
 	"github.com/bettercap/gatt/examples/option"
 	jsoniter "github.com/json-iterator/go"
+	uberzap "go.uber.org/zap"
+	uberzapcore "go.uber.org/zap/zapcore"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,7 +23,17 @@ import (
 	"github.com/rancher/octopus/pkg/util/object"
 )
 
-var log = logr.NewDelegatingLogger(zap.New(zap.UseDevMode(true)))
+var log = logr.NewDelegatingLogger(nil)
+
+func init() {
+	log.Fulfill(zap.New(
+		zap.UseDevMode(true),
+		zap.Level(func() *uberzap.AtomicLevel {
+			level := uberzap.NewAtomicLevelAt(uberzapcore.DebugLevel)
+			return &level
+		}()),
+	))
+}
 
 func NewService() *Service {
 	var scheme = k8sruntime.NewScheme()

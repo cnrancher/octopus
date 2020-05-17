@@ -2,11 +2,8 @@ package adaptor
 
 import (
 	jsoniter "github.com/json-iterator/go"
-	"github.com/rancher/octopus/adaptors/modbus/api/v1alpha1"
-	"github.com/rancher/octopus/adaptors/modbus/pkg/physical"
-	api "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
-	"github.com/rancher/octopus/pkg/adaptor/connection"
-	"github.com/rancher/octopus/pkg/util/object"
+	uberzap "go.uber.org/zap"
+	uberzapcore "go.uber.org/zap/zapcore"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,9 +13,25 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	logr "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+
+	"github.com/rancher/octopus/adaptors/modbus/api/v1alpha1"
+	"github.com/rancher/octopus/adaptors/modbus/pkg/physical"
+	api "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
+	"github.com/rancher/octopus/pkg/adaptor/connection"
+	"github.com/rancher/octopus/pkg/util/object"
 )
 
-var log = logr.NewDelegatingLogger(zap.New(zap.UseDevMode(true)))
+var log = logr.NewDelegatingLogger(nil)
+
+func init() {
+	log.Fulfill(zap.New(
+		zap.UseDevMode(true),
+		zap.Level(func() *uberzap.AtomicLevel {
+			level := uberzap.NewAtomicLevelAt(uberzapcore.DebugLevel)
+			return &level
+		}()),
+	))
+}
 
 func NewService() *Service {
 	var scheme = k8sruntime.NewScheme()
