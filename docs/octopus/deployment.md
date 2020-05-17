@@ -10,7 +10,6 @@ There are two ways to deploy Octopus, one is [Helm chart](https://helm.sh/), ano
 
 <!-- /toc -->
 
-
 ## Helm chart
 
 TODO
@@ -40,7 +39,7 @@ During [Octopus generated stage](./develop.md), these topmost overlay will be re
 
 Deploy Octopus without admission webhooks for developing:
 
-[![asciicast](https://asciinema.org/a/blEcEzM1BGzwDTF48sNLRDWk0.svg)](https://asciinema.org/a/blEcEzM1BGzwDTF48sNLRDWk0)
+[![asciicast](https://asciinema.org/a/hGFPKIJeod9wooa5TKyvfRVl2.svg)](https://asciinema.org/a/hGFPKIJeod9wooa5TKyvfRVl2)
 
 <details>
   <summary>process instruction</summary>
@@ -54,31 +53,31 @@ Deploy Octopus without admission webhooks for developing:
     kubectl get crd | grep devicelinks
     
     # deploy a devicelink
-    cat adaptors/dummy/deploy/e2e/dl.yaml
-    kubectl apply -f adaptors/dummy/deploy/e2e/dl.yaml
+    cat adaptors/dummy/deploy/e2e/dl_specialdevice.yaml
+    kubectl apply -f adaptors/dummy/deploy/e2e/dl_specialdevice.yaml
     
     # confirm the state of devicelink
-    kubectl get dl correct -n default
+    kubectl get dl living-room-fan -n default
     
-    # deploy dummy adaptor and dummydevice model
+    # deploy dummy adaptor and model
     kubectl apply -f adaptors/dummy/deploy/e2e/all_in_one.yaml
     
     # confirm the dummy adaptor deployment
     kubectl get daemonset octopus-adaptor-dummy-adaptor -n octopus-system
-    kubectl get crd | grep dummydevices
+    kubectl get crd | grep dummyspecialdevice
     
     # confirm the state of devicelink
-    kubectl get dl correct -n default
+    kubectl get dl living-room-fan -n default
     
     # watch the device instance
-    kubectl get dummydevice correct -n default -w
+    kubectl get dummyspecialdevice living-room-fan -n default -w
     
   </code>
 </details>
 
 Deploy Octopus with admission webhooks for producing:
 
-[![asciicast](https://asciinema.org/a/Yfvuw88rUumSzzJcHn3PJp3p7.svg)](https://asciinema.org/a/Yfvuw88rUumSzzJcHn3PJp3p7)
+[![asciicast](https://asciinema.org/a/hENspSHULJzvXw95EgwooHXzZ.svg)](https://asciinema.org/a/hENspSHULJzvXw95EgwooHXzZ)
 
 <details>
   <summary>process instruction</summary>

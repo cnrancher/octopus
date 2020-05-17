@@ -9,7 +9,7 @@ rules:
 - apiGroups:
   - devices.edge.cattle.io
   resources:
-  - dummydevices
+  - dummyspecialdevices
   verbs:
   - create
   - delete
@@ -21,7 +21,7 @@ rules:
 - apiGroups:
   - devices.edge.cattle.io
   resources:
-  - dummydevices/status
+  - dummyspecialdevices/status
   verbs:
   - get
   - patch

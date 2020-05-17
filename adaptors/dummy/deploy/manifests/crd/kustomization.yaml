@@ -5,4 +5,4 @@ commonAnnotations:
   devices.edge.cattle.io/description: "dummy device description"
 
 resources:
-  - base/devices.edge.cattle.io_dummydevices.yaml
+  - base/devices.edge.cattle.io_dummyspecialdevices.yaml

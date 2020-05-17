@@ -11,14 +11,14 @@ metadata:
   labels:
     app.kubernetes.io/name: octopus-adaptor-dummy
     app.kubernetes.io/version: master
-  name: dummydevices.devices.edge.cattle.io
+  name: dummyspecialdevices.devices.edge.cattle.io
 spec:
   group: devices.edge.cattle.io
   names:
-    kind: DummyDevice
-    listKind: DummyDeviceList
-    plural: dummydevices
-    singular: dummydevice
+    kind: DummySpecialDevice
+    listKind: DummySpecialDeviceList
+    plural: dummyspecialdevices
+    singular: dummyspecialdevice
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -35,7 +35,8 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: DummyDevice is the Schema for the dummy device API
+        description: DummySpecialDevice is the Schema for the dummy special device
+          API.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -50,33 +51,43 @@ spec:
           metadata:
             type: object
           spec:
-            description: DummyDeviceSpec defines the desired state of DummyDevice
+            description: DummySpecialDeviceSpec defines the desired state of DummySpecialDevice.
             properties:
               gear:
-                description: Specifies how fast the device should be
+                description: Specifies how fast the dummy special device should be.
                 enum:
                 - slow
                 - middle
                 - fast
                 type: string
               "on":
-                description: Turn on the device
+                description: Turn on the dummy special device.
                 type: boolean
+              protocol:
+                description: Protocol for accessing the dummy special device.
+                properties:
+                  location:
+                    description: Specifies where to locate the dummy special device.
+                    type: string
+                required:
+                - location
+                type: object
             required:
             - "on"
+            - protocol
             type: object
           status:
-            description: DummyDeviceStatus defines the observed state of DummyDevice
+            description: DummySpecialDeviceStatus defines the observed state of DummySpecialDevice.
             properties:
               gear:
-                description: Reports the current gear
+                description: Reports the current gear of dummy special device.
                 enum:
                 - slow
                 - middle
                 - fast
                 type: string
               rotatingSpeed:
-                description: Reports the detail number of speed
+                description: Reports the detail number of speed of dummy special device.
                 format: int32
                 type: integer
             type: object
@@ -105,7 +116,7 @@ rules:
 - apiGroups:
   - devices.edge.cattle.io
   resources:
-  - dummydevices
+  - dummyspecialdevices
   verbs:
   - create
   - delete
@@ -117,7 +128,7 @@ rules:
 - apiGroups:
   - devices.edge.cattle.io
   resources:
-  - dummydevices/status
+  - dummyspecialdevices/status
   verbs:
   - get
   - patch

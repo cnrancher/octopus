@@ -1,20 +1,20 @@
 apiVersion: edge.cattle.io/v1alpha1
 kind: DeviceLink
 metadata:
-  name: correct
+  name: living-room-fan
 spec:
   adaptor:
     node: edge-worker
     name: adaptors.edge.cattle.io/dummy
-    parameters:
-      ip: 127.0.0.1
   model:
     apiVersion: "devices.edge.cattle.io/v1alpha1"
-    kind: "DummyDevice"
+    kind: "DummySpecialDevice"
   template:
     metadata:
       labels:
-        device: correct
+        device: living-room-fan
     spec:
+      protocol:
+        location: "living_room"
       gear: slow
       "on": true
