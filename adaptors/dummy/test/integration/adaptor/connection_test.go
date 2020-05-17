@@ -18,7 +18,8 @@ import (
 // testing scenarios:
 // 	+ Server
 //		- validate if the connection stop when it closes
-//		- validate the process of input parameters
+//		- validate the process of input model
+//      - validate the recognition of the input model
 // 		- validate the process of input device
 var _ = Describe("Connection", func() {
 	var (
@@ -105,6 +106,34 @@ var _ = Describe("Connection", func() {
 			sts = status.Convert(err)
 			Expect(sts.Code()).To(Equal(grpccodes.InvalidArgument))
 			Expect(sts.Message()).To(Equal("invalid model kind: InvalidateSpecialDevice"))
+		})
+
+		It("should distinguish the input model", func() {
+			// distinguish the devices.edge.cattle.io/v1alpha1/DummySpecialDevice model
+			mockServer.EXPECT().Recv().Return(&v1alpha1.ConnectRequest{
+				Model: &metav1.TypeMeta{
+					APIVersion: "devices.edge.cattle.io/v1alpha1",
+					Kind:       "DummySpecialDevice",
+				},
+				Device: []byte(`{}`),
+			}, nil)
+			err = service.Connect(mockServer)
+			var sts = status.Convert(err)
+			Expect(sts.Code()).To(Equal(grpccodes.InvalidArgument))
+			Expect(sts.Message()).To(Equal("failed to recognize the empty device as the namespace/name is blank"))
+
+			// distinguish the devices.edge.cattle.io/v1alpha1/DummyProtocolDevice model
+			mockServer.EXPECT().Recv().Return(&v1alpha1.ConnectRequest{
+				Model: &metav1.TypeMeta{
+					APIVersion: "devices.edge.cattle.io/v1alpha1",
+					Kind:       "DummyProtocolDevice",
+				},
+				Device: []byte(`{}`),
+			}, nil)
+			err = service.Connect(mockServer)
+			sts = status.Convert(err)
+			Expect(sts.Code()).To(Equal(grpccodes.InvalidArgument))
+			Expect(sts.Message()).To(Equal("failed to recognize the empty device as the namespace/name is blank"))
 		})
 
 		It("should process the input device", func() {

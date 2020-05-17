@@ -213,6 +213,7 @@ The dummy adaptor installer YAML file is under the [`adaptors/dummy/deploy/e2e`]
 ```shell script
 $ kubectl apply -f https://raw.githubusercontent.com/cnrancher/octopus/master/adaptors/dummy/deploy/e2e/all_in_one.yaml
 customresourcedefinition.apiextensions.k8s.io/dummyspecialdevices.devices.edge.cattle.io created
+customresourcedefinition.apiextensions.k8s.io/dummyprotocoldevices.devices.edge.cattle.io created
 clusterrole.rbac.authorization.k8s.io/octopus-adaptor-dummy-manager-role created
 clusterrolebinding.rbac.authorization.k8s.io/octopus-adaptor-dummy-manager-rolebinding created
 daemonset.apps/octopus-adaptor-dummy-adaptor created
@@ -245,7 +246,7 @@ replicaset.apps/octopus-brain-65fdb4ff99   1         1         1       2m27s
 
 ```
 
-It is worth noting that we have granted the permission to Octopus for managing `DummySpecialDevice`:
+It is worth noting that we have granted the permission to Octopus for managing `DummySpecialDevice`/`DummyProtocolDevice`:
 
 ```shell script
 $ kubectl get clusterrolebinding | grep octopus

@@ -9,6 +9,26 @@ rules:
 - apiGroups:
   - devices.edge.cattle.io
   resources:
+  - dummyprotocoldevices
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - devices.edge.cattle.io
+  resources:
+  - dummyprotocoldevices/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - devices.edge.cattle.io
+  resources:
   - dummyspecialdevices
   verbs:
   - create

@@ -1,0 +1,150 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.2.5
+  creationTimestamp: null
+  name: dummyprotocoldevices.devices.edge.cattle.io
+spec:
+  group: devices.edge.cattle.io
+  names:
+    kind: DummyProtocolDevice
+    listKind: DummyProtocolDeviceList
+    plural: dummyprotocoldevices
+    singular: dummyprotocoldevice
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: DummyProtocolDevice is the Schema for the dummy protocol device
+          API.
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: DummyProtocolDeviceSpec defines the desired state of DummyProtocolDevice.
+            properties:
+              props:
+                additionalProperties:
+                  description: DummyProtocolDeviceSpecProps defines the property of
+                    DummyProtocolDeviceSpec.
+                  properties:
+                    arrayProps:
+                      description: Describes item properties of the array type.
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    description:
+                      description: Outlines the property.
+                      type: string
+                    objectProps:
+                      additionalProperties:
+                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
+                      description: Describes properties of the object type.
+                      type: object
+                    readOnly:
+                      description: Configures the property is readOnly or not.
+                      type: boolean
+                    type:
+                      description: Describes the type of property.
+                      enum:
+                      - string
+                      - int
+                      - float
+                      - boolean
+                      - array
+                      - object
+                      type: string
+                  required:
+                  - type
+                  type: object
+                description: Describe the desired properties.
+                type: object
+              protocol:
+                description: Protocol for accessing the dummy protocol device.
+                properties:
+                  ip:
+                    description: Specifies where to connect the dummy protocol device.
+                    type: string
+                required:
+                - ip
+                type: object
+            required:
+            - protocol
+            type: object
+          status:
+            description: DummyProtocolDeviceStatus defines the observed state of DummyProtocolDevice.
+            properties:
+              props:
+                additionalProperties:
+                  description: DummyProtocolDeviceStatusProps defines the property
+                    of DummyProtocolDeviceStatus.
+                  properties:
+                    arrayValue:
+                      description: Reports the value of array type.
+                      items:
+                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
+                      type: array
+                    booleanValue:
+                      description: Reports the value of boolean type.
+                      type: boolean
+                    floatValue:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      description: Reports the value of float type.
+                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                      x-kubernetes-int-or-string: true
+                    intValue:
+                      description: Reports the value of int type.
+                      type: integer
+                    objectValue:
+                      additionalProperties:
+                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
+                      description: Reports the value of object type.
+                      type: object
+                    stringValue:
+                      description: Reports the value of string type.
+                      type: string
+                    type:
+                      description: Reports the type of property.
+                      enum:
+                      - string
+                      - int
+                      - float
+                      - boolean
+                      - array
+                      - object
+                      type: string
+                  required:
+                  - type
+                  type: object
+                description: Reports the observed value of the desired properties.
+                type: object
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

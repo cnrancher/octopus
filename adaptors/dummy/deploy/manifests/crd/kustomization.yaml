@@ -6,3 +6,4 @@ commonAnnotations:
 
 resources:
   - base/devices.edge.cattle.io_dummyspecialdevices.yaml
+  - base/devices.edge.cattle.io_dummyprotocoldevices.yaml
