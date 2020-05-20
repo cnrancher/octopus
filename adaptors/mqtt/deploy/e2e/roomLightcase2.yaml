@@ -1,0 +1,79 @@
+apiVersion: edge.cattle.io/v1alpha1
+kind: DeviceLink
+metadata:
+  name: mqtt-test
+spec:
+  adaptor:
+    node: vm-0-7-ubuntu
+    name: adaptors.edge.cattle.io/mqtt
+    parameters:
+      syncInterval: 5
+      timout: 10
+  model:
+    apiVersion: "devices.edge.cattle.io/v1alpha1"
+    kind: "MqttDevice"
+  template:
+    metadata:
+      labels:
+        device: mqtt-test
+    spec:
+      config:
+        broker: "tcp://192.168.1.1:1883"
+        password: parchk123
+        username: parchk
+      properties:
+        - name: "roomLight"
+          description: "the room light device"
+          pubTopic: "my/room/light/cmd"
+          value: "{\"switch\":\"off\"，\"brigntness\"：4}"
+          subTopic: "my/room/light"
+          valueType: json
+          qos: 2
+
+
+# case:
+#    update the room light switch 
+#    the "my/room/light/" topic subscribe get value : {"switch":"off"，“brigntness”：4}
+#    we will get the status like this:
+#                  status:
+#                      properties:
+#                         - name: "demo" name" 
+#                           dataField: "name"
+#                           dataValue: "zhangsan"
+#                           dataType: "string"
+#                           updateAt: "roo2020-05-08 xxxxx"
+#                         - name: "demo gender name"
+#                           dataField: "gender.name"
+#                           dataValue: "male"
+#                           dataType: "string"
+#                           updateAt: "2020-05-08 xxxxxxx"
+#                         - name: "demo gender code"
+#                           dataField: "gender.code"
+#                           dataValue: 1
+#                           dataType: int
+#                           updateAt: "2020-05-08 xxxxxxx"
+#                         - name: "demo age"
+#                           dataField: "age"
+#                           dataValue: 34
+#                           dataType: int
+#                           updateAt: "2020-05-08 xxxxxxx"
+#                         - name: "demo weight"
+#                           dataField: "weight"
+#                           dataValue: 120.0
+#                           dataType: float
+#                           updateAt: "2020-05-08 xxxxxxx"
+#                         - name: "demo healthy"
+#                           dataField: "healthy"
+#                           dataValue: false
+#                           dataType: boolen
+#                           updateAt: "2020-05-08 xxxxxxx"
+#                         - name: "demo extGirlFriend"
+#                           dataField: "extGirlFriend"
+#                           dataValue:
+#                                - "limi"
+#                                - "rose"
+#                           dataType: array
+#                           itemType: string
+#                           updateAt: "2020-05-08 xxxxxxx"
+                   
+

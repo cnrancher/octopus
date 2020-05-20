@@ -1,0 +1,29 @@
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app.kubernetes.io/component: "adaptor"
+  name: adaptor
+  namespace: system
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: "adaptor"
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: "adaptor"
+    spec:
+      containers:
+        - name: octopus
+          image: rancher/octopus-adaptor-mqtt:latest
+          volumeMounts:
+            - mountPath: /var/lib/octopus/adaptors/
+              name: sockets
+      volumes:
+        - name: sockets
+          hostPath:
+            path: /var/lib/octopus/adaptors/
+            type: DirectoryOrCreate
