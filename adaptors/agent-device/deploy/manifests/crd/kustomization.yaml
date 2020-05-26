@@ -1,0 +1,8 @@
+commonAnnotations:
+  devices.edge.cattle.io/enable: "true" # this is required
+  devices.edge.cattle.io/device-property: '{"name":"string","dataType":"string","value":"string","updatedAt":"date"}' # specify device property to be displayed in the UI
+  devices.edge.cattle.io/icon: "" # define the icon for the Edge UI
+  devices.edge.cattle.io/description: "Agent Device Group Adaptor is used to manage a group of devices (1…x) which are running all the same containerized applications on devices with the same architecture."
+
+resources:
+  - base/devices.edge.cattle.io_agentdevicegroups.yaml
