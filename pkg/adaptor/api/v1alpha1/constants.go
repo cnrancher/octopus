@@ -1,14 +1,6 @@
 package v1alpha1
 
 const (
-	// Healthy means that the adaptor is healthy
-	Healthy = "Healthy"
-
-	// Unhealthy means that the adaptor is unhealthy
-	Unhealthy = "Unhealthy"
-)
-
-const (
 	// Version is the current version of the API supported by Limb
 	Version = "v1alpha1"
 
