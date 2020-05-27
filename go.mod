@@ -5,6 +5,7 @@ go 1.13
 require (
 	github.com/bettercap/gatt v0.0.0-20191018133023-569d3d9372bb
 	github.com/davecgh/go-spew v1.1.1
+	github.com/eclipse/paho.mqtt.golang v1.2.0
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/go-logr/logr v0.1.0
 	github.com/goburrow/modbus v0.1.0
@@ -22,6 +23,8 @@ require (
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.5
+	github.com/tidwall/gjson v1.6.0
+	github.com/tidwall/sjson v1.1.1
 	go.uber.org/zap v1.10.0
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 	google.golang.org/grpc v1.23.1
