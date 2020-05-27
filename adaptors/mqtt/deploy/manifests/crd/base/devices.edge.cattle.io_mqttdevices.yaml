@@ -1,0 +1,216 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.2.5
+  creationTimestamp: null
+  name: mqttdevices.devices.edge.cattle.io
+spec:
+  group: devices.edge.cattle.io
+  names:
+    kind: MqttDevice
+    listKind: MqttDeviceList
+    plural: mqttdevices
+    singular: mqttdevice
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: MqttDevice is the Schema for the mqtt device API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: MqttDeviceSpec defines the desired state of MqttDevice
+            properties:
+              config:
+                properties:
+                  broker:
+                    type: string
+                  password:
+                    type: string
+                  username:
+                    type: string
+                required:
+                - broker
+                - password
+                - username
+                type: object
+              properties:
+                items:
+                  properties:
+                    description:
+                      type: string
+                    jsonPath:
+                      type: string
+                    name:
+                      type: string
+                    pubInfo:
+                      properties:
+                        qos:
+                          description: The qos type.
+                          enum:
+                          - 0
+                          - 1
+                          - 2
+                          type: integer
+                        topic:
+                          type: string
+                      required:
+                      - qos
+                      - topic
+                      type: object
+                    subInfo:
+                      properties:
+                        payloadType:
+                          description: The payload type type.
+                          enum:
+                          - json
+                          type: string
+                        qos:
+                          description: The qos type.
+                          enum:
+                          - 0
+                          - 1
+                          - 2
+                          type: integer
+                        topic:
+                          type: string
+                      required:
+                      - payloadType
+                      - qos
+                      - topic
+                      type: object
+                    value:
+                      properties:
+                        arrayValue:
+                          description: Reports the value of array type.
+                          items:
+                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
+                          type: array
+                        booleanValue:
+                          description: Reports the value of boolean type.
+                          type: boolean
+                        floatValue:
+                          description: Reports the value of float type.
+                          type: object
+                        intValue:
+                          description: Reports the value of int type.
+                          format: int64
+                          type: integer
+                        objectValue:
+                          description: Reports the value of object type.
+                          type: object
+                          x-kubernetes-preserve-unknown-fields: true
+                        stringValue:
+                          description: Reports the value of string type.
+                          type: string
+                        valueType:
+                          description: Reports the type of property.
+                          enum:
+                          - int
+                          - string
+                          - float
+                          - boolean
+                          - array
+                          - object
+                          type: string
+                      required:
+                      - valueType
+                      type: object
+                  required:
+                  - jsonPath
+                  - name
+                  - subInfo
+                  type: object
+                type: array
+            required:
+            - config
+            - properties
+            type: object
+          status:
+            description: MqttDeviceStatus defines the observed state of MqttDevice
+            properties:
+              properties:
+                items:
+                  properties:
+                    description:
+                      type: string
+                    name:
+                      type: string
+                    updateAt:
+                      format: date-time
+                      type: string
+                    value:
+                      properties:
+                        arrayValue:
+                          description: Reports the value of array type.
+                          items:
+                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
+                          type: array
+                        booleanValue:
+                          description: Reports the value of boolean type.
+                          type: boolean
+                        floatValue:
+                          description: Reports the value of float type.
+                          type: object
+                        intValue:
+                          description: Reports the value of int type.
+                          format: int64
+                          type: integer
+                        objectValue:
+                          description: Reports the value of object type.
+                          type: object
+                          x-kubernetes-preserve-unknown-fields: true
+                        stringValue:
+                          description: Reports the value of string type.
+                          type: string
+                        valueType:
+                          description: Reports the type of property.
+                          enum:
+                          - int
+                          - string
+                          - float
+                          - boolean
+                          - array
+                          - object
+                          type: string
+                      required:
+                      - valueType
+                      type: object
+                  required:
+                  - name
+                  - updateAt
+                  - value
+                  type: object
+                type: array
+            required:
+            - properties
+            type: object
+            x-kubernetes-preserve-unknown-fields: true
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

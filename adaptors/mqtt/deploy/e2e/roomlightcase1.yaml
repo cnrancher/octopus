@@ -1,0 +1,92 @@
+apiVersion: edge.cattle.io/v1alpha1
+kind: DeviceLink
+metadata:
+  name: mqtt-test
+spec:
+  adaptor:
+    node: k3d-k3s-default-server
+    name: adaptors.edge.cattle.io/mqtt
+    parameters:
+      syncInterval: 5
+      timeout: 10
+  model:
+    apiVersion: "devices.edge.cattle.io/v1alpha1"
+    kind: "MqttDevice"
+  template:
+    metadata:
+      labels:
+        device: mqtt-test
+    spec:
+      config:
+        broker: "tcp://192.168.8.246:1883"
+        password: parchk123
+        username: parchk
+      properties:
+        - name: "switch"
+          description: "the room light switch"
+          jsonPath: "switch"
+          subInfo:
+              topic: "device/room/light"
+              payloadType: "json"
+              qos: 2
+          pubInfo:
+              topic: "device/room/light/cmd"
+              qos: 2
+        - name: "brightness"
+          description: "the room light brightness"
+          jsonPath: "brightness"
+          subInfo:
+              topic: "device/room/light"
+              payloadType: "json"
+              qos: 2
+          pubInfo:
+              topic: "device/room/light/cmd"
+              qos: 2
+        - name: "power"
+          description: "the room light power"
+          jsonPath: "power"
+          subInfo:
+              topic: "device/room/light"
+              payloadType: "json"
+              qos: 2
+          pubInfo:
+              topic: "device/room/light/cmd"
+              qos: 2
+        - name: "attr"
+          description: "the room light attr"
+          jsonPath: "attr"
+          subInfo:
+              topic: "device/room/light"
+              payloadType: "json"
+              qos: 2
+          pubInfo:
+              topic: "device/room/light/cmd"
+              qos: 2
+
+# case:
+#  if the "device/room/light" topic subscribe get value : {"switch":"off","brightness"：4,"power":{"powerDissipation":"10KWH","electricQuantity":19.99}},
+#      we will get the status like this:
+# status: 
+#   properties: 
+#   - description: "the room light switch"
+#     name: "switch"
+#     updateAt: "2020-05-20T06:52:41Z"
+#     value: 
+#       stringValue: "off"
+#       type: "string"
+#   - description: "the room light brightness"
+#     name: "brightness"
+#     updateAt: "2020-05-20T06:59:59Z"
+#     value: 
+#       intValue: "4"
+#       type: "int"
+#   - description: "the room light power"
+#     name: "power"
+#     updateAt: "2020-05-20T06:49:48Z"
+#     value: 
+#       objectValue: 
+#         electricQuantity: 19.99
+#         powerDissipation: "10KWH"
+#       type: "object"
+
+
