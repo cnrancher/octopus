@@ -71,7 +71,7 @@ fix(dummy): correct simulation interval
 
 adjust the interval to relate with `gear` spec.
 
-closes #7
+address #7
 ```
 More examples could refer to [here](https://www.conventionalcommits.org/en/v1.0.0-beta.4/#examples). 
 
@@ -119,16 +119,16 @@ The body should include the motivation for the change and contrasts with previou
 The footer should be used for:
 
 - Referencing issues:
-    Closed issues should be listed on a separate line prefixed with `closes` keyword like this:
+    Closed issues should be listed on a separate line prefixed with `address` keyword like this:
   
     ```text
-    closes #7
+    address #7
     ``` 
     
     or in the case of multiple issues:
     
     ```text
-    closes #8, #9, #10
+    address #8, #9, #10
     ```
 - Record breaking changes:
     Breaking changes should be prefixed with `BREAKING CHANGE` keyword like this:
