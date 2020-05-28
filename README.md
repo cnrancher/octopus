@@ -1,5 +1,7 @@
 # Octopus
 
+[![Build Status](http://drone-pandaria.cnrancher.com/api/badges/cnrancher/octopus/status.svg)](http://drone-pandaria.cnrancher.com/cnrancher/octopus)
+
 Octopus is an edge device management system based on Kubernetes, it is very lightweight and does not need to replace any of the basic components of the Kubernetes clusters. With Octopus deployed, the cluster can have the ability to manage any edge device as a resource.
 
 <!-- toc -->
