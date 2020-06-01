@@ -14,6 +14,7 @@ import (
 	"github.com/rancher/octopus/pkg/brain/index"
 	"github.com/rancher/octopus/pkg/brain/predicate"
 	"github.com/rancher/octopus/pkg/status/devicelink"
+	statusnode "github.com/rancher/octopus/pkg/status/node"
 	"github.com/rancher/octopus/pkg/util/collection"
 	"github.com/rancher/octopus/pkg/util/object"
 )
@@ -36,7 +37,7 @@ func (r *NodeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	var ctx = context.Background()
 	var log = r.Log.WithValues("node", req.NamespacedName)
 
-	// fetch node
+	// fetches node
 	var node corev1.Node
 	if err := r.Get(ctx, req.NamespacedName, &node); err != nil {
 		if !apierrs.IsNotFound(err) {
@@ -52,24 +53,24 @@ func (r *NodeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			return ctrl.Result{}, nil
 		}
 
-		// move link NodeExisted condition to `False`
+		// moves link NodeExisted condition from `True` to `Unknown`
 		var links edgev1alpha1.DeviceLinkList
 		if err := r.List(ctx, &links, client.MatchingFields{index.DeviceLinkByNodeField: node.Name}); err != nil {
 			log.Error(err, "Unable to list related DeviceLink of Node")
 			return ctrl.Result{Requeue: true}, nil
 		}
 		for _, link := range links.Items {
-			if devicelink.GetNodeExistedStatus(&link.Status) == metav1.ConditionFalse {
+			if devicelink.GetNodeExistedStatus(&link.Status) != metav1.ConditionTrue {
 				continue
 			}
-			devicelink.FailOnNodeExisted(&link.Status, "adaptor node isn't existed")
+			devicelink.ToCheckNodeExisted(&link.Status)
 			if err := r.Status().Update(ctx, &link); err != nil {
 				log.Error(err, "Unable to change the status of DeviceLink")
 				return ctrl.Result{Requeue: true}, nil
 			}
 		}
 
-		// remove finalizer
+		// removesfinalizer
 		node.Finalizers = collection.StringSliceRemove(node.Finalizers, ReconcilingNode)
 		if err := r.Update(ctx, &node); err != nil {
 			log.Error(err, "Unable to remove finalizer from Node")
@@ -79,8 +80,12 @@ func (r *NodeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
-	// add finalizer if needed
+	// adds finalizer if needed
 	if !collection.StringSliceContain(node.Finalizers, ReconcilingNode) {
+		if statusnode.GetReady(&node.Status) != metav1.ConditionTrue {
+			return ctrl.Result{Requeue: true}, nil
+		}
+
 		node.Finalizers = append(node.Finalizers, ReconcilingNode)
 		if err := r.Update(ctx, &node); err != nil {
 			log.Error(err, "Unable to add finalizer to Node")
@@ -91,7 +96,7 @@ func (r *NodeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		// the predication will prevent the updated reconciling.
 	}
 
-	// move link NodeExisted condition from `False` to `True`
+	// moves link NodeExisted condition from `False` to `Unknown`
 	var links edgev1alpha1.DeviceLinkList
 	if err := r.List(ctx, &links, client.MatchingFields{index.DeviceLinkByNodeField: node.Name}); err != nil {
 		log.Error(err, "Unable to list related DeviceLink of Node")
@@ -112,7 +117,7 @@ func (r *NodeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 }
 
 func (r *NodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	// indexes DeviceLink by `spec.adaptor.node`
+	// indexes DeviceLink by `status.nodeName`
 	if err := mgr.GetFieldIndexer().IndexField(
 		&edgev1alpha1.DeviceLink{},
 		index.DeviceLinkByNodeField,
@@ -124,6 +129,6 @@ func (r *NodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		Named("brain_node").
 		For(&corev1.Node{}).
-		WithEventFilter(predicate.NodeChangedFuncs).
+		WithEventFilter(predicate.NodeChangedPredicate{}).
 		Complete(r)
 }

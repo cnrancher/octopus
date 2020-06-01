@@ -81,7 +81,7 @@ var _ = Describe("DeviceLink controller", func() {
 			Expect(k8sCli.Create(testCtx, &targetItem)).Should(Succeed())
 
 			// simulated that has completed the validation of node and model
-			targetItem.Status.Adaptor = targetItem.Spec.Adaptor
+			targetItem.Status.NodeName = targetItem.Spec.Adaptor.Node
 			status.SuccessOnNodeExisted(&targetItem.Status)
 			targetItem.Status.Model = targetItem.Spec.Model
 			status.SuccessOnModelExisted(&targetItem.Status)
@@ -134,7 +134,7 @@ var _ = Describe("DeviceLink controller", func() {
 			Expect(k8sCli.Create(testCtx, &targetItem)).Should(Succeed())
 
 			// simulated that has completed the validation of node and model
-			targetItem.Status.Adaptor = targetItem.Spec.Adaptor
+			targetItem.Status.NodeName = targetItem.Spec.Adaptor.Node
 			status.SuccessOnNodeExisted(&targetItem.Status)
 			targetItem.Status.Model = targetItem.Spec.Model
 			status.SuccessOnModelExisted(&targetItem.Status)
@@ -194,7 +194,7 @@ var _ = Describe("DeviceLink controller", func() {
 			testAdaptors.Put(mockingDummyAdaptor)
 
 			// simulated that has completed the validation of node and model
-			targetItem.Status.Adaptor = targetItem.Spec.Adaptor
+			targetItem.Status.NodeName = targetItem.Spec.Adaptor.Node
 			status.SuccessOnNodeExisted(&targetItem.Status)
 			targetItem.Status.Model = targetItem.Spec.Model
 			status.SuccessOnModelExisted(&targetItem.Status)

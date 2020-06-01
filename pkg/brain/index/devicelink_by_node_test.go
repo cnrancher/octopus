@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
@@ -27,13 +28,20 @@ func TestDeviceLinkByNodeFunc(t *testing.T) {
 		},
 		{
 			given: &edgev1alpha1.DeviceLink{
-				Status: edgev1alpha1.DeviceLinkStatus{
+				Spec: edgev1alpha1.DeviceLinkSpec{
 					Adaptor: edgev1alpha1.DeviceAdaptor{
 						Node: "edge-worker",
 					},
 				},
+				Status: edgev1alpha1.DeviceLinkStatus{
+					NodeName: "edge-worker",
+				},
 			},
 			expect: []string{"edge-worker"},
+		},
+		{ // non-DeviceLink object
+			given:  &corev1.Node{},
+			expect: nil,
 		},
 	}
 

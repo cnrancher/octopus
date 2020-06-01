@@ -114,6 +114,30 @@ type DeviceLinkStatus struct {
 	// Represents the observed model of the device
 	// +optional
 	Model metav1.TypeMeta `json:"model,omitempty"`
+
+	// Represents the observed scheduled Node name of the device.
+	// +optional
+	NodeName string `json:"nodeName,omitempty"`
+
+	// Represents the observed scheduled Node hostname of the device.
+	// +optional
+	NodeHostName string `json:"nodeHostName,omitempty"`
+
+	// Represents the observed scheduled Node internal IP of the device.
+	// +optional
+	NodeInternalIP string `json:"nodeInternalIP,omitempty"`
+
+	// Represents the observed scheduled Node internal DNS of the device.
+	// +optional
+	NodeInternalDNS string `json:"nodeInternalDNS,omitempty"`
+
+	// Represents the observed scheduled Node external IP of the device.
+	// +optional
+	NodeExternalIP string `json:"nodeExternalIP,omitempty"`
+
+	// Represents the observed scheduled Node external DNS of the device.
+	// +optional
+	NodeExternalDNS string `json:"nodeExternalDNS,omitempty"`
 }
 
 // +kubebuilder:object:root=true
