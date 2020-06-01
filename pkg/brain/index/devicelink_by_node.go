@@ -14,12 +14,12 @@ var deviceLinkByNodeIndexLog = ctrl.Log.WithName("index").WithName(DeviceLinkByN
 func DeviceLinkByNodeFunc(rawObj runtime.Object) []string {
 	var link = object.ToDeviceLinkObject(rawObj)
 	if link == nil {
-		deviceLinkByNodeIndexLog.Error(nil, "Received runtime object is not DeviceLink", "object", rawObj)
 		return nil
 	}
 
-	var nodeName = link.Status.Adaptor.Node
+	var nodeName = link.Status.NodeName
 	if nodeName != "" {
+		deviceLinkByNodeIndexLog.V(0).Info("Index DeviceLink by Node", "nodeName", nodeName, "object", object.GetNamespacedName(link))
 		return []string{nodeName}
 	}
 	return nil

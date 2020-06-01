@@ -14,6 +14,7 @@ import (
 
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
 	"github.com/rancher/octopus/pkg/status/devicelink"
+	statusnode "github.com/rancher/octopus/pkg/status/node"
 	"github.com/rancher/octopus/pkg/util/model"
 	"github.com/rancher/octopus/pkg/util/object"
 )
@@ -52,7 +53,7 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	// validates node existing or not
 	switch devicelink.GetNodeExistedStatus(&link.Status) {
 	case metav1.ConditionFalse:
-		if link.Spec.Adaptor.Node != link.Status.Adaptor.Node {
+		if link.Status.NodeName != link.Spec.Adaptor.Node {
 			devicelink.ToCheckNodeExisted(&link.Status)
 			if err := r.Status().Update(ctx, &link); err != nil {
 				log.Error(err, "Unable to change the status of DeviceLink")
@@ -61,7 +62,7 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		}
 		return ctrl.Result{}, nil
 	case metav1.ConditionTrue:
-		if link.Spec.Adaptor.Node != link.Status.Adaptor.Node {
+		if link.Status.NodeName != link.Spec.Adaptor.Node {
 			devicelink.ToCheckNodeExisted(&link.Status)
 			if err := r.Status().Update(ctx, &link); err != nil {
 				log.Error(err, "Unable to change the status of DeviceLink")
@@ -77,13 +78,32 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 				return ctrl.Result{Requeue: true}, nil
 			}
 		}
-		if object.IsActivating(&node) {
-			devicelink.SuccessOnNodeExisted(&link.Status)
+		if statusnode.GetReady(&node.Status) != metav1.ConditionTrue || !object.IsActivating(&node) {
+			link.Status.NodeInternalDNS = ""
+			link.Status.NodeInternalIP = ""
+			link.Status.NodeExternalDNS = ""
+			link.Status.NodeExternalIP = ""
+			link.Status.NodeHostName = ""
+			devicelink.FailOnNodeExisted(&link.Status, "adaptor node isn't ready or existed")
 		} else {
-			devicelink.FailOnNodeExisted(&link.Status, "adaptor node isn't existed")
+			for _, address := range node.Status.Addresses {
+				switch address.Type {
+				case corev1.NodeInternalDNS:
+					link.Status.NodeInternalDNS = address.Address
+				case corev1.NodeInternalIP:
+					link.Status.NodeInternalIP = address.Address
+				case corev1.NodeExternalDNS:
+					link.Status.NodeExternalDNS = address.Address
+				case corev1.NodeExternalIP:
+					link.Status.NodeExternalIP = address.Address
+				case corev1.NodeHostName:
+					link.Status.NodeHostName = address.Address
+				}
+			}
+			devicelink.SuccessOnNodeExisted(&link.Status)
 		}
 
-		link.Status.Adaptor.Node = link.Spec.Adaptor.Node
+		link.Status.NodeName = link.Spec.Adaptor.Node
 		if err := r.Status().Update(ctx, &link); err != nil {
 			log.Error(err, "Unable to change the status of DeviceLink")
 			return ctrl.Result{Requeue: true}, nil

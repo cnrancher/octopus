@@ -186,6 +186,29 @@ spec:
                       More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
                     type: string
                 type: object
+              nodeExternalDNS:
+                description: Represents the observed scheduled Node external DNS of
+                  the device.
+                type: string
+              nodeExternalIP:
+                description: Represents the observed scheduled Node external IP of
+                  the device.
+                type: string
+              nodeHostName:
+                description: Represents the observed scheduled Node hostname of the
+                  device.
+                type: string
+              nodeInternalDNS:
+                description: Represents the observed scheduled Node internal DNS of
+                  the device.
+                type: string
+              nodeInternalIP:
+                description: Represents the observed scheduled Node internal IP of
+                  the device.
+                type: string
+              nodeName:
+                description: Represents the observed scheduled Node name of the device.
+                type: string
             type: object
         type: object
     served: true

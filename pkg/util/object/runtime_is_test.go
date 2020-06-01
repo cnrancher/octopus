@@ -18,12 +18,12 @@ func TestIsNodeObject(t *testing.T) {
 		expect bool
 	}{
 		{
-			name:   "node instance",
+			name:   "Node instance",
 			given:  &corev1.Node{},
 			expect: true,
 		},
 		{
-			name:   "none node instance",
+			name:   "non-node instance",
 			given:  &edgev1alpha1.DeviceLink{},
 			expect: false,
 		},
@@ -49,7 +49,7 @@ func TestIsCustomResourceDefinitionObject(t *testing.T) {
 			expect: true,
 		},
 		{
-			name:   "none CRD instance",
+			name:   "non-CRD instance",
 			given:  &edgev1alpha1.DeviceLink{},
 			expect: false,
 		},

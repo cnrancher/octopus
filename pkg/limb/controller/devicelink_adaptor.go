@@ -37,7 +37,7 @@ func (r *DeviceLinkReconciler) ReceiveAdaptorStatus(req suctioncup.RequestAdapto
 
 	for _, link := range links.Items {
 		// filter out the corresponding links
-		if link.Status.Adaptor.Node != r.NodeName {
+		if link.Status.NodeName != r.NodeName {
 			continue
 		}
 

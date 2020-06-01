@@ -64,7 +64,7 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	}
 
 	// validates application
-	if link.Status.Adaptor.Node != r.NodeName {
+	if link.Status.NodeName != r.NodeName {
 		return ctrl.Result{}, nil
 	}
 
