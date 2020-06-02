@@ -184,7 +184,7 @@ spec:
                   type: object
                 type: array
               model:
-                description: Represents the observed model of the device
+                description: Represents the observed model of the device.
                 properties:
                   apiVersion:
                     description: 'APIVersion defines the versioned schema of this

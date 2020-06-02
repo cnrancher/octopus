@@ -111,10 +111,6 @@ type DeviceLinkStatus struct {
 	// +optional
 	Adaptor DeviceAdaptor `json:"adaptor,omitempty"`
 
-	// Represents the observed model of the device
-	// +optional
-	Model metav1.TypeMeta `json:"model,omitempty"`
-
 	// Represents the observed scheduled Node name of the device.
 	// +optional
 	NodeName string `json:"nodeName,omitempty"`
@@ -138,6 +134,10 @@ type DeviceLinkStatus struct {
 	// Represents the observed scheduled Node external DNS of the device.
 	// +optional
 	NodeExternalDNS string `json:"nodeExternalDNS,omitempty"`
+
+	// Represents the observed model of the device.
+	// +optional
+	Model metav1.TypeMeta `json:"model,omitempty"`
 }
 
 // +kubebuilder:object:root=true
