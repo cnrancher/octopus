@@ -99,3 +99,48 @@ func TestStringMapCopyInto(t *testing.T) {
 		}
 	}
 }
+
+func TestDiffStringMap(t *testing.T) {
+	type given struct {
+		left  map[string]string
+		right map[string]string
+	}
+
+	var testCases = []struct {
+		given  given
+		expect bool
+	}{
+		{
+			given: given{
+				left: map[string]string{
+					"a": "b",
+					"c": "d",
+				},
+				right: map[string]string{
+					"c": "d",
+					"a": "b",
+				},
+			},
+			expect: false,
+		},
+		{
+			given: given{
+				left: map[string]string{
+					"a": "b",
+					"c": "d",
+				},
+				right: map[string]string{
+					"c": "d",
+				},
+			},
+			expect: true,
+		},
+	}
+
+	for i, tc := range testCases {
+		var ret = DiffStringMap(tc.given.left, tc.given.right)
+		if ret != tc.expect {
+			t.Errorf("case %v: expected %v, got %v", i+1, tc.expect, ret)
+		}
+	}
+}

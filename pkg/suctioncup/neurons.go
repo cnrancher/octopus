@@ -59,14 +59,17 @@ func (m *manager) Send(data *unstructured.Unstructured, by *edgev1alpha1.DeviceL
 	if conn == nil {
 		return errors.Errorf("could not find connection %s", name)
 	}
-	var parametersBytes []byte
-	if by.Status.Adaptor.Parameters != nil {
-		parametersBytes = by.Status.Adaptor.Parameters.DeepCopy().Raw
-	}
-	var dataBytes, err = data.DeepCopy().MarshalJSON()
+
+	// NB(thxCode) the data should never be nil
+	var sendDevice, err = data.MarshalJSON()
 	if err != nil {
 		return errors.Wrapf(err, "could not marshal data as JSON")
 	}
+	var sendParameters []byte
+	if by.Spec.Adaptor.Parameters != nil {
+		sendParameters = by.Spec.Adaptor.Parameters.Raw
+	}
+	var sendModel = &by.Status.Model
 
-	return conn.Send(parametersBytes, &by.Status.Model, dataBytes)
+	return conn.Send(sendParameters, sendModel, sendDevice)
 }

@@ -47,6 +47,7 @@ func (c Connections) Put(conn Connection) (overwrite bool) {
 		if err := staleConn.Stop(); err != nil {
 			log.Error(err, "Failed to stop stable connection", "connection", staleConn.GetName())
 		}
+		c.index.Store(conn.GetName(), conn)
 		return true
 	}
 	return false

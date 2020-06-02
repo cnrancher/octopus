@@ -17,3 +17,14 @@ func StringMapCopyInto(source, destination map[string]string) map[string]string 
 	}
 	return destination
 }
+
+func DiffStringMap(left, right map[string]string) bool {
+	for lk, lv := range left {
+		if rv, exist := right[lk]; !exist {
+			return true
+		} else if lv != rv {
+			return true
+		}
+	}
+	return false
+}

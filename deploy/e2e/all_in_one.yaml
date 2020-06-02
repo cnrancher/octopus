@@ -135,20 +135,6 @@ spec:
           status:
             description: DeviceLinkStatus defines the observed state of DeviceLink
             properties:
-              adaptor:
-                description: Represents the observed adaptor of the device
-                properties:
-                  name:
-                    description: Specifies the name of adaptor to be used.
-                    type: string
-                  node:
-                    description: Specifies the node of adaptor to be matched.
-                    type: string
-                  parameters:
-                    description: Specifies the parameter of adaptor to be used.
-                    type: object
-                    x-kubernetes-preserve-unknown-fields: true
-                type: object
               adaptorName:
                 description: Represents the observed adaptor name of the device.
                 type: string
@@ -186,6 +172,10 @@ spec:
                   - type
                   type: object
                 type: array
+              deviceTemplateGeneration:
+                description: Represents the observed template generation of the device.
+                format: int64
+                type: integer
               model:
                 description: Represents the observed model of the device.
                 properties:

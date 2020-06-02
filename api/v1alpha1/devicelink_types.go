@@ -107,10 +107,6 @@ type DeviceLinkStatus struct {
 	// +optional
 	Conditions []DeviceLinkCondition `json:"conditions,omitempty"`
 
-	// Represents the observed adaptor of the device
-	// +optional
-	Adaptor DeviceAdaptor `json:"adaptor,omitempty"`
-
 	// Represents the observed scheduled Node name of the device.
 	// +optional
 	NodeName string `json:"nodeName,omitempty"`
@@ -142,6 +138,10 @@ type DeviceLinkStatus struct {
 	// Represents the observed adaptor name of the device.
 	// +optional
 	AdaptorName string `json:"adaptorName,omitempty"`
+
+	// Represents the observed template generation of the device.
+	// +optional
+	DeviceTemplateGeneration int64 `json:"deviceTemplateGeneration,omitempty"`
 }
 
 // +kubebuilder:object:root=true
