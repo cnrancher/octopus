@@ -147,7 +147,6 @@ func (in *DeviceLinkStatus) DeepCopyInto(out *DeviceLinkStatus) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	in.Adaptor.DeepCopyInto(&out.Adaptor)
 	out.Model = in.Model
 }
 

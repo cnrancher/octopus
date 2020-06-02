@@ -42,7 +42,7 @@ func (c Adaptors) Put(adaptor Adaptor) {
 		if err := staleAdaptor.Stop(); err != nil {
 			log.Error(err, "Failed to stop stale adaptor", "adaptor", staleAdaptor.GetName())
 		}
-		c.index.Delete(staleAdaptor.GetEndpoint())
+		c.index.Store(adaptor.GetName(), adaptor)
 	}
 	c.index.Store(adaptor.GetEndpoint(), adaptor)
 }
