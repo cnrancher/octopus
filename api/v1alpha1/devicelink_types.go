@@ -138,6 +138,10 @@ type DeviceLinkStatus struct {
 	// Represents the observed model of the device.
 	// +optional
 	Model metav1.TypeMeta `json:"model,omitempty"`
+
+	// Represents the observed adaptor name of the device.
+	// +optional
+	AdaptorName string `json:"adaptorName,omitempty"`
 }
 
 // +kubebuilder:object:root=true

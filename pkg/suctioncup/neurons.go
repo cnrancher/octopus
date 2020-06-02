@@ -13,9 +13,13 @@ func (m *manager) ExistAdaptor(name string) bool {
 }
 
 func (m *manager) Connect(by *edgev1alpha1.DeviceLink) (bool, error) {
-	var adaptor = m.adaptors.Get(by.Spec.Adaptor.Name)
+	var adaptorName = by.Status.AdaptorName
+	if adaptorName == "" {
+		return false, errors.New("adaptor name is empty")
+	}
+	var adaptor = m.adaptors.Get(adaptorName)
 	if adaptor == nil {
-		return false, errors.Errorf("could not find adaptor %s", by.Spec.Adaptor.Name)
+		return false, errors.Errorf("could not find adaptor %s", adaptorName)
 	}
 
 	var name = object.GetNamespacedName(by)
@@ -27,7 +31,11 @@ func (m *manager) Connect(by *edgev1alpha1.DeviceLink) (bool, error) {
 }
 
 func (m *manager) Disconnect(by *edgev1alpha1.DeviceLink) bool {
-	var adaptor = m.adaptors.Get(by.Spec.Adaptor.Name)
+	var adaptorName = by.Status.AdaptorName
+	if adaptorName == "" {
+		return false
+	}
+	var adaptor = m.adaptors.Get(adaptorName)
 	if adaptor == nil {
 		return false
 	}
@@ -37,9 +45,13 @@ func (m *manager) Disconnect(by *edgev1alpha1.DeviceLink) bool {
 }
 
 func (m *manager) Send(data *unstructured.Unstructured, by *edgev1alpha1.DeviceLink) error {
-	var adaptor = m.adaptors.Get(by.Spec.Adaptor.Name)
+	var adaptorName = by.Status.AdaptorName
+	if adaptorName == "" {
+		return errors.New("could not find blank name adaptor")
+	}
+	var adaptor = m.adaptors.Get(adaptorName)
 	if adaptor == nil {
-		return errors.Errorf("could not find adaptor %s", by.Spec.Adaptor.Name)
+		return errors.Errorf("could not find adaptor %s", adaptorName)
 	}
 
 	var name = object.GetNamespacedName(by)

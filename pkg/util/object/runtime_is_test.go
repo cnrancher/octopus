@@ -62,3 +62,29 @@ func TestIsCustomResourceDefinitionObject(t *testing.T) {
 		}
 	}
 }
+
+func TestIsDeviceLinkObject(t *testing.T) {
+	var testCases = []struct {
+		name   string
+		given  runtime.Object
+		expect bool
+	}{
+		{
+			name:   "DeviceLink instance",
+			given:  &edgev1alpha1.DeviceLink{},
+			expect: true,
+		},
+		{
+			name:   "non-DeviceLink instance",
+			given:  &corev1.Node{},
+			expect: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		var ret = IsDeviceLinkObject(tc.given)
+		if ret != tc.expect {
+			t.Errorf("case %v: expected %s, got %s", tc.name, spew.Sprintf("%#v", tc.expect), spew.Sprintf("%#v", ret))
+		}
+	}
+}

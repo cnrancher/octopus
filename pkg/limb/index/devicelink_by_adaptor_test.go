@@ -28,17 +28,20 @@ func TestDeviceLinkByAdaptorFunc(t *testing.T) {
 		},
 		{
 			given: &edgev1alpha1.DeviceLink{
-				Status: edgev1alpha1.DeviceLinkStatus{
+				Spec: edgev1alpha1.DeviceLinkSpec{
 					Adaptor: edgev1alpha1.DeviceAdaptor{
 						Name: "adaptors.test.io/dummy",
 					},
+				},
+				Status: edgev1alpha1.DeviceLinkStatus{
+					AdaptorName: "adaptors.test.io/dummy",
 				},
 			},
 			expect: []string{
 				"adaptors.test.io/dummy",
 			},
 		},
-		{
+		{ // non-DeviceLink object
 			given:  &corev1.Node{},
 			expect: nil,
 		},
