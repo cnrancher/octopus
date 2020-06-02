@@ -15,12 +15,12 @@ var deviceLinkByModelIndexLog = ctrl.Log.WithName("index").WithName(DeviceLinkBy
 func DeviceLinkByModelFunc(rawObj runtime.Object) []string {
 	var link = object.ToDeviceLinkObject(rawObj)
 	if link == nil {
-		deviceLinkByModelIndexLog.Error(nil, "Received runtime object is not DeviceLink", "object", rawObj)
 		return nil
 	}
 
 	var crdName = model.GetCRDNameOfGroupVersionKind(link.Status.Model.GroupVersionKind())
 	if crdName != "" {
+		deviceLinkByModelIndexLog.V(0).Info("Index DeviceLink by Model", "crdName", crdName, "object", object.GetNamespacedName(link))
 		return []string{crdName}
 	}
 	return nil

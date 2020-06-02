@@ -12,62 +12,423 @@ import (
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
 )
 
-func TestModelChangedFuncs_DeleteFunc(t *testing.T) {
+func TestModelChangedPredicate_Update(t *testing.T) {
 	var testCases = []struct {
 		name   string
-		given  event.DeleteEvent
+		given  event.UpdateEvent
 		expect bool
 	}{
 		{
-			name: "without Meta",
-			given: event.DeleteEvent{
-				Object: &apiextensionsv1.CustomResourceDefinition{},
-			},
-			expect: false,
-		},
-		{
-			name: "without Object",
-			given: event.DeleteEvent{
-				Meta: &apiextensionsv1.CustomResourceDefinition{},
-			},
-			expect: false,
-		},
-		{
-			name: "none CRD instance",
-			given: event.DeleteEvent{
-				Meta:   &edgev1alpha1.DeviceLink{},
-				Object: &edgev1alpha1.DeviceLink{},
-			},
-			expect: true,
-		},
-		{
-			name: "CRD instance",
-			given: event.DeleteEvent{
-				Meta:   &apiextensionsv1.CustomResourceDefinition{},
-				Object: &apiextensionsv1.CustomResourceDefinition{},
-			},
-			expect: true,
-		},
-		{
-			name: "deleted CRD instance",
-			given: event.DeleteEvent{
-				Meta: &apiextensionsv1.CustomResourceDefinition{
+			name: "without MetaOld",
+			given: event.UpdateEvent{
+				MetaOld: nil,
+				ObjectOld: &apiextensionsv1.CustomResourceDefinition{
 					ObjectMeta: metav1.ObjectMeta{
-						DeletionTimestamp: &metav1.Time{Time: time.Now()},
+						Name: "dummyspecialdevices.edge.cattle.io",
 					},
 				},
-				Object: &apiextensionsv1.CustomResourceDefinition{
+				MetaNew: &apiextensionsv1.CustomResourceDefinition{
 					ObjectMeta: metav1.ObjectMeta{
-						DeletionTimestamp: &metav1.Time{Time: time.Now()},
+						Name: "dummyspecialdevices.edge.cattle.io",
+					},
+				},
+				ObjectNew: &apiextensionsv1.CustomResourceDefinition{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "dummyspecialdevices.edge.cattle.io",
 					},
 				},
 			},
 			expect: false,
+		},
+		{
+			name: "non-CRD instance",
+			given: event.UpdateEvent{
+				MetaNew: &edgev1alpha1.DeviceLink{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "dl1",
+						Namespace: "default",
+					},
+				},
+				ObjectNew: &edgev1alpha1.DeviceLink{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "dl1",
+						Namespace: "default",
+					},
+				},
+				MetaOld: &edgev1alpha1.DeviceLink{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "dl1",
+						Namespace: "default",
+					},
+				},
+				ObjectOld: &edgev1alpha1.DeviceLink{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "dl1",
+						Namespace: "default",
+					},
+				},
+			},
+			expect: true,
+		},
+		{
+			name: "deleting Node instance",
+			given: event.UpdateEvent{
+				MetaOld: &apiextensionsv1.CustomResourceDefinition{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "dummyspecialdevices.edge.cattle.io",
+					},
+					Spec: apiextensionsv1.CustomResourceDefinitionSpec{
+						Versions: []apiextensionsv1.CustomResourceDefinitionVersion{
+							{
+								Name:    "v1alpha1",
+								Served:  true,
+								Storage: true,
+							},
+						},
+					},
+					Status: apiextensionsv1.CustomResourceDefinitionStatus{
+						StoredVersions: []string{
+							"v1alpha1",
+						},
+					},
+				},
+				ObjectOld: &apiextensionsv1.CustomResourceDefinition{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "dummyspecialdevices.edge.cattle.io",
+					},
+					Spec: apiextensionsv1.CustomResourceDefinitionSpec{
+						Versions: []apiextensionsv1.CustomResourceDefinitionVersion{
+							{
+								Name:    "v1alpha1",
+								Served:  true,
+								Storage: true,
+							},
+						},
+					},
+					Status: apiextensionsv1.CustomResourceDefinitionStatus{
+						StoredVersions: []string{
+							"v1alpha1",
+						},
+					},
+				},
+				MetaNew: &apiextensionsv1.CustomResourceDefinition{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:              "dummyspecialdevices.edge.cattle.io",
+						DeletionTimestamp: &metav1.Time{Time: time.Now()},
+					},
+					Spec: apiextensionsv1.CustomResourceDefinitionSpec{
+						Versions: []apiextensionsv1.CustomResourceDefinitionVersion{
+							{
+								Name:    "v1alpha1",
+								Served:  true,
+								Storage: true,
+							},
+						},
+					},
+					Status: apiextensionsv1.CustomResourceDefinitionStatus{
+						StoredVersions: []string{
+							"v1alpha1",
+						},
+					},
+				},
+				ObjectNew: &apiextensionsv1.CustomResourceDefinition{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:              "dummyspecialdevices.edge.cattle.io",
+						DeletionTimestamp: &metav1.Time{Time: time.Now()},
+					},
+					Spec: apiextensionsv1.CustomResourceDefinitionSpec{
+						Versions: []apiextensionsv1.CustomResourceDefinitionVersion{
+							{
+								Name:    "v1alpha1",
+								Served:  true,
+								Storage: true,
+							},
+						},
+					},
+					Status: apiextensionsv1.CustomResourceDefinitionStatus{
+						StoredVersions: []string{
+							"v1alpha1",
+						},
+					},
+				},
+			},
+			expect: true,
+		},
+		{
+			name: "deleted Node instance",
+			given: event.UpdateEvent{
+				MetaOld: &apiextensionsv1.CustomResourceDefinition{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:              "dummyspecialdevices.edge.cattle.io",
+						DeletionTimestamp: &metav1.Time{Time: time.Now()},
+					},
+					Spec: apiextensionsv1.CustomResourceDefinitionSpec{
+						Versions: []apiextensionsv1.CustomResourceDefinitionVersion{
+							{
+								Name:    "v1alpha1",
+								Served:  true,
+								Storage: true,
+							},
+						},
+					},
+					Status: apiextensionsv1.CustomResourceDefinitionStatus{
+						StoredVersions: []string{
+							"v1alpha1",
+						},
+					},
+				},
+				ObjectOld: &apiextensionsv1.CustomResourceDefinition{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:              "dummyspecialdevices.edge.cattle.io",
+						DeletionTimestamp: &metav1.Time{Time: time.Now()},
+					},
+					Spec: apiextensionsv1.CustomResourceDefinitionSpec{
+						Versions: []apiextensionsv1.CustomResourceDefinitionVersion{
+							{
+								Name:    "v1alpha1",
+								Served:  true,
+								Storage: true,
+							},
+						},
+					},
+					Status: apiextensionsv1.CustomResourceDefinitionStatus{
+						StoredVersions: []string{
+							"v1alpha1",
+						},
+					},
+				},
+				MetaNew: &apiextensionsv1.CustomResourceDefinition{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:              "dummyspecialdevices.edge.cattle.io",
+						DeletionTimestamp: &metav1.Time{Time: time.Now()},
+					},
+					Spec: apiextensionsv1.CustomResourceDefinitionSpec{
+						Versions: []apiextensionsv1.CustomResourceDefinitionVersion{
+							{
+								Name:    "v1alpha1",
+								Served:  true,
+								Storage: true,
+							},
+						},
+					},
+					Status: apiextensionsv1.CustomResourceDefinitionStatus{
+						StoredVersions: []string{
+							"v1alpha1",
+						},
+					},
+				},
+				ObjectNew: &apiextensionsv1.CustomResourceDefinition{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:              "dummyspecialdevices.edge.cattle.io",
+						DeletionTimestamp: &metav1.Time{Time: time.Now()},
+					},
+					Spec: apiextensionsv1.CustomResourceDefinitionSpec{
+						Versions: []apiextensionsv1.CustomResourceDefinitionVersion{
+							{
+								Name:    "v1alpha1",
+								Served:  true,
+								Storage: true,
+							},
+						},
+					},
+					Status: apiextensionsv1.CustomResourceDefinitionStatus{
+						StoredVersions: []string{
+							"v1alpha1",
+						},
+					},
+				},
+			},
+			expect: true,
+		},
+		{
+			name: "compatible with previous versions",
+			given: event.UpdateEvent{
+				MetaOld: &apiextensionsv1.CustomResourceDefinition{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "dummyspecialdevices.edge.cattle.io",
+					},
+					Spec: apiextensionsv1.CustomResourceDefinitionSpec{
+						Versions: []apiextensionsv1.CustomResourceDefinitionVersion{
+							{
+								Name:    "v1alpha1",
+								Served:  true,
+								Storage: true,
+							},
+						},
+					},
+					Status: apiextensionsv1.CustomResourceDefinitionStatus{
+						StoredVersions: []string{
+							"v1alpha1",
+						},
+					},
+				},
+				ObjectOld: &apiextensionsv1.CustomResourceDefinition{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "dummyspecialdevices.edge.cattle.io",
+					},
+					Spec: apiextensionsv1.CustomResourceDefinitionSpec{
+						Versions: []apiextensionsv1.CustomResourceDefinitionVersion{
+							{
+								Name:    "v1alpha1",
+								Served:  true,
+								Storage: true,
+							},
+						},
+					},
+					Status: apiextensionsv1.CustomResourceDefinitionStatus{
+						StoredVersions: []string{
+							"v1alpha1",
+						},
+					},
+				},
+				MetaNew: &apiextensionsv1.CustomResourceDefinition{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "dummyspecialdevices.edge.cattle.io",
+					},
+					Spec: apiextensionsv1.CustomResourceDefinitionSpec{
+						Versions: []apiextensionsv1.CustomResourceDefinitionVersion{
+							{
+								Name:    "v1alpha1",
+								Served:  true,
+								Storage: false,
+							},
+							{
+								Name:    "v1",
+								Served:  true,
+								Storage: true,
+							},
+						},
+					},
+					Status: apiextensionsv1.CustomResourceDefinitionStatus{
+						StoredVersions: []string{
+							"v1",
+						},
+					},
+				},
+				ObjectNew: &apiextensionsv1.CustomResourceDefinition{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "dummyspecialdevices.edge.cattle.io",
+					},
+					Spec: apiextensionsv1.CustomResourceDefinitionSpec{
+						Versions: []apiextensionsv1.CustomResourceDefinitionVersion{
+							{
+								Name:    "v1alpha1",
+								Served:  true,
+								Storage: false,
+							},
+							{
+								Name:    "v1",
+								Served:  true,
+								Storage: true,
+							},
+						},
+					},
+					Status: apiextensionsv1.CustomResourceDefinitionStatus{
+						StoredVersions: []string{
+							"v1",
+						},
+					},
+				},
+			},
+			expect: false,
+		},
+		{
+			name: "doesn't compatible with previous versions",
+			given: event.UpdateEvent{
+				MetaOld: &apiextensionsv1.CustomResourceDefinition{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "dummyspecialdevices.edge.cattle.io",
+					},
+					Spec: apiextensionsv1.CustomResourceDefinitionSpec{
+						Versions: []apiextensionsv1.CustomResourceDefinitionVersion{
+							{
+								Name:    "v1alpha1",
+								Served:  true,
+								Storage: true,
+							},
+						},
+					},
+					Status: apiextensionsv1.CustomResourceDefinitionStatus{
+						StoredVersions: []string{
+							"v1alpha1",
+						},
+					},
+				},
+				ObjectOld: &apiextensionsv1.CustomResourceDefinition{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "dummyspecialdevices.edge.cattle.io",
+					},
+					Spec: apiextensionsv1.CustomResourceDefinitionSpec{
+						Versions: []apiextensionsv1.CustomResourceDefinitionVersion{
+							{
+								Name:    "v1alpha1",
+								Served:  true,
+								Storage: true,
+							},
+						},
+					},
+					Status: apiextensionsv1.CustomResourceDefinitionStatus{
+						StoredVersions: []string{
+							"v1alpha1",
+						},
+					},
+				},
+				MetaNew: &apiextensionsv1.CustomResourceDefinition{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "dummyspecialdevices.edge.cattle.io",
+					},
+					Spec: apiextensionsv1.CustomResourceDefinitionSpec{
+						Versions: []apiextensionsv1.CustomResourceDefinitionVersion{
+							{
+								Name:    "v1alpha1",
+								Served:  false,
+								Storage: false,
+							},
+							{
+								Name:    "v1",
+								Served:  true,
+								Storage: true,
+							},
+						},
+					},
+					Status: apiextensionsv1.CustomResourceDefinitionStatus{
+						StoredVersions: []string{
+							"v1",
+						},
+					},
+				},
+				ObjectNew: &apiextensionsv1.CustomResourceDefinition{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "dummyspecialdevices.edge.cattle.io",
+					},
+					Spec: apiextensionsv1.CustomResourceDefinitionSpec{
+						Versions: []apiextensionsv1.CustomResourceDefinitionVersion{
+							{
+								Name:    "v1alpha1",
+								Served:  false,
+								Storage: false,
+							},
+							{
+								Name:    "v1",
+								Served:  true,
+								Storage: true,
+							},
+						},
+					},
+					Status: apiextensionsv1.CustomResourceDefinitionStatus{
+						StoredVersions: []string{
+							"v1",
+						},
+					},
+				},
+			},
+			expect: true,
 		},
 	}
 
+	var predication = ModelChangedPredicate{}
 	for _, tc := range testCases {
-		var ret = ModelChangedFuncs.Delete(tc.given)
+		var ret = predication.Update(tc.given)
 		if ret != tc.expect {
 			t.Errorf("case %v: expected %s, got %s", tc.name, spew.Sprintf("%#v", tc.expect), spew.Sprintf("%#v", ret))
 		}

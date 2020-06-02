@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -29,6 +30,12 @@ func TestDeviceLinkByModelFunc(t *testing.T) {
 		},
 		{
 			given: &edgev1alpha1.DeviceLink{
+				Spec: edgev1alpha1.DeviceLinkSpec{
+					Model: metav1.TypeMeta{
+						Kind:       "K1",
+						APIVersion: "test.io/v1",
+					},
+				},
 				Status: edgev1alpha1.DeviceLinkStatus{
 					Model: metav1.TypeMeta{
 						Kind:       "K1",
@@ -37,6 +44,10 @@ func TestDeviceLinkByModelFunc(t *testing.T) {
 				},
 			},
 			expect: []string{"k1s.test.io"},
+		},
+		{ // non-DeviceLink object
+			given:  &corev1.Node{},
+			expect: nil,
 		},
 	}
 

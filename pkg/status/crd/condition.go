@@ -9,10 +9,6 @@ func GetEstablished(status *apiextensionsv1.CustomResourceDefinitionStatus) meta
 	return unify(crdConditions(status.Conditions).get(apiextensionsv1.Established).Status)
 }
 
-func GetTerminating(status *apiextensionsv1.CustomResourceDefinitionStatus) metav1.ConditionStatus {
-	return unify(crdConditions(status.Conditions).get(apiextensionsv1.Terminating).Status)
-}
-
 type crdConditions []apiextensionsv1.CustomResourceDefinitionCondition
 
 func (d crdConditions) get(t apiextensionsv1.CustomResourceDefinitionConditionType) apiextensionsv1.CustomResourceDefinitionCondition {
