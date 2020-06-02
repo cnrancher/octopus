@@ -149,6 +149,9 @@ spec:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                 type: object
+              adaptorName:
+                description: Represents the observed adaptor name of the device.
+                type: string
               conditions:
                 description: Represents the latest available observations of the device's
                   current state.

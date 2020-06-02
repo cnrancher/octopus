@@ -14,13 +14,13 @@ var deviceLinkByAdaptorIndexLog = ctrl.Log.WithName("index").WithName(DeviceLink
 func DeviceLinkByAdaptorFunc(rawObj runtime.Object) []string {
 	var link = object.ToDeviceLinkObject(rawObj)
 	if link == nil {
-		deviceLinkByAdaptorIndexLog.Error(nil, "Received runtime object is not DeviceLink", "object", rawObj)
 		return nil
 	}
 
-	var name = link.Status.Adaptor.Name
-	if name != "" {
-		return []string{name}
+	var adaptorName = link.Status.AdaptorName
+	if adaptorName != "" {
+		deviceLinkByAdaptorIndexLog.V(0).Info("Index DeviceLink by Adaptor", "adaptorName", adaptorName, "object", object.GetNamespacedName(link))
+		return []string{adaptorName}
 	}
 	return nil
 }
