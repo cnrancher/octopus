@@ -19,7 +19,7 @@ func DeviceLinkByAdaptorFunc(rawObj runtime.Object) []string {
 
 	var adaptorName = link.Status.AdaptorName
 	if adaptorName != "" {
-		deviceLinkByAdaptorIndexLog.V(0).Info("Index DeviceLink by Adaptor", "adaptorName", adaptorName, "object", object.GetNamespacedName(link))
+		deviceLinkByAdaptorIndexLog.V(5).Info("Indexed", "adaptorName", adaptorName, "object", object.GetNamespacedName(link))
 		return []string{adaptorName}
 	}
 	return nil

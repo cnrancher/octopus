@@ -30,7 +30,7 @@ func (p DeviceLinkChangedPredicate) Create(e event.CreateEvent) bool {
 
 	// handles if the requested node
 	if p.NodeName == dl.Spec.Adaptor.Node {
-		deviceLinkChangedPredicateLog.V(0).Info("Accept CreateEvent as requested the same node", "key", object.GetNamespacedName(e.Meta))
+		deviceLinkChangedPredicateLog.V(5).Info("Accept CreateEvent as requested the same node", "key", object.GetNamespacedName(e.Meta))
 		return true
 	}
 
@@ -67,14 +67,14 @@ func (p DeviceLinkChangedPredicate) Update(e event.UpdateEvent) bool {
 
 	// handles if the object is requesting the same node
 	if p.NodeName == dlNew.Status.NodeName {
-		deviceLinkChangedPredicateLog.V(0).Info("Accept UpdateEvent as the object is requesting the same node", "key", object.GetNamespacedName(e.MetaNew))
+		deviceLinkChangedPredicateLog.V(5).Info("Accept UpdateEvent as the object is requesting the same node", "key", object.GetNamespacedName(e.MetaNew))
 		return true
 	}
 
 	// handles if the object has requested the same node previously
 	if p.NodeName == dlOld.Status.NodeName {
 		// NB(thxCode) help the reconciling logic to close the previous connection
-		deviceLinkChangedPredicateLog.V(0).Info("Accept UpdateEvent as the object has requested the same node previously", "key", object.GetNamespacedName(e.MetaOld))
+		deviceLinkChangedPredicateLog.V(5).Info("Accept UpdateEvent as the object has requested the same node previously", "key", object.GetNamespacedName(e.MetaOld))
 		return true
 	}
 
@@ -95,7 +95,7 @@ func (p DeviceLinkChangedPredicate) Generic(e event.GenericEvent) bool {
 
 	// handles if the requested node
 	if p.NodeName == dl.Spec.Adaptor.Node {
-		deviceLinkChangedPredicateLog.V(0).Info("Accept GenericEvent as requested the same node", "key", object.GetNamespacedName(e.Meta))
+		deviceLinkChangedPredicateLog.V(5).Info("Accept GenericEvent as requested the same node", "key", object.GetNamespacedName(e.Meta))
 		return true
 	}
 

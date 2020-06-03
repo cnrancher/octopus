@@ -138,15 +138,15 @@ func cleanup(socketDir string) error {
 			continue
 		}
 		if pi.IsDir() {
-			log.V(0).Info("Ignore dir", "path", path)
+			log.V(4).Info("Ignore dir", "path", path)
 			continue
 		}
 		if strings.HasPrefix(pi.Name(), ".") {
-			log.V(0).Info("Ignore ignoring file", "path", path)
+			log.V(4).Info("Ignore ignoring file", "path", path)
 			continue
 		}
 		if pi.Mode()&os.ModeSocket == 0 {
-			log.V(0).Info("Ignore non socket file", "path", path)
+			log.V(4).Info("Ignore non socket file", "path", path)
 			continue
 		}
 		err = os.RemoveAll(path)

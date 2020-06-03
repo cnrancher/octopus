@@ -27,7 +27,7 @@ func (NodeChangedPredicate) Update(e event.UpdateEvent) bool {
 
 	// handles when deleting
 	if object.IsDeleted(e.MetaNew) {
-		nodeChangedPredicateLog.V(0).Info("Accept UpdateEvent as deleted object", "key", object.GetNamespacedName(e.MetaOld))
+		nodeChangedPredicateLog.V(5).Info("Accept UpdateEvent as deleted object", "key", object.GetNamespacedName(e.MetaOld))
 		return true
 	}
 
@@ -36,13 +36,13 @@ func (NodeChangedPredicate) Update(e event.UpdateEvent) bool {
 
 	// handles when changing addresses
 	if diffNodeAddresses(nodeOld.Status.Addresses, nodeNew.Status.Addresses) {
-		nodeChangedPredicateLog.V(0).Info("Accept UpdateEvent as diffed addresses", "key", object.GetNamespacedName(e.MetaOld))
+		nodeChangedPredicateLog.V(5).Info("Accept UpdateEvent as diffed addresses", "key", object.GetNamespacedName(e.MetaOld))
 		return true
 	}
 
 	// handles when changing nodes
 	if diffNodeConditions(nodeOld.Status.Conditions, nodeNew.Status.Conditions) {
-		nodeChangedPredicateLog.V(0).Info("Accept UpdateEvent as diffed conditions", "key", object.GetNamespacedName(e.MetaOld))
+		nodeChangedPredicateLog.V(5).Info("Accept UpdateEvent as diffed conditions", "key", object.GetNamespacedName(e.MetaOld))
 		return true
 	}
 

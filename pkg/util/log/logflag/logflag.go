@@ -2,29 +2,26 @@ package logflag
 
 import (
 	flag "github.com/spf13/pflag"
-	uberzap "go.uber.org/zap"
-	uberzapcore "go.uber.org/zap/zapcore"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+
+	"github.com/rancher/octopus/pkg/util/log/zap"
 )
 
 type loggingT struct {
-	verbosity      int
-	enableBriefLog bool
+	verbosity    int
+	asJSON       bool
+	inProduction bool
 }
 
-var logging = loggingT{verbosity: 1}
+var logging = loggingT{}
 
 func AddFlags(fs *flag.FlagSet) {
-	fs.IntVar(&logging.verbosity, "v", logging.verbosity, "The level of log verbosity: debug(0) > info(1) > warn(2) > error(3) > panic(4).")
-	fs.BoolVar(&logging.enableBriefLog, "enable-brief-log", logging.enableBriefLog, "Print brief json-style log on console.")
+	fs.IntVar(&logging.verbosity, "v", logging.verbosity, "The level of log verbosity, a higher verbosity level means a log message is less important(more details). The log verbosity is following the klog's conventions: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-instrumentation/logging.md.")
+	fs.BoolVar(&logging.asJSON, "log-as-json", logging.asJSON, "Print brief json-style log.")
+	fs.BoolVar(&logging.inProduction, "log-in-production", logging.inProduction, "Use the reasonable production logging configuration of zap.")
 }
 
 func Configure() {
-	level := uberzap.NewAtomicLevelAt(uberzapcore.Level(int8(logging.verbosity) - 1))
-
-	ctrl.SetLogger(zap.New(
-		zap.UseDevMode(!logging.enableBriefLog),
-		zap.Level(&level),
-	))
+	var logger = zap.NewLogger(logging.asJSON, logging.inProduction)
+	ctrl.SetLogger(zap.WrapAsLogr(logging.verbosity, logger))
 }
