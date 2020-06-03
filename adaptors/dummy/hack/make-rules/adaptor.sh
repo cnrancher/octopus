@@ -217,7 +217,7 @@ function deploy() {
     cp -f "${CURR_DIR}/deploy/e2e/all_in_one.yaml" "${CURR_DIR}/dist/octopus_adaptor_${adaptor}_all_in_one.yaml"
     sed "s#app.kubernetes.io/version: master#app.kubernetes.io/version: ${tag}#g" \
       "${CURR_DIR}/dist/octopus_adaptor_${adaptor}_all_in_one.yaml" >"${tmpfile}" && mv "${tmpfile}" "${CURR_DIR}/dist/octopus_adaptor_${adaptor}_all_in_one.yaml"
-    sed "s#image: rancher/octopus-adaptor-${adaptor}:master#image: ${repo}/${image_name}:${tag}#g" \
+    sed "s#image: cnrancher/octopus-adaptor-${adaptor}:master#image: ${repo}/${image_name}:${tag}#g" \
       "${CURR_DIR}/dist/octopus_adaptor_${adaptor}_all_in_one.yaml" >"${tmpfile}" && mv "${tmpfile}" "${CURR_DIR}/dist/octopus_adaptor_${adaptor}_all_in_one.yaml"
   else
     octopus::log::warn "deploying manifest images has been stopped by WITHOUT_MANIFEST"

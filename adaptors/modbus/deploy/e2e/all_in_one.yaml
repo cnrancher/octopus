@@ -288,7 +288,7 @@ spec:
         app.kubernetes.io/version: master
     spec:
       containers:
-      - image: rancher/octopus-adaptor-modbus:master
+      - image: cnrancher/octopus-adaptor-modbus:master
         name: octopus
         securityContext:
           privileged: true

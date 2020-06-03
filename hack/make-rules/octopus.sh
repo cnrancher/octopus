@@ -242,13 +242,13 @@ function deploy() {
     cp -f "${CURR_DIR}/deploy/e2e/all_in_one.yaml" "${CURR_DIR}/dist/octopus_all_in_one.yaml"
     sed "s#app.kubernetes.io/version: master#app.kubernetes.io/version: ${tag}#g" \
       "${CURR_DIR}/dist/octopus_all_in_one.yaml" >"${tmpfile}" && mv "${tmpfile}" "${CURR_DIR}/dist/octopus_all_in_one.yaml"
-    sed "s#image: rancher/octopus:master#image: ${repo}/${image_name}:${tag}#g" \
+    sed "s#image: cnrancher/octopus:master#image: ${repo}/${image_name}:${tag}#g" \
       "${CURR_DIR}/dist/octopus_all_in_one.yaml" >"${tmpfile}" && mv "${tmpfile}" "${CURR_DIR}/dist/octopus_all_in_one.yaml"
 
     cp -f "${CURR_DIR}/deploy/e2e/all_in_one_without_webhook.yaml" "${CURR_DIR}/dist/octopus_all_in_one_without_webhook.yaml"
     sed "s#app.kubernetes.io/version: master#app.kubernetes.io/version: ${tag}#g" \
       "${CURR_DIR}/dist/octopus_all_in_one_without_webhook.yaml" >"${tmpfile}" && mv "${tmpfile}" "${CURR_DIR}/dist/octopus_all_in_one_without_webhook.yaml"
-    sed "s#image: rancher/octopus:master#image: ${repo}/${image_name}:${tag}#g" \
+    sed "s#image: cnrancher/octopus:master#image: ${repo}/${image_name}:${tag}#g" \
       "${CURR_DIR}/dist/octopus_all_in_one_without_webhook.yaml" >"${tmpfile}" && mv "${tmpfile}" "${CURR_DIR}/dist/octopus_all_in_one_without_webhook.yaml"
 
     cp -f "${CURR_DIR}/deploy/e2e/integrate_with_prometheus_operator.yaml" "${CURR_DIR}/dist/octopus_integrate_with_prometheus_operator.yaml"

@@ -53,7 +53,7 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
-          image: rancher/octopus:latest
+          image: cnrancher/octopus:master
           imagePullPolicy: Always
           ports:
             - containerPort: 8080

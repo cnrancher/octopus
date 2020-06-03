@@ -249,7 +249,7 @@ spec:
         app.kubernetes.io/version: master
     spec:
       containers:
-      - image: rancher/octopus-adaptor-opcua:master
+      - image: cnrancher/octopus-adaptor-opcua:master
         name: octopus
         volumeMounts:
         - mountPath: /var/lib/octopus/adaptors/

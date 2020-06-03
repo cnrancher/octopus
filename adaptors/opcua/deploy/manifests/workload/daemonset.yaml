@@ -20,7 +20,7 @@ spec:
         beta.kubernetes.io/os: linux
       containers:
         - name: octopus
-          image: rancher/octopus-adaptor-opcua:latest
+          image: cnrancher/octopus-adaptor-opcua:master
           volumeMounts:
             - mountPath: /var/lib/octopus/adaptors/
               name: sockets

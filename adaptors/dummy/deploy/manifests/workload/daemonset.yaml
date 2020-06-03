@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: octopus
-          image: rancher/octopus-adaptor-dummy:latest
+          image: cnrancher/octopus-adaptor-dummy:master
           volumeMounts:
             - mountPath: /var/lib/octopus/adaptors/
               name: sockets
