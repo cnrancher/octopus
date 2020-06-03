@@ -30,13 +30,13 @@ func (ModelChangedPredicate) Update(e event.UpdateEvent) bool {
 
 	// handles when deleting
 	if object.IsDeleted(e.MetaNew) {
-		modelChangedPredicateLog.V(0).Info("Accept UpdateEvent as deleted object", "key", object.GetNamespacedName(e.MetaOld))
+		modelChangedPredicateLog.V(5).Info("Accept UpdateEvent as deleted object", "key", object.GetNamespacedName(e.MetaOld))
 		return true
 	}
 
 	// handles when it's not backward compatible
 	if !isBackwardCompatibleCRDVersions(crdOld.Spec.Versions, crdNew.Spec.Versions) {
-		modelChangedPredicateLog.V(0).Info("Accept UpdateEvent as bad backward compatible", "key", object.GetNamespacedName(e.MetaOld))
+		modelChangedPredicateLog.V(5).Info("Accept UpdateEvent as bad backward compatible", "key", object.GetNamespacedName(e.MetaOld))
 		return true
 	}
 

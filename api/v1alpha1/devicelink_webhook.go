@@ -24,7 +24,7 @@ func (in *DeviceLink) SetupWebhookWithManager(mgr ctrl.Manager) error {
 var _ webhook.Defaulter = &DeviceLink{}
 
 func (in *DeviceLink) Default() {
-	deviceWebhookLog.V(0).Info("default", "name", in.Name)
+	deviceWebhookLog.V(4).Info("default", "name", in.Name)
 
 	// fill `status.conditions` if it is empty
 	if len(in.Status.Conditions) == 0 {
@@ -47,7 +47,7 @@ var _ webhook.Validator = &DeviceLink{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (in *DeviceLink) ValidateCreate() error {
-	deviceWebhookLog.V(0).Info("validate create", "name", in.Name)
+	deviceWebhookLog.V(4).Info("validate create", "name", in.Name)
 
 	var spec = in.Spec
 

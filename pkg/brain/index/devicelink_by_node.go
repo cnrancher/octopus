@@ -19,7 +19,7 @@ func DeviceLinkByNodeFunc(rawObj runtime.Object) []string {
 
 	var nodeName = link.Status.NodeName
 	if nodeName != "" {
-		deviceLinkByNodeIndexLog.V(0).Info("Index DeviceLink by Node", "nodeName", nodeName, "object", object.GetNamespacedName(link))
+		deviceLinkByNodeIndexLog.V(5).Info("Indexed", "nodeName", nodeName, "object", object.GetNamespacedName(link))
 		return []string{nodeName}
 	}
 	return nil

@@ -46,7 +46,7 @@ func (w *socketWatcher) Watch(adp adaptor.Adaptor) error {
 	// at the same time, that loop ensures that all links will be updated.
 	w.notifier.NoticeAdaptorRegistered(adp.GetName())
 
-	w.log.V(0).Info("Watching path", "path", path)
+	w.log.V(2).Info("Watching path", "path", path)
 	return nil
 }
 
@@ -65,7 +65,7 @@ loop:
 					w.notifier.NoticeAdaptorUnregistered(adp.GetName())
 					w.set.Delete(adp.GetEndpoint())
 					_ = w.fsWatcher.Remove(path)
-					w.log.V(0).Info("Unwatching path", "path", path)
+					w.log.V(2).Info("Unwatching path", "path", path)
 				}
 			}
 		case err, ok := <-w.fsWatcher.Errors:
