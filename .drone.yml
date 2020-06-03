@@ -92,8 +92,7 @@ steps:
         from_secret: docker_username
       DOCKER_PASSWORD:
         from_secret: docker_password
-      REPO:
-        from_secret: image_repo
+      REPO: cnrancher
       WITHOUT_MANIFEST: true
     commands:
       - make all package only
@@ -165,8 +164,7 @@ steps:
         from_secret: docker_username
       DOCKER_PASSWORD:
         from_secret: docker_password
-      REPO:
-        from_secret: image_repo
+      REPO: cnrancher
       WITHOUT_MANIFEST: true
     commands:
       - make all package only
@@ -225,8 +223,7 @@ steps:
     privileged: true
     environment:
       BY: dapper
-      REPO:
-        from_secret: image_repo
+      REPO: cnrancher
     commands:
       - make all build only
     volumes:
@@ -240,8 +237,7 @@ steps:
         from_secret: docker_username
       DOCKER_PASSWORD:
         from_secret: docker_password
-      REPO:
-        from_secret: image_repo
+      REPO: cnrancher
       WITHOUT_MANIFEST: true
     commands:
       - make all package only
@@ -293,8 +289,7 @@ steps:
         from_secret: docker_username
       DOCKER_PASSWORD:
         from_secret: docker_password
-      REPO:
-        from_secret: image_repo
+      REPO: cnrancher
       ONLY_MANIFEST: true
       CROSS: true
     commands:

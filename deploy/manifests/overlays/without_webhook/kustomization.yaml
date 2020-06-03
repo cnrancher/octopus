@@ -15,8 +15,8 @@ commonLabels:
 
 ## Images to overwrite the default images.
 images:
-  - name: rancher/octopus
-    newName: rancher/octopus
+  - name: cnrancher/octopus
+    newName: cnrancher/octopus
     newTag: master
 
 ## NB(thxCode) Since kustomize v2.1.0, the `bases` field has been deprecated by `resources`, ref to:

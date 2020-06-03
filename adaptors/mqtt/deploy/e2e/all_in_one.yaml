@@ -291,7 +291,7 @@ spec:
         app.kubernetes.io/version: master
     spec:
       containers:
-      - image: rancher/octopus-adaptor-mqtt:master
+      - image: cnrancher/octopus-adaptor-mqtt:master
         name: octopus
         volumeMounts:
         - mountPath: /var/lib/octopus/adaptors/

@@ -510,7 +510,7 @@ spec:
         - brain
         - --admission-webhook-addr=443
         - --enable-leader-election
-        image: rancher/octopus:master
+        image: cnrancher/octopus:master
         imagePullPolicy: Always
         name: octopus
         ports:
@@ -574,7 +574,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
-        image: rancher/octopus:master
+        image: cnrancher/octopus:master
         imagePullPolicy: Always
         name: octopus
         ports:

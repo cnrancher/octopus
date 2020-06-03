@@ -51,7 +51,7 @@ spec:
             - brain
             - --enable-leader-election
             - --disable-admission-webhook
-          image: rancher/octopus:latest
+          image: cnrancher/octopus:master
           imagePullPolicy: Always
           ports:
             - containerPort: 8080

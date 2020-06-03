@@ -211,7 +211,7 @@ spec:
         app.kubernetes.io/version: master
     spec:
       containers:
-      - image: rancher/octopus-adaptor-ble:master
+      - image: cnrancher/octopus-adaptor-ble:master
         name: octopus
         securityContext:
           privileged: true

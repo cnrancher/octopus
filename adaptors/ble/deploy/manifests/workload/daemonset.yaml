@@ -19,7 +19,7 @@ spec:
       hostNetwork: true
       containers:
         - name: octopus
-          image: rancher/octopus-adaptor-ble:latest
+          image: cnrancher/octopus-adaptor-ble:master
           securityContext:
             privileged: true
           volumeMounts:
