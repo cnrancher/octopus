@@ -6,14 +6,22 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/rancher/octopus/adaptors/dummy/api/v1alpha1"
 )
 
 func NewSpecialDevice(log logr.Logger, instance *v1alpha1.DummySpecialDevice, toLimb SpecialDeviceSyncer) Device {
 	return &specialDevice{
-		log:      log,
-		instance: instance,
-		toLimb:   toLimb,
+		log: log,
+		instance: &v1alpha1.DummySpecialDevice{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: instance.Namespace,
+				Name:      instance.Name,
+				UID:       instance.UID,
+			},
+		},
+		toLimb: toLimb,
 	}
 }
 
@@ -34,6 +42,9 @@ func (d *specialDevice) Configure(configuration interface{}) error {
 		return nil
 	}
 
+	if spec.Gear == "" {
+		spec.Gear = v1alpha1.DummySpecialDeviceGearSlow
+	}
 	d.instance.Spec = spec
 	if spec.On {
 		d.on(spec.Gear)

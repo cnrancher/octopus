@@ -6,15 +6,22 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/rancher/octopus/adaptors/dummy/api/v1alpha1"
 )
 
 func NewProtocolDevice(log logr.Logger, instance *v1alpha1.DummyProtocolDevice, toLimb ProtocolDeviceSyncer) Device {
 	return &protocolDevice{
-		log:      log,
-		instance: instance,
-		toLimb:   toLimb,
+		log: log,
+		instance: &v1alpha1.DummyProtocolDevice{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: instance.Namespace,
+				Name:      instance.Name,
+				UID:       instance.UID,
+			},
+		},
+		toLimb: toLimb,
 	}
 }
 
