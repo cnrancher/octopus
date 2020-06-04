@@ -63,6 +63,9 @@ func RegisterMetrics(registry prometheus.Registerer) error {
 }
 
 type MetricsRecorder interface {
+	// ResetConnections resets the number of active connections.
+	ResetConnections(adaptorName string)
+
 	// IncreaseConnections increases the number of active connections.
 	IncreaseConnections(adaptorName string)
 
@@ -80,6 +83,10 @@ type MetricsRecorder interface {
 }
 
 type metricsRecorder struct{}
+
+func (metricsRecorder) ResetConnections(adaptorName string) {
+	connections.WithLabelValues(adaptorName).Set(0)
+}
 
 func (metricsRecorder) IncreaseConnections(adaptorName string) {
 	connections.WithLabelValues(adaptorName).Inc()
