@@ -3,7 +3,6 @@ package controller
 import (
 	"context"
 	"reflect"
-	"time"
 
 	"github.com/go-logr/logr"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
@@ -18,7 +17,6 @@ import (
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
 	"github.com/rancher/octopus/pkg/limb/index"
 	"github.com/rancher/octopus/pkg/limb/predicate"
-	"github.com/rancher/octopus/pkg/metrics"
 	"github.com/rancher/octopus/pkg/status/devicelink"
 	"github.com/rancher/octopus/pkg/suctioncup"
 	"github.com/rancher/octopus/pkg/util/collection"
@@ -50,7 +48,6 @@ type DeviceLinkReconciler struct {
 func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	var ctx = context.Background()
 	var log = r.Log.WithValues("deviceLink", req.NamespacedName)
-	var metricsRecorder = metrics.GetLimbMetricsRecorder()
 
 	// fetches link
 	var link edgev1alpha1.DeviceLink
@@ -66,18 +63,14 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	// rejects if not the requested node
 	if link.Status.NodeName != r.NodeName {
 		// NB(thxCode) disconnects the link to avoid connection leak when the requested node has been changed
-		if exist := r.SuctionCup.Disconnect(&link); exist {
-			metricsRecorder.DecreaseConnections(link.Status.AdaptorName)
-		}
+		r.SuctionCup.Disconnect(&link)
 		return ctrl.Result{}, nil
 	}
 
 	// rejects if the conditions are not met
 	if devicelink.GetModelExistedStatus(&link.Status) != metav1.ConditionTrue {
 		// NB(thxCode) disconnects the link to avoid connection leak when the model has been changed or removed
-		if exist := r.SuctionCup.Disconnect(&link); exist {
-			metricsRecorder.DecreaseConnections(link.Status.AdaptorName)
-		}
+		r.SuctionCup.Disconnect(&link)
 		return ctrl.Result{}, nil
 	}
 
@@ -87,9 +80,7 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		}
 
 		// disconnects
-		if exist := r.SuctionCup.Disconnect(&link); exist {
-			metricsRecorder.DecreaseConnections(link.Status.AdaptorName)
-		}
+		r.SuctionCup.Disconnect(&link)
 
 		// removes finalizer
 		link.Finalizers = collection.StringSliceRemove(link.Finalizers, ReconcilingDeviceLink)
@@ -127,9 +118,7 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		if !r.SuctionCup.ExistAdaptor(link.Spec.Adaptor.Name) ||
 			link.Status.AdaptorName != link.Spec.Adaptor.Name {
 			// NB(thxCode) disconnects the link to avoid connection leak when the requested adaptor has been changed
-			if exist := r.SuctionCup.Disconnect(&link); exist {
-				metricsRecorder.DecreaseConnections(link.Status.AdaptorName)
-			}
+			r.SuctionCup.Disconnect(&link)
 			devicelink.ToCheckAdaptorExisted(&link.Status)
 			if err := r.Status().Update(ctx, &link); err != nil {
 				log.Error(err, "Unable to change the status of DeviceLink")
@@ -171,9 +160,7 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		device, err = model.NewInstanceOfTypeMeta(link.Status.Model)
 		if err != nil {
 			// NB(thxCode) disconnects the link to avoid connection leak when the device instance has not been fetched
-			if exist := r.SuctionCup.Disconnect(&link); exist {
-				metricsRecorder.DecreaseConnections(link.Status.AdaptorName)
-			}
+			r.SuctionCup.Disconnect(&link)
 			devicelink.FailOnDeviceCreated(&link.Status, "unable to make device from typemeta")
 			link.Status.DeviceTemplateGeneration = link.Generation
 			if err := r.Status().Update(ctx, &link); err != nil {
@@ -189,10 +176,7 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			// re-checks if the model exists
 			if meta.IsNoMatchError(err) {
 				// NB(thxCode) disconnects the link to avoid connection leak when the device instance has not been fetched
-				if exist := r.SuctionCup.Disconnect(&link); exist {
-					metricsRecorder.DecreaseConnections(link.Status.AdaptorName)
-				}
-
+				r.SuctionCup.Disconnect(&link)
 				devicelink.ToCheckModelExisted(&link.Status)
 				if err := r.Status().Update(ctx, &link); err != nil {
 					log.Error(err, "Unable to change the status of DeviceLink")
@@ -212,10 +196,7 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		// triggers to create the device again if it's not found or deleted accidentally
 		if !object.IsActivating(&device) {
 			// NB(thxCode) disconnects the link to avoid connection leak when the device instance has not been found
-			if exist := r.SuctionCup.Disconnect(&link); exist {
-				metricsRecorder.DecreaseConnections(link.Status.AdaptorName)
-			}
-
+			r.SuctionCup.Disconnect(&link)
 			devicelink.ToCheckDeviceCreated(&link.Status)
 			if err := r.Status().Update(ctx, &link); err != nil {
 				log.Error(err, "Unable to change the status of DeviceLink")
@@ -231,10 +212,7 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 				// fails if the device is invalid
 				if apierrs.IsInvalid(err) {
 					// NB(thxCode) disconnects the link to avoid connection leak when the device instance cannot be updated
-					if exist := r.SuctionCup.Disconnect(&link); exist {
-						metricsRecorder.DecreaseConnections(link.Status.AdaptorName)
-					}
-
+					r.SuctionCup.Disconnect(&link)
 					devicelink.FailOnDeviceCreated(&link.Status, "unable to update device")
 					link.Status.DeviceTemplateGeneration = link.Generation
 					if err := r.Status().Update(ctx, &link); err != nil {
@@ -302,14 +280,7 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		// this status changes maybe can drive by suction cup.
 		return ctrl.Result{}, nil
 	case metav1.ConditionTrue:
-		sendStartTS := time.Now()
-		defer func() {
-			metricsRecorder.ObserveSendLatency(link.Status.AdaptorName, time.Since(sendStartTS))
-		}()
-
 		if err := r.SuctionCup.Send(&device, &link); err != nil {
-			metricsRecorder.IncreaseSendErrors(link.Status.AdaptorName)
-
 			devicelink.FailOnDeviceConnected(&link.Status, "cannot send data to adaptor")
 			r.Eventf(&link, "Warning", "FailedSent", "cannot send data to adaptor: %v", err)
 
@@ -320,16 +291,10 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		}
 		return ctrl.Result{}, nil
 	default:
-		if overwrite, err := r.SuctionCup.Connect(&link); err != nil {
-			metricsRecorder.IncreaseConnectErrors(link.Status.AdaptorName)
-
+		if _, err := r.SuctionCup.Connect(&link); err != nil {
 			devicelink.FailOnDeviceConnected(&link.Status, "unable to connect to adaptor")
 			r.Eventf(&link, "Warning", "FailedConnected", "cannot connect to adaptor: %v", err)
 		} else {
-			if !overwrite {
-				metricsRecorder.IncreaseConnections(link.Status.AdaptorName)
-			}
-
 			devicelink.SuccessOnDeviceConnected(&link.Status)
 			r.Eventf(&link, "Normal", "Connected", "connected to adaptor")
 		}

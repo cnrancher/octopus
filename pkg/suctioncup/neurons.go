@@ -1,10 +1,13 @@
 package suctioncup
 
 import (
+	"time"
+
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
+	"github.com/rancher/octopus/pkg/metrics"
 	"github.com/rancher/octopus/pkg/util/object"
 )
 
@@ -12,29 +15,47 @@ func (m *manager) ExistAdaptor(name string) bool {
 	return m.adaptors.Get(name) != nil
 }
 
-func (m *manager) Connect(by *edgev1alpha1.DeviceLink) (bool, error) {
+func (m *manager) Connect(by *edgev1alpha1.DeviceLink) (overwrite bool, berr error) {
 	var adaptorName = by.Status.AdaptorName
 	if adaptorName == "" {
 		return false, errors.New("adaptor name is empty")
 	}
+
+	// records metrics
+	defer func() {
+		if berr != nil {
+			metrics.GetLimbMetricsRecorder().IncreaseConnectErrors(adaptorName)
+		} else if !overwrite {
+			metrics.GetLimbMetricsRecorder().IncreaseConnections(adaptorName)
+		}
+	}()
+
 	var adaptor = m.adaptors.Get(adaptorName)
 	if adaptor == nil {
 		return false, errors.Errorf("could not find adaptor %s", adaptorName)
 	}
 
 	var name = object.GetNamespacedName(by)
-	var overwrite, err = adaptor.CreateConnection(name)
+	var ret, err = adaptor.CreateConnection(name)
 	if err != nil {
 		return false, errors.Wrapf(err, "failed to link %s", name)
 	}
-	return overwrite, nil
+	return ret, nil
 }
 
-func (m *manager) Disconnect(by *edgev1alpha1.DeviceLink) bool {
+func (m *manager) Disconnect(by *edgev1alpha1.DeviceLink) (exist bool) {
 	var adaptorName = by.Status.AdaptorName
 	if adaptorName == "" {
 		return false
 	}
+
+	// records metrics
+	defer func() {
+		if exist {
+			metrics.GetLimbMetricsRecorder().DecreaseConnections(adaptorName)
+		}
+	}()
+
 	var adaptor = m.adaptors.Get(adaptorName)
 	if adaptor == nil {
 		return false
@@ -44,11 +65,21 @@ func (m *manager) Disconnect(by *edgev1alpha1.DeviceLink) bool {
 	return adaptor.DeleteConnection(name)
 }
 
-func (m *manager) Send(data *unstructured.Unstructured, by *edgev1alpha1.DeviceLink) error {
+func (m *manager) Send(data *unstructured.Unstructured, by *edgev1alpha1.DeviceLink) (berr error) {
 	var adaptorName = by.Status.AdaptorName
 	if adaptorName == "" {
 		return errors.New("could not find blank name adaptor")
 	}
+
+	// records metrics
+	var sendStartTS = time.Now()
+	defer func() {
+		metrics.GetLimbMetricsRecorder().ObserveSendLatency(adaptorName, time.Since(sendStartTS))
+		if berr != nil {
+			metrics.GetLimbMetricsRecorder().IncreaseSendErrors(adaptorName)
+		}
+	}()
+
 	var adaptor = m.adaptors.Get(adaptorName)
 	if adaptor == nil {
 		return errors.Errorf("could not find adaptor %s", adaptorName)

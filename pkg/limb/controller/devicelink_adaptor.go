@@ -9,6 +9,7 @@ import (
 
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
 	"github.com/rancher/octopus/pkg/limb/index"
+	"github.com/rancher/octopus/pkg/metrics"
 	"github.com/rancher/octopus/pkg/status/devicelink"
 	"github.com/rancher/octopus/pkg/suctioncup"
 	"github.com/rancher/octopus/pkg/util/log/handler"
@@ -33,6 +34,7 @@ func (r *DeviceLinkReconciler) ReceiveAdaptorStatus(req suctioncup.RequestAdapto
 		log.Info("Adaptor is registered")
 	} else {
 		log.Info("Adaptor is unregistered")
+		metrics.GetLimbMetricsRecorder().ResetConnections(req.Name)
 	}
 
 	for _, link := range links.Items {
