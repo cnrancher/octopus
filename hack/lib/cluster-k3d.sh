@@ -5,13 +5,13 @@
 # following variables:
 #
 #    K3D_VERSION     -  The k3d version for running, default is v1.7.0.
-#    K8S_VERSION     -  The Kubernetes version for the cluster, default is v1.17.2.
+#    K8S_VERSION     -  The Kubernetes version for the cluster, default is v1.18.2.
 #    CLUSTER_NAME    -  The name for the cluster, default is edge.
 #    CONTROL_PLANES  -  The number of the control-plane, default is 1.
 #    WORKERS         -  The number of the workers, default is 3.
 #    IMAGE_SUFFIX    -  The suffix for k3s image, default is k3s1, ref to: https://hub.docker.com/r/rancher/k3s/tags.
 
-K8S_VERSION=${K8S_VERSION:-"v1.17.2"}
+K8S_VERSION=${K8S_VERSION:-"v1.18.2"}
 CLUSTER_NAME=${CLUSTER_NAME:-"edge"}
 IMAGE_SUFFIX=${IMAGE_SUFFIX:-"k3s1"}
 
@@ -67,8 +67,18 @@ function octopus::cluster_k3d::startup() {
   fi
   for ((i = 0; i < control_planes; i++)); do
     if [[ ${i} -eq 0 ]]; then
+      local random_port_start
+      random_port_start=$(octopus::util::get_random_port_start 3)
+      local api_port=$((random_port_start + 0))
+      local ingress_http_port=$((random_port_start + 1))
+      octopus::log::info "INGRESS_HTTP_PORT is ${ingress_http_port}"
+      export INGRESS_HTTP_PORT=${ingress_http_port}
+      local ingress_https_port=$((random_port_start + 2))
+      octopus::log::info "INGRESS_HTTPS_PORT is ${ingress_https_port}"
+      export INGRESS_HTTPS_PORT=${ingress_https_port}
+
       local node_name="edge-control-plane"
-      k3d create --publish 80:80 --name "${CLUSTER_NAME}" --image "${k3s_image}" --server-arg "--node-name=${node_name}" --wait 60
+      k3d create --publish "${ingress_http_port}:80" --publish "${ingress_https_port}:443" --api-port "0.0.0.0:${api_port}" --name "${CLUSTER_NAME}" --image "${k3s_image}" --server-arg "--node-name=${node_name}" --wait 60
 
       # backup kubeconfig
       local kubeconfig_path="${KUBECONFIG:-}"
