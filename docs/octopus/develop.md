@@ -64,7 +64,6 @@ Suppose to try the following example on Mac:
 
 In [`dapper`](https://github.com/rancher/dapper) mode:
 - Using `USE_EXISTING_CLUSTER=true` is **NOT ALLOWED**.
-- Using `LOCAL_CLUSTER_KIND=kind` instead of `k3d` a local cluster until fixed [k3d:issue#143](https://github.com/rancher/k3d/issues/143).
 
 ## Build management of Adaptors
 

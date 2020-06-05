@@ -151,52 +151,52 @@ Using [prometheus-operator HELM chart](https://github.com/helm/charts/blob/maste
 
 1. Use [`cluster-k3d-spinup.sh`](../../hack/cluster-k3d-spinup.sh) to set up a local Kubernetes cluster via [k3d](https://github.com/rancher/k3d).
 1. Follow the [installation guide of HELM](https://helm.sh/docs/intro/install/) to install helm tool, and then use `helm fetch --untar --untardir /tmp stable/prometheus-operator` the prometheus-operator chart to local `/tmp` directory.
-1. Generate a deployment YAML from prometheus-operator chart as below.
+1. Generate a deployment YAML from prometheus-operator chart as below, please replace the `<INGRESS_HTTP_PORT>` with the output of `cluster-k3d-spinup.sh`.
     ```shell
-    helm template --namespace octopus-monitoring \
-      --name octopus \
-      --set defaultRules.create=false \
-      --set global.rbac.pspEnabled=false \
-      --set prometheusOperator.admissionWebhooks.patch.enabled=false \
-      --set prometheusOperator.admissionWebhooks.enabled=false \
-      --set prometheusOperator.kubeletService.enabled=false \
-      --set prometheusOperator.tlsProxy.enabled=false \
-      --set prometheusOperator.serviceMonitor.selfMonitor=false \
-      --set alertmanager.enabled=false \
-      --set grafana.defaultDashboardsEnabled=false \
-      --set coreDns.enabled=false \
-      --set kubeApiServer.enabled=false \
-      --set kubeControllerManager.enabled=false \
-      --set kubeEtcd.enabled=false \
-      --set kubeProxy.enabled=false \
-      --set kubeScheduler.enabled=false \
-      --set kubeStateMetrics.enabled=false \
-      --set kubelet.enabled=false \
-      --set nodeExporter.enabled=false \
-      --set prometheus.serviceMonitor.selfMonitor=false \
-      --set prometheus.ingress.enabled=true \
-      --set prometheus.ingress.hosts={localhost} \
-      --set prometheus.ingress.paths={/prometheus} \
-      --set prometheus.ingress.annotations.'traefik\.ingress\.kubernetes\.io\/rewrite-target'=/ \
-      --set prometheus.prometheusSpec.externalUrl=http://localhost/prometheus \
-      --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false \
-      --set prometheus.prometheusSpec.podMonitorSelectorNilUsesHelmValues=false \
-      --set prometheus.prometheusSpec.ruleSelectorNilUsesHelmValues=false \
-      --set grafana.adminPassword=admin \
-      --set grafana.rbac.pspUseAppArmor=false \
-      --set grafana.rbac.pspEnabled=false \
-      --set grafana.serviceMonitor.selfMonitor=false \
-      --set grafana.testFramework.enabled=false \
-      --set grafana.ingress.enabled=true \
-      --set grafana.ingress.hosts={localhost} \
-      --set grafana.ingress.path=/grafana \
-      --set grafana.ingress.annotations.'traefik\.ingress\.kubernetes\.io\/rewrite-target'=/ \
-      --set grafana.'grafana\.ini'.server.root_url=http://localhost/grafana \
-      /tmp/prometheus-operator > /tmp/prometheus-operator_all_in_one.yaml
+    INGRESS_HTTP_PORT=<the output of script>; helm template --namespace octopus-monitoring \
+    --name octopus \
+    --set defaultRules.create=false \
+    --set global.rbac.pspEnabled=false \
+    --set prometheusOperator.admissionWebhooks.patch.enabled=false \
+    --set prometheusOperator.admissionWebhooks.enabled=false \
+    --set prometheusOperator.kubeletService.enabled=false \
+    --set prometheusOperator.tlsProxy.enabled=false \
+    --set prometheusOperator.serviceMonitor.selfMonitor=false \
+    --set alertmanager.enabled=false \
+    --set grafana.defaultDashboardsEnabled=false \
+    --set coreDns.enabled=false \
+    --set kubeApiServer.enabled=false \
+    --set kubeControllerManager.enabled=false \
+    --set kubeEtcd.enabled=false \
+    --set kubeProxy.enabled=false \
+    --set kubeScheduler.enabled=false \
+    --set kubeStateMetrics.enabled=false \
+    --set kubelet.enabled=false \
+    --set nodeExporter.enabled=false \
+    --set prometheus.serviceMonitor.selfMonitor=false \
+    --set prometheus.ingress.enabled=true \
+    --set prometheus.ingress.hosts={localhost} \
+    --set prometheus.ingress.paths={/prometheus} \
+    --set prometheus.ingress.annotations.'traefik\.ingress\.kubernetes\.io\/rewrite-target'=/ \
+    --set prometheus.prometheusSpec.externalUrl=http://localhost:${INGRESS_HTTP_PORT}/prometheus \
+    --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false \
+    --set prometheus.prometheusSpec.podMonitorSelectorNilUsesHelmValues=false \
+    --set prometheus.prometheusSpec.ruleSelectorNilUsesHelmValues=false \
+    --set grafana.adminPassword=admin \
+    --set grafana.rbac.pspUseAppArmor=false \
+    --set grafana.rbac.pspEnabled=false \
+    --set grafana.serviceMonitor.selfMonitor=false \
+    --set grafana.testFramework.enabled=false \
+    --set grafana.ingress.enabled=true \
+    --set grafana.ingress.hosts={localhost} \
+    --set grafana.ingress.path=/grafana \
+    --set grafana.ingress.annotations.'traefik\.ingress\.kubernetes\.io\/rewrite-target'=/ \
+    --set grafana.'grafana\.ini'.server.root_url=http://localhost:${INGRESS_HTTP_PORT}/grafana \
+    /tmp/prometheus-operator > /tmp/prometheus-operator_all_in_one.yaml
     ```
 1. Create `octopus-monitoring` Namespace via `kubectl create ns octopus-monitoring`.
 1. Apply the prometheus-operator all-in-one deployment into the local cluster via `kubectl apply -f /tmp/prometheus-operator_all_in_one.yaml`.
 1. Apply the Octopus all-in-one deployment via `kubectl apply -f https://raw.githubusercontent.com/cnrancher/octopus/master/deploy/e2e/all_in_one.yaml` or no admission webhooks deployment via `kubectl apply -f https://raw.githubusercontent.com/cnrancher/octopus/master/deploy/e2e/all_in_one_without_webhook.yaml`.
 1. Apply the monitoring integration into the local cluster via `kubectl apply -f https://raw.githubusercontent.com/cnrancher/octopus/master/deploy/e2e/integrate_with_prometheus_operator.yaml`
-1. Visit `http://localhost/prometheus` to view the Prometheus web console through the browser, or visit `http://localhost/grafana` to view the Grafana console(the administrator account is `admin/admin`).
+1. Visit `http://localhost:${INGRESS_HTTP_PORT}/prometheus` to view the Prometheus web console through the browser, or visit `http://localhost:${INGRESS_HTTP_PORT}/grafana` to view the Grafana console(the administrator account is `admin/admin`).
 1. (Optional) Import the [Octopus Overview dashboard](https://raw.githubusercontent.com/cnrancher/octopus/master/deploy/e2e/integrate_with_grafana.json) from Grafana console.

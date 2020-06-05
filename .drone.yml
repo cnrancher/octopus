@@ -35,7 +35,6 @@ steps:
     privileged: true
     environment:
       BY: dapper
-      LOCAL_CLUSTER_KIND: kind
     commands:
       - make all verify only
     volumes:
