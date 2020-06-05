@@ -1,6 +1,6 @@
 FROM golang:1.13.9-buster
 RUN apt-get update && \
-    apt-get install -y xz-utils unzip
+    apt-get install -y xz-utils unzip netcat
 
 # -- for make rules
 ## install docker
