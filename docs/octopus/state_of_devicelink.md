@@ -24,8 +24,6 @@ spec:
   adaptor:
     node: edge-worker
     name: adaptors.edge.cattle.io/dummy
-    parameters:
-      ip: 192.168.2.47
   model:
     apiVersion: "devices.edge.cattle.io/v1alpha1"
     kind: "DummyDevice"
@@ -114,7 +112,7 @@ You can view [Design of Adaptor](../adaptors/design_of_adaptor.md) to learn how 
                                       '                
 ```
 
-After the device instance is successfully created, the `limb` will use the `spec.adaptor.parameters` and `spec.template.spec` to connect that real device via adaptor:
+After the device instance is successfully created, the `limb` will use the `spec.template.spec` to connect that real device via adaptor:
 
 ```text
            │                                   

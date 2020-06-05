@@ -10,6 +10,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
+	api "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
 	status "github.com/rancher/octopus/pkg/status/devicelink"
 	"github.com/rancher/octopus/pkg/suctioncup/connection"
 	"github.com/rancher/octopus/pkg/util/model"
@@ -274,6 +275,6 @@ func (c fakeDummyConnection) Stop() error {
 	return nil
 }
 
-func (c fakeDummyConnection) Send(parameters []byte, model *metav1.TypeMeta, device []byte) error {
+func (c fakeDummyConnection) Send([]byte, *metav1.TypeMeta, []byte, map[string]*api.ConnectRequestReferenceEntry) error {
 	return nil
 }

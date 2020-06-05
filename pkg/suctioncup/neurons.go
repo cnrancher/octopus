@@ -1,12 +1,11 @@
 package suctioncup
 
 import (
-	"time"
-
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
+	api "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
 	"github.com/rancher/octopus/pkg/metrics"
 	"github.com/rancher/octopus/pkg/util/object"
 )
@@ -65,20 +64,11 @@ func (m *manager) Disconnect(by *edgev1alpha1.DeviceLink) (exist bool) {
 	return adaptor.DeleteConnection(name)
 }
 
-func (m *manager) Send(data *unstructured.Unstructured, by *edgev1alpha1.DeviceLink) (berr error) {
+func (m *manager) Send(referencesData map[string]map[string][]byte, device *unstructured.Unstructured, by *edgev1alpha1.DeviceLink) error {
 	var adaptorName = by.Status.AdaptorName
 	if adaptorName == "" {
 		return errors.New("could not find blank name adaptor")
 	}
-
-	// records metrics
-	var sendStartTS = time.Now()
-	defer func() {
-		metrics.GetLimbMetricsRecorder().ObserveSendLatency(adaptorName, time.Since(sendStartTS))
-		if berr != nil {
-			metrics.GetLimbMetricsRecorder().IncreaseSendErrors(adaptorName)
-		}
-	}()
 
 	var adaptor = m.adaptors.Get(adaptorName)
 	if adaptor == nil {
@@ -92,7 +82,7 @@ func (m *manager) Send(data *unstructured.Unstructured, by *edgev1alpha1.DeviceL
 	}
 
 	// NB(thxCode) the data should never be nil
-	var sendDevice, err = data.MarshalJSON()
+	var sendDevice, err = device.MarshalJSON()
 	if err != nil {
 		return errors.Wrapf(err, "could not marshal data as JSON")
 	}
@@ -101,6 +91,19 @@ func (m *manager) Send(data *unstructured.Unstructured, by *edgev1alpha1.DeviceL
 		sendParameters = by.Spec.Adaptor.Parameters.Raw
 	}
 	var sendModel = &by.Status.Model
+	var sendReferences map[string]*api.ConnectRequestReferenceEntry
+	if len(referencesData) != 0 {
+		sendReferences = make(map[string]*api.ConnectRequestReferenceEntry, len(referencesData))
+		for rpName, rp := range referencesData {
+			var reference = &api.ConnectRequestReferenceEntry{
+				Items: make(map[string][]byte, len(rp)),
+			}
+			for ripName, rip := range rp {
+				reference.Items[ripName] = rip
+			}
+			sendReferences[rpName] = reference
+		}
+	}
 
-	return conn.Send(sendParameters, sendModel, sendDevice)
+	return conn.Send(sendParameters, sendModel, sendDevice, sendReferences)
 }

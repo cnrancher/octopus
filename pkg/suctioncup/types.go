@@ -31,6 +31,6 @@ type Neurons interface {
 	// Disconnect stops a connection by link, the return value represents whether there is a disconnected target.
 	Disconnect(by *edgev1alpha1.DeviceLink) (exist bool)
 
-	// Send sends the data by link
-	Send(data *unstructured.Unstructured, by *edgev1alpha1.DeviceLink) error
+	// Send sends references and device by link
+	Send(referencesData map[string]map[string][]byte, device *unstructured.Unstructured, by *edgev1alpha1.DeviceLink) error
 }

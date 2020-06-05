@@ -1,8 +1,9 @@
 package content
 
 import (
-	jsoniter "github.com/json-iterator/go"
 	"k8s.io/apimachinery/pkg/runtime"
+
+	"github.com/rancher/octopus/pkg/util/converter"
 )
 
 func ToRawExtension(content interface{}) *runtime.RawExtension {
@@ -15,7 +16,6 @@ func ToRawExtension(content interface{}) *runtime.RawExtension {
 	case string:
 		return &runtime.RawExtension{Raw: []byte(t)}
 	default:
-		bs, _ := jsoniter.Marshal(content)
-		return &runtime.RawExtension{Raw: bs}
+		return &runtime.RawExtension{Raw: converter.TryMarshalJSON(content)}
 	}
 }

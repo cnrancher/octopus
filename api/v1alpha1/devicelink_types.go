@@ -1,9 +1,82 @@
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
+
+// DeviceLinkReferenceSecretSource defines the source of a same name Secret instance.
+type DeviceLinkReferenceSecretSource struct {
+	// Specifies the name of the Secret in the same Namespace to use.
+	// +kubebuilder:validation:Required
+	Name string `json:"name"`
+
+	// Specifies the key of the Secret's data.
+	// If not specified, all keys of the Secret will be projected into the parameter values.
+	// If specified, the listed keys will be projected into the parameter value.
+	// If a key is specified which is not present in the Secret,
+	// the connection will error unless it is marked optional.
+	// +optional
+	Items []string `json:"items,omitempty"`
+}
+
+// DeviceLinkReferenceConfigMapSource defines the source of a same name ConfigMap instance.
+type DeviceLinkReferenceConfigMapSource struct {
+	// Specifies the name of the ConfigMap in the same Namespace to use.
+	// +kubebuilder:validation:Required
+	Name string `json:"name"`
+
+	// Specifies the key of the ConfigMap's data.
+	// If not specified, all keys of the ConfigMap will be projected into the parameter values.
+	// If specified, the listed keys will be projected into the parameter value.
+	// If a key is specified which is not present in the ConfigMap,
+	// the connection will error unless it is marked optional.
+	// +optional
+	Items []string `json:"items,omitempty"`
+}
+
+// DeviceLinkReferenceDownwardAPISourceItem defines the downward API item for projecting the DeviceLink.
+type DeviceLinkReferenceDownwardAPISourceItem struct {
+	// Specifies the key of the downward API's data.
+	// +kubebuilder:validation:Required
+	Name string `json:"name"`
+
+	// Specifies that how to select a field of the DeviceLink,
+	// only annotations, labels, name, namespace and status are supported.
+	// +kubebuilder:validation:Required
+	FieldRef *corev1.ObjectFieldSelector `json:"fieldRef"`
+}
+
+// DeviceLinkReferenceDownwardAPISource defines the downward API for projecting the DeviceLink.
+type DeviceLinkReferenceDownwardAPISource struct {
+	// Specifies a list of downward API.
+	// +kubebuilder:validation:MinItems=1
+	Items []DeviceLinkReferenceDownwardAPISourceItem `json:"items"`
+}
+
+// DeviceLinkReferenceSource defines the parameter source.
+type DeviceLinkReferenceSource struct {
+	// Secret represents a Secret of the same Namespace that should populate this connection.
+	// +optional
+	Secret *DeviceLinkReferenceSecretSource `json:"secret,omitempty"`
+
+	// ConfigMap represents a ConfigMap of the same Namespace that should populate this connection.
+	// +optional
+	ConfigMap *DeviceLinkReferenceConfigMapSource `json:"configMap,omitempty"`
+
+	// DownwardAPI represents the downward API about the DeviceLink.¬
+	// +optional
+	DownwardAPI *DeviceLinkReferenceDownwardAPISource `json:"downwardAPI,omitempty"`
+}
+
+// DeviceLinkReference defines the parameter that should be passed to the adaptor during connecting.
+type DeviceLinkReference struct {
+	DeviceLinkReferenceSource `json:",inline"`
+
+	// Specifies the name of the parameter.
+	Name string `json:"name,omitempty"`
+}
 
 // DeviceAdaptor defines the properties of device adaptor
 type DeviceAdaptor struct {
@@ -12,10 +85,12 @@ type DeviceAdaptor struct {
 	Node string `json:"node,omitempty"`
 
 	// Specifies the name of adaptor to be used.
-	// +optional
+	// +kubebuilder:validation:Required
 	Name string `json:"name,omitempty"`
 
-	// Specifies the parameter of adaptor to be used.
+	// [Deprecated] Specifies the parameter of adaptor to be used.
+	// This field has been deprecated, it should define the connection parameter
+	// as a part of device model.
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +optional
 	Parameters *runtime.RawExtension `json:"parameters,omitempty"`
@@ -95,6 +170,10 @@ type DeviceLinkSpec struct {
 	// Specifies the desired model of a device.
 	// +kubebuilder:validation:Required
 	Model metav1.TypeMeta `json:"model"`
+
+	// Specifies the references of device to be used.
+	// +optional
+	References []DeviceLinkReference `json:"references,omitempty"`
 
 	// Describe the device that will be created.
 	// +kubebuilder:validation:Required

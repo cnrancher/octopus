@@ -67,7 +67,9 @@ spec:
                     description: Specifies the node of adaptor to be matched.
                     type: string
                   parameters:
-                    description: Specifies the parameter of adaptor to be used.
+                    description: '[Deprecated] Specifies the parameter of adaptor
+                      to be used. This field has been deprecated, it should define
+                      the connection parameter as a part of device model.'
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                 type: object
@@ -87,6 +89,98 @@ spec:
                       More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
                     type: string
                 type: object
+              references:
+                description: Specifies the references of device to be used.
+                items:
+                  description: DeviceLinkReference defines the parameter that should
+                    be passed to the adaptor during connecting.
+                  properties:
+                    configMap:
+                      description: ConfigMap represents a ConfigMap of the same Namespace
+                        that should populate this connection.
+                      properties:
+                        items:
+                          description: Specifies the key of the ConfigMap's data.
+                            If not specified, all keys of the ConfigMap will be projected
+                            into the parameter values. If specified, the listed keys
+                            will be projected into the parameter value. If a key is
+                            specified which is not present in the ConfigMap, the connection
+                            will error unless it is marked optional.
+                          items:
+                            type: string
+                          type: array
+                        name:
+                          description: Specifies the name of the ConfigMap in the
+                            same Namespace to use.
+                          type: string
+                      required:
+                      - name
+                      type: object
+                    downwardAPI:
+                      description: DownwardAPI represents the downward API about the
+                        DeviceLink.¬
+                      properties:
+                        items:
+                          description: Specifies a list of downward API.
+                          items:
+                            description: DeviceLinkReferenceDownwardAPISourceItem
+                              defines the downward API item for projecting the DeviceLink.
+                            properties:
+                              fieldRef:
+                                description: Specifies that how to select a field
+                                  of the DeviceLink, only annotations, labels, name,
+                                  namespace and status are supported.
+                                properties:
+                                  apiVersion:
+                                    description: Version of the schema the FieldPath
+                                      is written in terms of, defaults to "v1".
+                                    type: string
+                                  fieldPath:
+                                    description: Path of the field to select in the
+                                      specified API version.
+                                    type: string
+                                required:
+                                - fieldPath
+                                type: object
+                              name:
+                                description: Specifies the key of the downward API's
+                                  data.
+                                type: string
+                            required:
+                            - fieldRef
+                            - name
+                            type: object
+                          minItems: 1
+                          type: array
+                      required:
+                      - items
+                      type: object
+                    name:
+                      description: Specifies the name of the parameter.
+                      type: string
+                    secret:
+                      description: Secret represents a Secret of the same Namespace
+                        that should populate this connection.
+                      properties:
+                        items:
+                          description: Specifies the key of the Secret's data. If
+                            not specified, all keys of the Secret will be projected
+                            into the parameter values. If specified, the listed keys
+                            will be projected into the parameter value. If a key is
+                            specified which is not present in the Secret, the connection
+                            will error unless it is marked optional.
+                          items:
+                            type: string
+                          type: array
+                        name:
+                          description: Specifies the name of the Secret in the same
+                            Namespace to use.
+                          type: string
+                      required:
+                      - name
+                      type: object
+                  type: object
+                type: array
               template:
                 description: Describe the device that will be created.
                 properties:

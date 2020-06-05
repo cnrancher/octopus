@@ -2,14 +2,18 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"reflect"
+	"time"
 
 	"github.com/go-logr/logr"
+	corev1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -21,6 +25,7 @@ import (
 	"github.com/rancher/octopus/pkg/suctioncup"
 	"github.com/rancher/octopus/pkg/util/collection"
 	"github.com/rancher/octopus/pkg/util/converter"
+	"github.com/rancher/octopus/pkg/util/fieldpath"
 	"github.com/rancher/octopus/pkg/util/model"
 	"github.com/rancher/octopus/pkg/util/object"
 )
@@ -44,6 +49,8 @@ type DeviceLinkReconciler struct {
 // +kubebuilder:rbac:groups=edge.cattle.io,resources=devicelinks,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=edge.cattle.io,resources=devicelinks/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
+// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch
 
 func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	var ctx = context.Background()
@@ -280,7 +287,14 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		// this status changes maybe can drive by suction cup.
 		return ctrl.Result{}, nil
 	case metav1.ConditionTrue:
-		if err := r.SuctionCup.Send(&device, &link); err != nil {
+		// fetches the device references if needed
+		var references, err = r.fetchReferences(ctx, &link)
+		if err != nil {
+			log.Error(err, "Unable to fetch the reference parameters of DeviceLink")
+			return ctrl.Result{Requeue: true, RequeueAfter: 10 * time.Second}, nil
+		}
+
+		if err := r.SuctionCup.Send(references, &device, &link); err != nil {
 			devicelink.FailOnDeviceConnected(&link.Status, "cannot send data to adaptor")
 			r.Eventf(&link, "Warning", "FailedSent", "cannot send data to adaptor: %v", err)
 
@@ -326,6 +340,97 @@ func (r *DeviceLinkReconciler) SetupWithManager(ctrlMgr ctrl.Manager, suctionCup
 		For(&edgev1alpha1.DeviceLink{}).
 		WithEventFilter(predicate.DeviceLinkChangedPredicate{NodeName: r.NodeName}).
 		Complete(r)
+}
+
+// fetchReferences fetches the references of deviceLink.
+func (r *DeviceLinkReconciler) fetchReferences(ctx context.Context, deviceLink *edgev1alpha1.DeviceLink) (map[string]map[string][]byte, error) {
+	var references = deviceLink.Spec.References
+	var namespace = deviceLink.Namespace
+
+	var referencesData map[string]map[string][]byte
+	if len(references) != 0 {
+		referencesData = make(map[string]map[string][]byte, len(references))
+
+		for _, rp := range references {
+			var name = rp.Name
+
+			// fetches secret references
+			if rp.Secret != nil {
+				var desiredName = rp.Secret.Name
+				var desiredItems = rp.Secret.Items
+
+				var secret corev1.Secret
+				if err := r.Get(ctx, types.NamespacedName{Namespace: namespace, Name: desiredName}, &secret); err != nil {
+					return nil, err
+				}
+
+				var items = secret.Data
+				if len(desiredItems) != 0 {
+					items = make(map[string][]byte, len(desiredItems))
+					for _, sk := range desiredItems {
+						var sv, exist = secret.Data[sk]
+						if !exist {
+							return nil, apierrs.NewNotFound(corev1.Resource(corev1.ResourceSecrets.String()), fmt.Sprintf("%s.data(%s)", desiredName, sk))
+						}
+						items[sk] = sv
+					}
+				}
+
+				referencesData[name] = items
+				continue
+			}
+
+			// fetches configMap references
+			if rp.ConfigMap != nil {
+				var desiredName = rp.ConfigMap.Name
+				var desiredItems = rp.ConfigMap.Items
+
+				var configMap corev1.ConfigMap
+				if err := r.Get(ctx, types.NamespacedName{Namespace: namespace, Name: desiredName}, &configMap); err != nil {
+					return nil, err
+				}
+
+				var items map[string][]byte
+				if len(desiredItems) != 0 {
+					items = make(map[string][]byte, len(desiredItems))
+					for _, cmk := range desiredItems {
+						var cmv, exist = configMap.Data[cmk]
+						if !exist {
+							return nil, apierrs.NewNotFound(corev1.Resource(corev1.ResourceConfigMaps.String()), fmt.Sprintf("%s.data(%s)", desiredName, cmk))
+						}
+						items[cmk] = []byte(cmv)
+					}
+				} else {
+					items = make(map[string][]byte, len(configMap.Data))
+					for cmk, cmv := range configMap.Data {
+						items[cmk] = []byte(cmv)
+					}
+				}
+
+				referencesData[name] = items
+				continue
+			}
+
+			// fetches downward API references
+			if rp.DownwardAPI != nil {
+				var desiredItems = rp.DownwardAPI.Items
+
+				// the length of items should not be less than 1
+				var items = make(map[string][]byte, len(desiredItems))
+				for _, dk := range desiredItems {
+					var err error
+					items[dk.Name], err = fieldpath.ExtractDeviceLinkFieldPathAsBytes(deviceLink, dk.FieldRef.FieldPath)
+					if err != nil {
+						return nil, apierrs.NewNotFound(edgev1alpha1.GroupResourceDeviceLink, fmt.Sprintf("%s.downwardapi(%s)", deviceLink.Name, dk.FieldRef.FieldPath))
+					}
+				}
+
+				referencesData[name] = items
+			}
+		}
+	}
+
+	return referencesData, nil
 }
 
 // isDeviceSpecChanged returns true if there is any changed from deviceLink's template and applies the changes into device.
