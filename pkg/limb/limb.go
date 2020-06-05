@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/errgroup"
+	corev1 "k8s.io/api/core/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -100,7 +101,13 @@ func Run(name string, opts *options.Options) error {
 }
 
 func RegisterScheme(scheme *k8sruntime.Scheme) error {
-	return edgev1alpha1.AddToScheme(scheme)
+	if err := edgev1alpha1.AddToScheme(scheme); err != nil {
+		return err
+	}
+	if err := corev1.AddToScheme(scheme); err != nil {
+		return err
+	}
+	return nil
 }
 
 func RegisterMetrics(registry prometheus.Registerer) error {

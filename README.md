@@ -9,6 +9,10 @@ Octopus is an edge device management system based on Kubernetes, it is very ligh
 - [Idea](#idea)
 - [Workflow](#workflow)
 - [Walkthrough](#walkthrough)
+    + [Deploy Octopus](#deploy-octopus)
+    + [Deploy Device Model & Device Adaptor](#deploy-device-model--device-adaptor)
+    + [Create DeviceLink](#create-devicelink)
+    + [Manage Device](#manage-device)
 - [Documentation](#documentation)
 - [License](#license)
 
@@ -79,7 +83,7 @@ In this walkthrough, we try to use Octopus to manage a dummy device. We will per
 
 1. Deploy Octopus
 1. Deploy Device Model & Device Adaptor
-1. Create Device Link
+1. Create DeviceLink
 1. Manage Device
 
 ### Deploy Octopus
@@ -257,15 +261,17 @@ octopus-adaptor-dummy-manager-rolebinding              43s
 
 ```
 
-### Create Device Link
+### Create DeviceLink
 
-Next, we are going to connect a device via `DeviceLink`. A link consists of 3 parts: `Adaptor`, `Model` and `Device spec`:
+Next, we are going to connect a device via `DeviceLink`. A link mainly consists of 3 fields: `adaptor`, `model` and `template(device spec)`:
 
-- `Adaptor` describes how to access the device, this connection process calls adaptation. In order to connect a device, we should indicate the name of the adaptor, the name of the device-connectable node and the parameters of this connection.
-- `Model` describes the model of device, it is the [TypeMeta](https://github.com/kubernetes/apimachinery/blob/master/pkg/apis/meta/v1/types.go) of the device model CRD.
-- `Device spec` describes the desired status of device, it is determined by the device model CRD. 
+- `adaptor` describes how to access the device, this accessing process calls **Adaptation**. In order to adapt a device, we need to indicate the name of the adaptor and the name of the device-connectable node.
+- `model` describes the model of device, it is the [TypeMeta](https://github.com/kubernetes/apimachinery/blob/master/pkg/apis/meta/v1/types.go) of the device model CRD.
+- `template(device spec)` describes the desired status of device, it is determined by the device model CRD.
 
-We can imagine that there is a device named `living-room-fan` on the `edge-worker` node, we can try to connect it in.
+In addition, we can also use the `references` field to refer the [ConfigMap](https://kubernetes.io/docs/concepts/configuration/configmap/) and [Secret](https://kubernetes.io/docs/concepts/configuration/secret/) under the same Namespace, even use the downward API to fetch the information in `DeviceLink`.
+
+We can imagine that there is a device named `living-room-fan` on the `edge-worker` node, and then we can connect it by Octopus:
 
 ```yaml
 apiVersion: edge.cattle.io/v1alpha1
@@ -292,7 +298,7 @@ spec:
 
 ```
 
-There are [several states](./docs/octopus/state_of_devicelink.md) of a link, if we found the **DeviceConnected** `PHASE` is on **Healthy** `STATUS`, we can query the same name instance of device model CRD, now the device is in our cluster:
+After deployed the above `DeviceLink` into a cluster, we could find that there are [several states](./docs/octopus/state_of_devicelink.md) of a link. If the **DeviceConnected** `PHASE` is on **Healthy** `STATUS`, we can query the same name instance of device model CRD, now the device is in our cluster:
 
 ```shell script
 $ kubectl get devicelink living-room-fan -n default

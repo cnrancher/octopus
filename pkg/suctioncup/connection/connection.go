@@ -18,8 +18,8 @@ type Connection interface {
 	// GetName returns the name of connection
 	GetName() types.NamespacedName
 
-	// Send sends the parameters, device model and desired data to connection
-	Send(parameters []byte, model *metav1.TypeMeta, device []byte) error
+	// Send sends the parameters, device model, desired data and references to connection
+	Send(parameters []byte, model *metav1.TypeMeta, device []byte, references map[string]*api.ConnectRequestReferenceEntry) error
 
 	// Stop stops the connection
 	Stop() error
@@ -61,11 +61,12 @@ func (c *connection) Stop() error {
 	return c.stop()
 }
 
-func (c *connection) Send(parameters []byte, model *metav1.TypeMeta, device []byte) error {
+func (c *connection) Send(parameters []byte, model *metav1.TypeMeta, device []byte, references map[string]*api.ConnectRequestReferenceEntry) error {
 	return c.conn.Send(&api.ConnectRequest{
 		Parameters: parameters,
 		Model:      model,
 		Device:     device,
+		References: references,
 	})
 }
 

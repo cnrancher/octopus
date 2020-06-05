@@ -24,7 +24,7 @@ service Registration {
 }
 
 message RegisterRequest {
-    // Name of the adaptor in the form `adaptor-vendor.com/adaptor-vendor`.
+    // Name of the adaptor in the form `adaptor-vendor.com/adaptor-name`.
     string name = 1;
     // Version of the API the adaptor was built against.
     string version = 2;
@@ -38,13 +38,19 @@ service Connection {
     }
 }
 
+message ConnectRequestReferenceEntry {
+    map<string, bytes> items = 1;
+}
+
 message ConnectRequest {
-    // Parameters for the connection, it's in form JSON bytes.
+    // [Deprecated] Parameters for the connection, it's in form JSON bytes.
     bytes parameters = 1;
     // Model for the device.
     k8s.io.apimachinery.pkg.apis.meta.v1.TypeMeta model = 2;
     // Desired device, it's in form JSON bytes.
     bytes device = 3;
+    // References for the device, i.e: Secret, ConfigMap and Downward API.
+    map<string, ConnectRequestReferenceEntry> references = 4;
 }
 
 message ConnectResponse {

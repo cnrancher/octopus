@@ -22,6 +22,7 @@ import (
 	fmt "fmt"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
+	github_com_gogo_protobuf_sortkeys "github.com/gogo/protobuf/sortkeys"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -80,7 +81,7 @@ func (m *Empty) XXX_DiscardUnknown() {
 var xxx_messageInfo_Empty proto.InternalMessageInfo
 
 type RegisterRequest struct {
-	// Name of the adaptor in the form `adaptor-vendor.com/adaptor-vendor`.
+	// Name of the adaptor in the form `adaptor-vendor.com/adaptor-name`.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// Version of the API the adaptor was built against.
 	Version string `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
@@ -141,19 +142,64 @@ func (m *RegisterRequest) GetEndpoint() string {
 	return ""
 }
 
+type ConnectRequestReferenceEntry struct {
+	Items map[string][]byte `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+}
+
+func (m *ConnectRequestReferenceEntry) Reset()      { *m = ConnectRequestReferenceEntry{} }
+func (*ConnectRequestReferenceEntry) ProtoMessage() {}
+func (*ConnectRequestReferenceEntry) Descriptor() ([]byte, []int) {
+	return fileDescriptor_00212fb1f9d3bf1c, []int{2}
+}
+func (m *ConnectRequestReferenceEntry) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ConnectRequestReferenceEntry) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ConnectRequestReferenceEntry.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *ConnectRequestReferenceEntry) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ConnectRequestReferenceEntry.Merge(m, src)
+}
+func (m *ConnectRequestReferenceEntry) XXX_Size() int {
+	return m.Size()
+}
+func (m *ConnectRequestReferenceEntry) XXX_DiscardUnknown() {
+	xxx_messageInfo_ConnectRequestReferenceEntry.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ConnectRequestReferenceEntry proto.InternalMessageInfo
+
+func (m *ConnectRequestReferenceEntry) GetItems() map[string][]byte {
+	if m != nil {
+		return m.Items
+	}
+	return nil
+}
+
 type ConnectRequest struct {
-	// Parameters for the connection, it's in form JSON bytes.
+	// [Deprecated] Parameters for the connection, it's in form JSON bytes.
 	Parameters []byte `protobuf:"bytes,1,opt,name=parameters,proto3" json:"parameters,omitempty"`
 	// Model for the device.
 	Model *v1.TypeMeta `protobuf:"bytes,2,opt,name=model,proto3" json:"model,omitempty"`
 	// Desired device, it's in form JSON bytes.
 	Device []byte `protobuf:"bytes,3,opt,name=device,proto3" json:"device,omitempty"`
+	// References for the device, i.e: Secret, ConfigMap and Downward API.
+	References map[string]*ConnectRequestReferenceEntry `protobuf:"bytes,4,rep,name=references,proto3" json:"references,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
 func (m *ConnectRequest) Reset()      { *m = ConnectRequest{} }
 func (*ConnectRequest) ProtoMessage() {}
 func (*ConnectRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_00212fb1f9d3bf1c, []int{2}
+	return fileDescriptor_00212fb1f9d3bf1c, []int{3}
 }
 func (m *ConnectRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -203,6 +249,13 @@ func (m *ConnectRequest) GetDevice() []byte {
 	return nil
 }
 
+func (m *ConnectRequest) GetReferences() map[string]*ConnectRequestReferenceEntry {
+	if m != nil {
+		return m.References
+	}
+	return nil
+}
+
 type ConnectResponse struct {
 	// Observed device, it's in form JSON bytes.
 	Device []byte `protobuf:"bytes,1,opt,name=device,proto3" json:"device,omitempty"`
@@ -211,7 +264,7 @@ type ConnectResponse struct {
 func (m *ConnectResponse) Reset()      { *m = ConnectResponse{} }
 func (*ConnectResponse) ProtoMessage() {}
 func (*ConnectResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_00212fb1f9d3bf1c, []int{3}
+	return fileDescriptor_00212fb1f9d3bf1c, []int{4}
 }
 func (m *ConnectResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -250,39 +303,50 @@ func (m *ConnectResponse) GetDevice() []byte {
 func init() {
 	proto.RegisterType((*Empty)(nil), "v1alpha1.Empty")
 	proto.RegisterType((*RegisterRequest)(nil), "v1alpha1.RegisterRequest")
+	proto.RegisterType((*ConnectRequestReferenceEntry)(nil), "v1alpha1.ConnectRequestReferenceEntry")
+	proto.RegisterMapType((map[string][]byte)(nil), "v1alpha1.ConnectRequestReferenceEntry.ItemsEntry")
 	proto.RegisterType((*ConnectRequest)(nil), "v1alpha1.ConnectRequest")
+	proto.RegisterMapType((map[string]*ConnectRequestReferenceEntry)(nil), "v1alpha1.ConnectRequest.ReferencesEntry")
 	proto.RegisterType((*ConnectResponse)(nil), "v1alpha1.ConnectResponse")
 }
 
 func init() { proto.RegisterFile("api.proto", fileDescriptor_00212fb1f9d3bf1c) }
 
 var fileDescriptor_00212fb1f9d3bf1c = []byte{
-	// 397 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x6c, 0x51, 0xb1, 0x8e, 0xd4, 0x30,
-	0x10, 0x8d, 0x81, 0xbb, 0xdd, 0x1b, 0x56, 0xac, 0xe4, 0x02, 0xe5, 0x52, 0x58, 0x28, 0xa2, 0x38,
-	0x0a, 0x1c, 0x76, 0xa1, 0xb8, 0x1a, 0x0e, 0x89, 0x86, 0x26, 0xa2, 0xa3, 0xf2, 0x26, 0x43, 0xd6,
-	0xda, 0x8b, 0x6d, 0x6c, 0x6f, 0xa4, 0xed, 0xf8, 0x02, 0xc4, 0x67, 0x5d, 0x79, 0xe5, 0x95, 0x5c,
-	0xf6, 0x47, 0x50, 0x9c, 0xcd, 0x6d, 0x40, 0x74, 0x7e, 0x6f, 0xde, 0x78, 0xe6, 0xbd, 0x81, 0x33,
-	0x61, 0x24, 0x37, 0x56, 0x7b, 0x4d, 0xa7, 0xcd, 0x42, 0x5c, 0x9b, 0xb5, 0x58, 0x24, 0xaf, 0x2b,
-	0xe9, 0xd7, 0xdb, 0x15, 0x2f, 0x74, 0x9d, 0x55, 0xba, 0xd2, 0x59, 0x10, 0xac, 0xb6, 0xdf, 0x02,
-	0x0a, 0x20, 0xbc, 0xfa, 0xc6, 0xe4, 0xdd, 0xe6, 0xd2, 0x71, 0xa9, 0x33, 0x61, 0x64, 0x2d, 0x8a,
-	0xb5, 0x54, 0x68, 0x77, 0x99, 0xd9, 0x54, 0x1d, 0xe1, 0xb2, 0x1a, 0xbd, 0xc8, 0x9a, 0x45, 0x56,
-	0xa1, 0x42, 0x2b, 0x3c, 0x96, 0x7d, 0x57, 0x3a, 0x81, 0x93, 0x8f, 0xb5, 0xf1, 0xbb, 0xf4, 0x2b,
-	0xcc, 0x73, 0xac, 0xa4, 0xf3, 0x68, 0x73, 0xfc, 0xbe, 0x45, 0xe7, 0x29, 0x85, 0x27, 0x4a, 0xd4,
-	0x18, 0x93, 0x17, 0xe4, 0xe2, 0x2c, 0x0f, 0x6f, 0x1a, 0xc3, 0xa4, 0x41, 0xeb, 0xa4, 0x56, 0xf1,
-	0xa3, 0x40, 0x0f, 0x90, 0x26, 0x30, 0x45, 0x55, 0x1a, 0x2d, 0x95, 0x8f, 0x1f, 0x87, 0xd2, 0x03,
-	0x4e, 0x7f, 0x12, 0x78, 0xf6, 0x41, 0x2b, 0x85, 0x85, 0x1f, 0x3e, 0x67, 0x00, 0x46, 0x58, 0x51,
-	0xa3, 0x47, 0xeb, 0xc2, 0x88, 0x59, 0x3e, 0x62, 0xe8, 0x15, 0x9c, 0xd4, 0xba, 0xc4, 0xeb, 0x30,
-	0xe6, 0xe9, 0x92, 0xf3, 0xde, 0x1e, 0x1f, 0xdb, 0xe3, 0x66, 0x53, 0x75, 0x84, 0xe3, 0x9d, 0x3d,
-	0xde, 0x2c, 0xf8, 0x97, 0x9d, 0xc1, 0xcf, 0xe8, 0x45, 0xde, 0x37, 0xd3, 0xe7, 0x70, 0x5a, 0x62,
-	0x23, 0x0b, 0x0c, 0x2b, 0xcd, 0xf2, 0x03, 0x4a, 0x5f, 0xc1, 0xfc, 0x61, 0x1f, 0x67, 0xb4, 0x72,
-	0x38, 0x92, 0x92, 0xb1, 0x74, 0xf9, 0x09, 0x66, 0x7d, 0x30, 0x56, 0xf8, 0xce, 0xe7, 0x25, 0x4c,
-	0x87, 0xa0, 0xe8, 0x39, 0x1f, 0xae, 0xc5, 0xff, 0x09, 0x2f, 0x99, 0x1f, 0x4b, 0x7d, 0xc0, 0xd1,
-	0x32, 0x07, 0x38, 0x0c, 0xed, 0xfe, 0xb9, 0x82, 0xc9, 0x01, 0xd1, 0xf8, 0xa8, 0xfd, 0x3b, 0xa5,
-	0xe4, 0xfc, 0x3f, 0x95, 0x7e, 0xdf, 0x34, 0xba, 0x20, 0x6f, 0xc8, 0xfb, 0x97, 0x37, 0xf7, 0x8c,
-	0xdc, 0xdd, 0xb3, 0xe8, 0x47, 0xcb, 0xc8, 0x4d, 0xcb, 0xc8, 0x6d, 0xcb, 0xc8, 0xef, 0x96, 0x91,
-	0x5f, 0x7b, 0x16, 0xdd, 0xee, 0x59, 0x74, 0xb7, 0x67, 0xd1, 0xea, 0x34, 0x1c, 0xfb, 0xed, 0x9f,
-	0x00, 0x00, 0x00, 0xff, 0xff, 0x72, 0x93, 0x17, 0x4f, 0x68, 0x02, 0x00, 0x00,
+	// 515 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x53, 0xc1, 0x6e, 0xd3, 0x40,
+	0x10, 0xf5, 0x26, 0x4d, 0x93, 0x4e, 0x22, 0x82, 0x56, 0x08, 0xb9, 0x16, 0xb2, 0xaa, 0x08, 0xa1,
+	0x70, 0x60, 0x4d, 0x02, 0x87, 0x08, 0x71, 0x82, 0x56, 0x94, 0x03, 0x17, 0x8b, 0x1b, 0xa7, 0x4d,
+	0x32, 0x75, 0xac, 0xc4, 0xde, 0x65, 0x77, 0x63, 0x29, 0x37, 0x3e, 0x81, 0x5f, 0xe0, 0x4b, 0xb8,
+	0xf6, 0xd8, 0x63, 0x8f, 0x34, 0xf9, 0x11, 0xe4, 0xb5, 0x93, 0xb8, 0xa8, 0x45, 0xbd, 0xcd, 0x9b,
+	0xf1, 0x9b, 0xd9, 0x79, 0xf3, 0x0c, 0x47, 0x5c, 0xc6, 0x4c, 0x2a, 0x61, 0x04, 0x6d, 0x65, 0x03,
+	0xbe, 0x90, 0x33, 0x3e, 0xf0, 0x5e, 0x45, 0xb1, 0x99, 0x2d, 0xc7, 0x6c, 0x22, 0x92, 0x20, 0x12,
+	0x91, 0x08, 0xec, 0x07, 0xe3, 0xe5, 0x85, 0x45, 0x16, 0xd8, 0xa8, 0x20, 0x7a, 0x6f, 0xe7, 0x23,
+	0xcd, 0x62, 0x11, 0x70, 0x19, 0x27, 0x7c, 0x32, 0x8b, 0x53, 0x54, 0xab, 0x40, 0xce, 0xa3, 0x3c,
+	0xa1, 0x83, 0x04, 0x0d, 0x0f, 0xb2, 0x41, 0x10, 0x61, 0x8a, 0x8a, 0x1b, 0x9c, 0x16, 0xac, 0x5e,
+	0x13, 0x1a, 0x67, 0x89, 0x34, 0xab, 0xde, 0x37, 0xe8, 0x86, 0x18, 0xc5, 0xda, 0xa0, 0x0a, 0xf1,
+	0xfb, 0x12, 0xb5, 0xa1, 0x14, 0x0e, 0x52, 0x9e, 0xa0, 0x4b, 0x4e, 0x48, 0xff, 0x28, 0xb4, 0x31,
+	0x75, 0xa1, 0x99, 0xa1, 0xd2, 0xb1, 0x48, 0xdd, 0x9a, 0x4d, 0x6f, 0x21, 0xf5, 0xa0, 0x85, 0xe9,
+	0x54, 0x8a, 0x38, 0x35, 0x6e, 0xdd, 0x96, 0x76, 0xb8, 0xf7, 0x8b, 0xc0, 0xb3, 0x8f, 0x22, 0x4d,
+	0x71, 0x62, 0xca, 0xe6, 0x21, 0x5e, 0xa0, 0xc2, 0x74, 0x82, 0x67, 0xa9, 0x51, 0x2b, 0xfa, 0x09,
+	0x1a, 0xb1, 0xc1, 0x44, 0xbb, 0xe4, 0xa4, 0xde, 0x6f, 0x0f, 0x07, 0x6c, 0xab, 0x02, 0xfb, 0x1f,
+	0x8d, 0x7d, 0xce, 0x39, 0x36, 0x0c, 0x0b, 0xbe, 0x37, 0x02, 0xd8, 0x27, 0xe9, 0x63, 0xa8, 0xcf,
+	0x71, 0x55, 0x2e, 0x90, 0x87, 0xf4, 0x09, 0x34, 0x32, 0xbe, 0x58, 0xa2, 0x7d, 0x7d, 0x27, 0x2c,
+	0xc0, 0xbb, 0xda, 0x88, 0xf4, 0x7e, 0xd7, 0xe0, 0xd1, 0xed, 0x61, 0xd4, 0x07, 0x90, 0x5c, 0xf1,
+	0x04, 0x0d, 0x2a, 0x6d, 0xbb, 0x74, 0xc2, 0x4a, 0x86, 0x9e, 0x42, 0x23, 0x11, 0x53, 0x5c, 0xd8,
+	0x66, 0xed, 0x21, 0x63, 0xc5, 0x09, 0x58, 0xf5, 0x04, 0x4c, 0xce, 0xa3, 0x3c, 0xa1, 0x59, 0x7e,
+	0x02, 0x96, 0x0d, 0xd8, 0xd7, 0x95, 0xc4, 0x2f, 0x68, 0x78, 0x58, 0x90, 0xe9, 0x53, 0x38, 0x9c,
+	0x62, 0x16, 0x4f, 0xd0, 0xca, 0xd6, 0x09, 0x4b, 0x44, 0xcf, 0x01, 0xd4, 0x76, 0x5d, 0xed, 0x1e,
+	0x58, 0x61, 0xfa, 0xf7, 0x09, 0xc3, 0x76, 0xca, 0x94, 0x7a, 0x54, 0xb8, 0x1e, 0xe6, 0xb7, 0xbd,
+	0x55, 0xbe, 0x43, 0x99, 0xf7, 0x55, 0x65, 0xda, 0xc3, 0x17, 0x0f, 0x3b, 0x41, 0x55, 0xc1, 0x97,
+	0xd0, 0xdd, 0x7d, 0xaa, 0xa5, 0x48, 0x35, 0x56, 0x76, 0x23, 0xd5, 0xdd, 0x86, 0xe7, 0xd0, 0x29,
+	0xdc, 0xa6, 0xb8, 0xc9, 0xcd, 0x33, 0x82, 0xd6, 0xd6, 0x7d, 0xf4, 0x78, 0x3f, 0xf9, 0x1f, 0x47,
+	0x7a, 0xdd, 0x7d, 0xa9, 0x70, 0xad, 0x33, 0x0c, 0x01, 0xca, 0xa1, 0x79, 0x9f, 0x53, 0x68, 0x96,
+	0x88, 0xba, 0xf7, 0x2d, 0xe0, 0x1d, 0xdf, 0x51, 0x29, 0xde, 0xdb, 0x73, 0xfa, 0xe4, 0x35, 0xf9,
+	0xf0, 0xfc, 0xf2, 0xc6, 0x27, 0xd7, 0x37, 0xbe, 0xf3, 0x63, 0xed, 0x93, 0xcb, 0xb5, 0x4f, 0xae,
+	0xd6, 0x3e, 0xf9, 0xb3, 0xf6, 0xc9, 0xcf, 0x8d, 0xef, 0x5c, 0x6d, 0x7c, 0xe7, 0x7a, 0xe3, 0x3b,
+	0xe3, 0x43, 0xfb, 0x07, 0xbd, 0xf9, 0x1b, 0x00, 0x00, 0xff, 0xff, 0xcb, 0x96, 0x7e, 0xa6, 0xbd,
+	0x03, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -536,6 +600,50 @@ func (m *RegisterRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *ConnectRequestReferenceEntry) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ConnectRequestReferenceEntry) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ConnectRequestReferenceEntry) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Items) > 0 {
+		for k := range m.Items {
+			v := m.Items[k]
+			baseI := i
+			if len(v) > 0 {
+				i -= len(v)
+				copy(dAtA[i:], v)
+				i = encodeVarintApi(dAtA, i, uint64(len(v)))
+				i--
+				dAtA[i] = 0x12
+			}
+			i -= len(k)
+			copy(dAtA[i:], k)
+			i = encodeVarintApi(dAtA, i, uint64(len(k)))
+			i--
+			dAtA[i] = 0xa
+			i = encodeVarintApi(dAtA, i, uint64(baseI-i))
+			i--
+			dAtA[i] = 0xa
+		}
+	}
+	return len(dAtA) - i, nil
+}
+
 func (m *ConnectRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -556,6 +664,32 @@ func (m *ConnectRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.References) > 0 {
+		for k := range m.References {
+			v := m.References[k]
+			baseI := i
+			if v != nil {
+				{
+					size, err := v.MarshalToSizedBuffer(dAtA[:i])
+					if err != nil {
+						return 0, err
+					}
+					i -= size
+					i = encodeVarintApi(dAtA, i, uint64(size))
+				}
+				i--
+				dAtA[i] = 0x12
+			}
+			i -= len(k)
+			copy(dAtA[i:], k)
+			i = encodeVarintApi(dAtA, i, uint64(len(k)))
+			i--
+			dAtA[i] = 0xa
+			i = encodeVarintApi(dAtA, i, uint64(baseI-i))
+			i--
+			dAtA[i] = 0x22
+		}
+	}
 	if len(m.Device) > 0 {
 		i -= len(m.Device)
 		copy(dAtA[i:], m.Device)
@@ -656,6 +790,27 @@ func (m *RegisterRequest) Size() (n int) {
 	return n
 }
 
+func (m *ConnectRequestReferenceEntry) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if len(m.Items) > 0 {
+		for k, v := range m.Items {
+			_ = k
+			_ = v
+			l = 0
+			if len(v) > 0 {
+				l = 1 + len(v) + sovApi(uint64(len(v)))
+			}
+			mapEntrySize := 1 + len(k) + sovApi(uint64(len(k))) + l
+			n += mapEntrySize + 1 + sovApi(uint64(mapEntrySize))
+		}
+	}
+	return n
+}
+
 func (m *ConnectRequest) Size() (n int) {
 	if m == nil {
 		return 0
@@ -673,6 +828,19 @@ func (m *ConnectRequest) Size() (n int) {
 	l = len(m.Device)
 	if l > 0 {
 		n += 1 + l + sovApi(uint64(l))
+	}
+	if len(m.References) > 0 {
+		for k, v := range m.References {
+			_ = k
+			_ = v
+			l = 0
+			if v != nil {
+				l = v.Size()
+				l += 1 + sovApi(uint64(l))
+			}
+			mapEntrySize := 1 + len(k) + sovApi(uint64(len(k))) + l
+			n += mapEntrySize + 1 + sovApi(uint64(mapEntrySize))
+		}
 	}
 	return n
 }
@@ -717,14 +885,45 @@ func (this *RegisterRequest) String() string {
 	}, "")
 	return s
 }
+func (this *ConnectRequestReferenceEntry) String() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForItems := make([]string, 0, len(this.Items))
+	for k, _ := range this.Items {
+		keysForItems = append(keysForItems, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Strings(keysForItems)
+	mapStringForItems := "map[string][]byte{"
+	for _, k := range keysForItems {
+		mapStringForItems += fmt.Sprintf("%v: %v,", k, this.Items[k])
+	}
+	mapStringForItems += "}"
+	s := strings.Join([]string{`&ConnectRequestReferenceEntry{`,
+		`Items:` + mapStringForItems + `,`,
+		`}`,
+	}, "")
+	return s
+}
 func (this *ConnectRequest) String() string {
 	if this == nil {
 		return "nil"
 	}
+	keysForReferences := make([]string, 0, len(this.References))
+	for k, _ := range this.References {
+		keysForReferences = append(keysForReferences, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Strings(keysForReferences)
+	mapStringForReferences := "map[string]*ConnectRequestReferenceEntry{"
+	for _, k := range keysForReferences {
+		mapStringForReferences += fmt.Sprintf("%v: %v,", k, this.References[k])
+	}
+	mapStringForReferences += "}"
 	s := strings.Join([]string{`&ConnectRequest{`,
 		`Parameters:` + fmt.Sprintf("%v", this.Parameters) + `,`,
 		`Model:` + strings.Replace(fmt.Sprintf("%v", this.Model), "TypeMeta", "v1.TypeMeta", 1) + `,`,
 		`Device:` + fmt.Sprintf("%v", this.Device) + `,`,
+		`References:` + mapStringForReferences + `,`,
 		`}`,
 	}, "")
 	return s
@@ -949,6 +1148,187 @@ func (m *RegisterRequest) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
+func (m *ConnectRequestReferenceEntry) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowApi
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ConnectRequestReferenceEntry: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ConnectRequestReferenceEntry: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Items", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthApi
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthApi
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Items == nil {
+				m.Items = make(map[string][]byte)
+			}
+			var mapkey string
+			mapvalue := []byte{}
+			for iNdEx < postIndex {
+				entryPreIndex := iNdEx
+				var wire uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowApi
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					wire |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				fieldNum := int32(wire >> 3)
+				if fieldNum == 1 {
+					var stringLenmapkey uint64
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowApi
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						stringLenmapkey |= uint64(b&0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					intStringLenmapkey := int(stringLenmapkey)
+					if intStringLenmapkey < 0 {
+						return ErrInvalidLengthApi
+					}
+					postStringIndexmapkey := iNdEx + intStringLenmapkey
+					if postStringIndexmapkey < 0 {
+						return ErrInvalidLengthApi
+					}
+					if postStringIndexmapkey > l {
+						return io.ErrUnexpectedEOF
+					}
+					mapkey = string(dAtA[iNdEx:postStringIndexmapkey])
+					iNdEx = postStringIndexmapkey
+				} else if fieldNum == 2 {
+					var mapbyteLen uint64
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowApi
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						mapbyteLen |= uint64(b&0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					intMapbyteLen := int(mapbyteLen)
+					if intMapbyteLen < 0 {
+						return ErrInvalidLengthApi
+					}
+					postbytesIndex := iNdEx + intMapbyteLen
+					if postbytesIndex < 0 {
+						return ErrInvalidLengthApi
+					}
+					if postbytesIndex > l {
+						return io.ErrUnexpectedEOF
+					}
+					mapvalue = make([]byte, mapbyteLen)
+					copy(mapvalue, dAtA[iNdEx:postbytesIndex])
+					iNdEx = postbytesIndex
+				} else {
+					iNdEx = entryPreIndex
+					skippy, err := skipApi(dAtA[iNdEx:])
+					if err != nil {
+						return err
+					}
+					if skippy < 0 {
+						return ErrInvalidLengthApi
+					}
+					if (iNdEx + skippy) > postIndex {
+						return io.ErrUnexpectedEOF
+					}
+					iNdEx += skippy
+				}
+			}
+			m.Items[mapkey] = mapvalue
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipApi(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthApi
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthApi
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func (m *ConnectRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
@@ -1081,6 +1461,135 @@ func (m *ConnectRequest) Unmarshal(dAtA []byte) error {
 			if m.Device == nil {
 				m.Device = []byte{}
 			}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field References", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowApi
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthApi
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthApi
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.References == nil {
+				m.References = make(map[string]*ConnectRequestReferenceEntry)
+			}
+			var mapkey string
+			var mapvalue *ConnectRequestReferenceEntry
+			for iNdEx < postIndex {
+				entryPreIndex := iNdEx
+				var wire uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowApi
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					wire |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				fieldNum := int32(wire >> 3)
+				if fieldNum == 1 {
+					var stringLenmapkey uint64
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowApi
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						stringLenmapkey |= uint64(b&0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					intStringLenmapkey := int(stringLenmapkey)
+					if intStringLenmapkey < 0 {
+						return ErrInvalidLengthApi
+					}
+					postStringIndexmapkey := iNdEx + intStringLenmapkey
+					if postStringIndexmapkey < 0 {
+						return ErrInvalidLengthApi
+					}
+					if postStringIndexmapkey > l {
+						return io.ErrUnexpectedEOF
+					}
+					mapkey = string(dAtA[iNdEx:postStringIndexmapkey])
+					iNdEx = postStringIndexmapkey
+				} else if fieldNum == 2 {
+					var mapmsglen int
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowApi
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						mapmsglen |= int(b&0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					if mapmsglen < 0 {
+						return ErrInvalidLengthApi
+					}
+					postmsgIndex := iNdEx + mapmsglen
+					if postmsgIndex < 0 {
+						return ErrInvalidLengthApi
+					}
+					if postmsgIndex > l {
+						return io.ErrUnexpectedEOF
+					}
+					mapvalue = &ConnectRequestReferenceEntry{}
+					if err := mapvalue.Unmarshal(dAtA[iNdEx:postmsgIndex]); err != nil {
+						return err
+					}
+					iNdEx = postmsgIndex
+				} else {
+					iNdEx = entryPreIndex
+					skippy, err := skipApi(dAtA[iNdEx:])
+					if err != nil {
+						return err
+					}
+					if skippy < 0 {
+						return ErrInvalidLengthApi
+					}
+					if (iNdEx + skippy) > postIndex {
+						return io.ErrUnexpectedEOF
+					}
+					iNdEx += skippy
+				}
+			}
+			m.References[mapkey] = mapvalue
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

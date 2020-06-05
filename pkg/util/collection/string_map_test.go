@@ -144,3 +144,44 @@ func TestDiffStringMap(t *testing.T) {
 		}
 	}
 }
+
+func TestFormatStringMap(t *testing.T) {
+	type given struct {
+		m        map[string]string
+		splitter string
+	}
+	var testCases = []struct {
+		given  given
+		expect string
+	}{
+		{
+			given: given{
+				m: map[string]string{
+					"c": "d",
+					"x": "z",
+					"a": "b",
+				},
+				splitter: "",
+			},
+			expect: `a="b",c="d",x="z"`,
+		},
+		{
+			given: given{
+				m: map[string]string{
+					"c": "d",
+					"x": "z",
+					"a": "b",
+				},
+				splitter: ";",
+			},
+			expect: `a="b";c="d";x="z"`,
+		},
+	}
+
+	for i, tc := range testCases {
+		var ret = FormatStringMap(tc.given.m, tc.given.splitter)
+		if ret != tc.expect {
+			t.Errorf("case %v: expected %v, got %v", i+1, tc.expect, ret)
+		}
+	}
+}
