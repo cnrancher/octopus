@@ -14,7 +14,7 @@ import (
 const (
 	Name     = "adaptors.edge.cattle.io/mqtt"
 	Version  = "v1alpha1"
-	Endpoint = "mqtt.socket"
+	Endpoint = "mqtt.sock"
 )
 
 // +kubebuilder:rbac:groups=devices.edge.cattle.io,resources=mqttdevices,verbs=get;list;watch;create;update;patch;delete

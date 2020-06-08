@@ -6,7 +6,7 @@ This is BLE(Bluetooth Low Energy) adaptor is used for bluetooth devices connecti
 
 |  Versions | Register Name | Endpoint Socket | Available |
 |:---:|:---:|:---:|:---:|
-|  `v1alpha1` | `adaptors.edge.cattle.io/ble` | `ble.socket` | * |
+|  `v1alpha1` | `adaptors.edge.cattle.io/ble` | `ble.sock` | * |
 
 ## Support Model
 

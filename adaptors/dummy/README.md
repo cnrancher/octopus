@@ -28,7 +28,7 @@ This is for experience or testing.
 
 |  Versions | Register Name | Endpoint Socket | Available |
 |:---:|:---:|:---:|:---:|
-|  `v1alpha1` | `adaptors.edge.cattle.io/dummy` | `dummy.socket` | * |
+|  `v1alpha1` | `adaptors.edge.cattle.io/dummy` | `dummy.sock` | * |
 
 ## Support Model
 
