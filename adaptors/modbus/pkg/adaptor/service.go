@@ -115,6 +115,7 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 			var modbusHandler, err = physical.NewModbusHandler(modbus.Spec.ProtocolConfig, parameters.Timeout)
 			if err != nil {
 				log.Error(err, "Failed to connect to modbus device endpoint")
+				return status.Errorf(codes.FailedPrecondition, "failed to connect to modbus device endpoint: %v", err)
 			}
 
 			device = physical.NewDevice(
@@ -122,7 +123,7 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 				deviceName,
 				dataHandler,
 				modbusHandler,
-				parameters.SyncInterval,
+				parameters,
 				modbus.Spec,
 			)
 

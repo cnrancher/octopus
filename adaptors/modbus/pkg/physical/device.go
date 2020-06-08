@@ -1,6 +1,7 @@
 package physical
 
 import (
+	"reflect"
 	"strconv"
 	"sync"
 	"time"
@@ -18,13 +19,13 @@ type Device interface {
 	Shutdown()
 }
 
-func NewDevice(log logr.Logger, name types.NamespacedName, handler DataHandler, modbusHandler modbus.ClientHandler, syncInterval time.Duration, spec v1alpha1.ModbusDeviceSpec) Device {
+func NewDevice(log logr.Logger, name types.NamespacedName, handler DataHandler, modbusHandler modbus.ClientHandler, parameters Parameters, spec v1alpha1.ModbusDeviceSpec) Device {
 	return &device{
 		log:           log,
 		name:          name,
 		handler:       handler,
 		modbusHandler: modbusHandler,
-		syncInterval:  syncInterval,
+		parameters:    parameters,
 		spec:          spec,
 	}
 }
@@ -42,12 +43,22 @@ type device struct {
 	spec   v1alpha1.ModbusDeviceSpec
 
 	modbusHandler modbus.ClientHandler
-	syncInterval  time.Duration
+	parameters    Parameters
 }
 
 func (d *device) Configure(spec v1alpha1.ModbusDeviceSpec) {
-	d.spec = spec
+	// configure protocol config
+	if !reflect.DeepEqual(spec.ProtocolConfig, d.spec.ProtocolConfig) {
+		var modbusHandler, err = NewModbusHandler(spec.ProtocolConfig, d.parameters.Timeout)
+		d.modbusHandler = modbusHandler
+		if err != nil {
+			d.log.Error(err, "Failed to connect to modbus device endpoint")
+			return
+		}
+	}
 
+	// configure properties
+	d.spec = spec
 	properties := spec.Properties
 	for _, property := range properties {
 		if property.ReadOnly {
@@ -66,7 +77,7 @@ func (d *device) On() {
 	}
 	d.stop = make(chan struct{})
 
-	var ticker = time.NewTicker(d.syncInterval * time.Second)
+	var ticker = time.NewTicker(d.parameters.SyncInterval * time.Second)
 	defer ticker.Stop()
 
 	// periodically sync device status
