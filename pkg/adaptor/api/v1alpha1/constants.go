@@ -8,7 +8,7 @@ const (
 	AdaptorPath = "/var/lib/octopus/adaptors/"
 
 	// SocketSuffix is the suffix of the socket
-	SocketSuffix = ".socket"
+	SocketSuffix = ".sock"
 
 	// LimbSocket is the path of the Limb registry socket
 	LimbSocket = AdaptorPath + "limb" + SocketSuffix

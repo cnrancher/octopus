@@ -242,7 +242,7 @@ func (a fakeDummyAdaptor) GetName() string {
 }
 
 func (a fakeDummyAdaptor) GetEndpoint() string {
-	return "dummy.socket"
+	return "dummy.sock"
 }
 
 func (a fakeDummyAdaptor) Stop() error {

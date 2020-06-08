@@ -6,7 +6,7 @@
 
 |  Versions | Register Name | Endpoint Socket | Available |
 |:---:|:---:|:---:|:---:|
-|  `v1alpha1` | `adaptors.edge.cattle.io/template` | `template.socket` | * |
+|  `v1alpha1` | `adaptors.edge.cattle.io/template` | `template.sock` | * |
 
 ## Support Model
 

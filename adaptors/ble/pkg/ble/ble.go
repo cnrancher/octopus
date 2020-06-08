@@ -13,7 +13,7 @@ import (
 const (
 	Name     = "adaptors.edge.cattle.io/ble"
 	Version  = "v1alpha1"
-	Endpoint = "ble.socket"
+	Endpoint = "ble.sock"
 )
 
 // +kubebuilder:rbac:groups=devices.edge.cattle.io,resources=bluetoothdevices,verbs=get;list;watch;create;update;patch;delete

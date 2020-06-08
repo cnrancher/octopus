@@ -14,7 +14,7 @@ import (
 const (
 	Name     = "adaptors.edge.cattle.io/opcua"
 	Version  = "v1alpha1"
-	Endpoint = "opcua.socket"
+	Endpoint = "opcua.sock"
 )
 
 // +kubebuilder:rbac:groups=devices.edge.cattle.io,resources=opcuadevices,verbs=get;list;watch;create;update;patch;delete

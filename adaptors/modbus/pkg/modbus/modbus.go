@@ -14,7 +14,7 @@ import (
 const (
 	Name     = "adaptors.edge.cattle.io/modbus"
 	Version  = "v1alpha1"
-	Endpoint = "modbus.socket"
+	Endpoint = "modbus.sock"
 )
 
 // +kubebuilder:rbac:groups=devices.edge.cattle.io,resources=modbusdevices,verbs=get;list;watch;create;update;patch;delete

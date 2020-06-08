@@ -28,7 +28,7 @@ message RegisterRequest {
     string name = 1;
     // Version of the API the adaptor was built against.
     string version = 2;
-    // Name of the unix socket the adaptor is listening on, it's in the form `*.socket`.
+    // Name of the unix socket the adaptor is listening on, it's in the form `*.sock`.
     string endpoint = 3;
 }
 

@@ -9,7 +9,7 @@ Modbus Adaptor supports TCP and RTU protocol.
 
 |  Versions | Register Name | Endpoint Socket | Available |
 |:---:|:---:|:---:|:---:|
-|  `v1alpha1` | `adaptors.edge.cattle.io/modbus` | `modbus.socket` | * |
+|  `v1alpha1` | `adaptors.edge.cattle.io/modbus` | `modbus.sock` | * |
 
 ## Support Model
 

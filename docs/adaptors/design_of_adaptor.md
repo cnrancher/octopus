@@ -106,7 +106,7 @@ Following the below steps can allow an adaptor to interact with `limb`:
         string name = 1;
         // Version of the API the adaptor was built against.
         string version = 2;
-        // Name of the unix socket the adaptor is listening on, it's in the form `*.socket`.
+        // Name of the unix socket the adaptor is listening on, it's in the form `*.sock`.
         string endpoint = 3;
     }
     ```
@@ -137,7 +137,7 @@ Following the below steps can allow an adaptor to interact with `limb`:
         bytes device = 1;
     }
     ```
-1. The adaptor registers itself with the `limb` through the Unix socket at host path `/var/lib/octopus/adaptors/limb.socket`.
+1. The adaptor registers itself with the `limb` through the Unix socket at host path `/var/lib/octopus/adaptors/limb.sock`.
 1. After successfully registering itself, the adaptor runs in serving mode, during which it keeps connecting devices and reports back to the `limb` upon any device state changes.
 
 #### Registration

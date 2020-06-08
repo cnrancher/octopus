@@ -85,7 +85,7 @@ type RegisterRequest struct {
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// Version of the API the adaptor was built against.
 	Version string `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
-	// Name of the unix socket the adaptor is listening on, it's in the form `*.socket`.
+	// Name of the unix socket the adaptor is listening on, it's in the form `*.sock`.
 	Endpoint string `protobuf:"bytes,3,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
 }
 

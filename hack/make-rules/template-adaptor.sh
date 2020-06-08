@@ -43,7 +43,7 @@ function entry() {
   sed "s#template/adaptor#adaptors/${adaptorNameLowercase}#g" "${adaptorPath}/pkg/adaptor/service.go" >"${tmpfile}" && mv "${tmpfile}" "${adaptorPath}/pkg/adaptor/service.go"
   sed "s#template/adaptor#adaptors/${adaptorNameLowercase}#g" "${adaptorPath}/pkg/template/template.go" >"${tmpfile}" && mv "${tmpfile}" "${adaptorPath}/pkg/template/template.go"
   sed "s#adaptors.edge.cattle.io/template#adaptors.edge.cattle.io/${adaptorNameLowercase}#g" "${adaptorPath}/pkg/template/template.go" >"${tmpfile}" && mv "${tmpfile}" "${adaptorPath}/pkg/template/template.go"
-  sed "s#template.socket#${adaptorNameLowercase}.socket#g" "${adaptorPath}/pkg/template/template.go" >"${tmpfile}" && mv "${tmpfile}" "${adaptorPath}/pkg/template/template.go"
+  sed "s#template.sock#${adaptorNameLowercase}.sock#g" "${adaptorPath}/pkg/template/template.go" >"${tmpfile}" && mv "${tmpfile}" "${adaptorPath}/pkg/template/template.go"
   sed "s#package template#package ${adaptorNameLowercase}#g" "${adaptorPath}/pkg/template/template.go" >"${tmpfile}" && mv "${tmpfile}" "${adaptorPath}/pkg/template/template.go"
   sed "s#templatedevices#${adaptorNameLowercase}devices#g" "${adaptorPath}/pkg/template/template.go" >"${tmpfile}" && mv "${tmpfile}" "${adaptorPath}/pkg/template/template.go"
   mv "${adaptorPath}/pkg/template/template.go" "${adaptorPath}/pkg/template/${adaptorNameLowercase}.go"

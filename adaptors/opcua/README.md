@@ -8,7 +8,7 @@ OPCUA Adaptor is used for connecting to and manipulating opcua devices on the ed
 
 |  Versions | Register Name | Endpoint Socket | Available |
 |:---:|:---:|:---:|:---:|
-|  `v1alpha1` | `adaptors.edge.cattle.io/opcua` | `opcua.socket` | * |
+|  `v1alpha1` | `adaptors.edge.cattle.io/opcua` | `opcua.sock` | * |
 
 ## Support Model
 

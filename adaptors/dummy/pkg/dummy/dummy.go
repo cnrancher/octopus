@@ -14,7 +14,7 @@ import (
 const (
 	Name     = "adaptors.edge.cattle.io/dummy"
 	Version  = "v1alpha1"
-	Endpoint = "dummy.socket"
+	Endpoint = "dummy.sock"
 )
 
 // +kubebuilder:rbac:groups=devices.edge.cattle.io,resources=dummyspecialdevices,verbs=get;list;watch;create;update;patch;delete
