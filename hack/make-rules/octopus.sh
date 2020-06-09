@@ -21,6 +21,9 @@ function generate() {
   octopus::controller_gen::generate \
     object:headerFile="${ROOT_DIR}/hack/boilerplate.go.txt" \
     paths="${CURR_DIR}/api/..."
+  octopus::controller_gen::generate \
+    object:headerFile="${ROOT_DIR}/hack/boilerplate.go.txt" \
+    paths="${CURR_DIR}/pkg/mqtt/api/..."
 
   octopus::log::info "generating protos"
   rm -f "${CURR_DIR}/pkg/adaptor/api/*/*.pb.go"
@@ -281,10 +284,12 @@ function test() {
     # NB(thxCode): race detector doesn't support `arm` arch, ref to:
     # - https://golang.org/doc/articles/race_detector.html#Supported_Systems
     GOOS=${os} GOARCH=${arch} CGO_ENABLED=1 go test \
+      -tags=test \
       -cover -coverprofile "${CURR_DIR}/dist/coverage_${os}_${arch}.out" \
       "${unit_test_targets[@]}"
   else
     GOOS=${os} GOARCH=${arch} CGO_ENABLED=1 go test \
+      -tags=test \
       -race \
       -cover -coverprofile "${CURR_DIR}/dist/coverage_${os}_${arch}.out" \
       "${unit_test_targets[@]}"
