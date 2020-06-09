@@ -46,6 +46,7 @@ func TestAPIs(t *testing.T) {
 var _ = BeforeSuite(func(done Done) {
 	testCtx, testCtxCancel = context.WithCancel(context.Background())
 
+	// sets the log of controller-runtime as dev mode
 	logf.SetLogger(zap.New(zap.UseDevMode(true)))
 
 	var err error

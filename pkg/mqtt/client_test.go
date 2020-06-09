@@ -3,7 +3,6 @@ package mqtt
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"io/ioutil"
 	"testing"
 	"time"
 
@@ -16,7 +15,8 @@ import (
 
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
 	"github.com/rancher/octopus/pkg/mqtt/api/v1alpha1"
-	"github.com/rancher/octopus/pkg/util/converter"
+	"github.com/rancher/octopus/pkg/util/log/zap"
+	"github.com/rancher/octopus/test/util/testdata"
 )
 
 type testMetaObj struct {
@@ -248,9 +248,9 @@ func Test_getClientOptions(t *testing.T) {
 			given: given{
 				options: v1alpha1.MQTTClientOptions{
 					TLSConfig: &v1alpha1.MQTTClientTLS{
-						CAFilePEM:   mustLoadPEMFile(t, "ca.pem"),
-						CertFilePEM: mustLoadPEMFile(t, "client.pem"),
-						KeyFilePEM:  mustLoadPEMFile(t, "client-key.pem"),
+						CAFilePEM:   testdata.MustLoadString("ca.pem", t),
+						CertFilePEM: testdata.MustLoadString("client.pem", t),
+						KeyFilePEM:  testdata.MustLoadString("client-key.pem", t),
 					},
 				},
 				uid:   "41478d1e-c3f8-46e3-a3b5-ba251f285277",
@@ -261,11 +261,11 @@ func Test_getClientOptions(t *testing.T) {
 					SetClientID("octopus-41478d1ec3f846e3a3b5ba251f285277").
 					SetTLSConfig(func() *tls.Config {
 						var caPool = x509.NewCertPool()
-						_ = caPool.AppendCertsFromPEM([]byte(mustLoadPEMFile(t, "ca.pem")))
+						_ = caPool.AppendCertsFromPEM(testdata.MustLoadBytes("ca.pem", t))
 
 						var cert, _ = tls.X509KeyPair(
-							[]byte(mustLoadPEMFile(t, "client.pem")),
-							[]byte(mustLoadPEMFile(t, "client-key.pem")),
+							testdata.MustLoadBytes("client.pem", t),
+							testdata.MustLoadBytes("client-key.pem", t),
 						)
 
 						return &tls.Config{
@@ -396,14 +396,6 @@ func Test_getClientOptions(t *testing.T) {
 	}
 }
 
-func mustLoadPEMFile(t *testing.T, filename string) string {
-	var pemCerts, err = ioutil.ReadFile("testdata/" + filename)
-	if err != nil {
-		t.Fatal(errors.Wrapf(err, "failed to pem file"))
-	}
-	return converter.UnsafeBytesToString(pemCerts)
-}
-
 func TestNewClient(t *testing.T) {
 	type given struct {
 		object  testMetaObj
@@ -491,7 +483,7 @@ func TestNewClient(t *testing.T) {
 		},
 	}
 
-	var testBroker, err = NewTestMemoryBroker(testBrokerAddress, &testingTLogger{t: t})
+	var testBroker, err = NewTestMemoryBroker(testBrokerAddress, zap.WrapAsLogr(zap.NewDevelopmentLogger()))
 	assert.NoError(t, err)
 
 	testBroker.Start()
