@@ -18,8 +18,11 @@ This is for experience or testing.
         + [DummyProtocolDeviceSpecProps](#dummyprotocoldevicespecprops)
         + [DummyProtocolDevicesStatusProps](#dummyprotocoldevicestatusprops)
         + [DummyProtocolDevicePropertyType](#dummyprotocoldevicepropertytype)
+    + [DeviceExtensionSpec](#deviceextensionspec)
+    + [DeviceExtensionStatus](#deviceextensionstatus)
 - [Support Platform](#support-platform)
-- [Usage](#Usage)
+- [Usage](#usage)
+    + [Demo](#demo)
 - [Authority](#authority)
 
 <!-- /toc -->
@@ -51,6 +54,7 @@ The `DummySpecialDevice` can be considered as a fake fan.
 
 | Field | Description | Schema | Required |
 |:---|:---|:---|:---:|
+| extension | Specifies the extension of device. | [DeviceExtensionSpec](#deviceextensionspec) | false |
 | protocol |  Protocol for accessing the dummy special device. | [DummySpecialDeviceProtocol](#dummyspecialdeviceprotocol) | true |
 | on | Turn on the dummy special device | bool | true |
 | gear | Specifies how fast the dummy special device should be. | [DummySpecialDeviceGear](#dummyspecialdevicegear) | false |
@@ -59,6 +63,7 @@ The `DummySpecialDevice` can be considered as a fake fan.
 
 | Field | Description | Schema | Required |
 |:---|:---|:---|:---:|
+| extension | Reports the extension of device. | [DeviceExtensionStatus](#deviceextensionstatus) | false |
 | gear | Reports the current gear of dummy special device. | [DummySpecialDeviceGear](#dummyspecialdevicegear) | false |
 | rotatingSpeed | Reports the detail number of speed of dummy special device. | int32 | false |
 
@@ -92,6 +97,7 @@ The `DummyProtocolDevice` can be considered as a chaos protocol robot, it will c
 
 | Field | Description | Schema | Required |
 |:---|:---|:---|:---:|
+| extension | Specifies the extension of device. | [DeviceExtensionSpec](#deviceextensionspec) | false |
 | protocol | Protocol for accessing the dummy protocol device. | [DummyProtocolDeviceProtocol](#dummyprotocoldeviceprotocol) | true |
 | props | Describes the desired properties. | map[string][DummyProtocolDeviceSpecProps](#dummyprotocoldevicespecprops) | false |
 
@@ -99,6 +105,7 @@ The `DummyProtocolDevice` can be considered as a chaos protocol robot, it will c
 
 | Field | Description | Schema | Required |
 |:---|:---|:---|:---:|
+| extension | Reports the extension of device. | [DeviceExtensionStatus](#deviceextensionstatus) | false |
 | props | Reports the observed value of the desired properties. | map[string][DummyProtocolDeviceStatusProps](#dummyprotocoldevicestatusprops) | false |
 
 #### DummyProtocolDeviceProtocol
@@ -148,6 +155,18 @@ DummyProtocolDevicePropertyType describes the type of property.
 | array | | string | false |
 | object | | string | false |
 
+### DeviceExtensionSpec
+
+| Field | Description | Schema | Required |
+|:---|:---|:---|:---:|
+| mqtt | Specifies the MQTT settings. | *[v1alpha1.MQTTOptionsSpec](../../docs/adaptors/integrate_with_mqtt.md#specification) | true |
+
+### DeviceExtensionStatus
+
+| Field | Description | Schema | Required |
+|:---|:---|:---|:---:|
+| mqtt | Reports the MQTT settings. | *[v1alpha1.MQTTOptionsStatus](../../docs/adaptors/integrate_with_mqtt.md#status) | true |
+
 ## Support Platform
 
 | OS | Arch |
@@ -161,6 +180,62 @@ DummyProtocolDevicePropertyType describes the type of property.
 ```shell script
 kubectl apply -f ./deploy/e2e/all_in_one.yaml
 ```
+
+### Demo
+
+1. Create a [DeviceLink](./deploy/e2e/dl_specialdevice.yaml) to connect the DummySpecialDevice, which simulates a fan of living room. 
+
+    ```shell script
+    kubectl apply -f ./deploy/e2e/dl_specialdevice.yaml
+    ```
+    
+    Synchronize the above created fan's status to remote MQTT broker server.
+    
+    ```shell script
+    # create a Generic Secret to store the CA for connecting test.mosquitto.org.
+    kubectl create secret generic living-room-fan-mqtt-ca --from-file=ca.crt=./test/integration/physical/testdata/mosquitto.org.crt
+    # create a TLS Secret to store the TLS/SSL keypair for connecting test.mosquitto.org.
+    kubectl create secret tls living-room-fan-mqtt-tls --key ./test/integration/physical/testdata/client-key.pem --cert ./test/integration/physical/testdata/client.crt
+    # publish status to test.mosquitto.org
+    kubectl apply -f ./deploy/e2e/dl_specialdevice_with_mqtt.yaml
+    ```
+    
+    Use [`mosquitto_sub`](https://mosquitto.org/man/mosquitto_sub-1.html) tool to watch the synchronized status.
+    
+    ```shell script
+    # get mqtt broker server
+    kubectl get dummyspecialdevices.devices.edge.cattle.io living-room-fan -o jsonpath="{.status.extension.mqtt.client.server}"
+    # get topic name
+    kubectl get dummyspecialdevices.devices.edge.cattle.io living-room-fan -o jsonpath="{.status.extension.mqtt.message.topicName}"
+    # use mosquitto_sub
+    mosquitto_sub -h {the host of mqtt broker server} -p {the port of mqtt broker server} -t {the topic name}
+    # mosquitto_sub -h test.mosquitto.org -p 1883 -t cattle.io/octopus/default/living-room-fan 
+    ```
+   
+1. Create a [DeviceLink](./deploy/e2e/dl_protocoldevice.yaml) to connect the DummyProtocolDevice, which simulates an intelligent property-filled robot, it can fill the desired properties randomly in 2 seconds.
+
+    ```shell script
+    kubectl apply -f ./deploy/e2e/dl_protocoldevice.yaml
+    ```
+   
+    Synchronize the above created robot's answers to remote MQTT broker server.
+        
+    ```shell script
+    # publish status to test.mosquitto.org
+    kubectl apply -f ./deploy/e2e/dl_protocoldevice_with_mqtt.yaml
+    ```
+    
+    Use [`mosquitto_sub`](https://mosquitto.org/man/mosquitto_sub-1.html) tool to watch the synchronized answers.
+    
+    ```shell script
+    # get mqtt broker server
+    kubectl get dummyprotocoldevices.devices.edge.cattle.io localhost-robot -o jsonpath="{.status.extension.mqtt.client.server}"
+    # get topic name
+    kubectl get dummyprotocoldevices.devices.edge.cattle.io localhost-robot -o jsonpath="{.status.extension.mqtt.message.topicName}"
+    # use mosquitto_sub
+    mosquitto_sub -h {the host of mqtt broker server} -p {the port of mqtt broker server} -t {the topic name}
+    # mosquitto_sub -h test.mosquitto.org -p 1883 -t cattle.io/octopus/835aea2e-5f80-4d14-88f5-40c4bda41aa3
+    ```
 
 ## Authority
 
