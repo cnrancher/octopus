@@ -1,6 +1,7 @@
 package physical
 
 import (
+	"reflect"
 	"sync"
 	"time"
 
@@ -9,6 +10,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/rancher/octopus/adaptors/dummy/api/v1alpha1"
+	api "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
+	"github.com/rancher/octopus/pkg/mqtt"
 )
 
 func NewProtocolDevice(log logr.Logger, instance *v1alpha1.DummyProtocolDevice, toLimb ProtocolDeviceSyncer) Device {
@@ -32,11 +35,12 @@ type protocolDevice struct {
 	stop chan struct{}
 	log  logr.Logger
 
-	instance *v1alpha1.DummyProtocolDevice
-	toLimb   ProtocolDeviceSyncer
+	instance   *v1alpha1.DummyProtocolDevice
+	toLimb     ProtocolDeviceSyncer
+	mqttClient mqtt.Client
 }
 
-func (d *protocolDevice) Configure(configuration interface{}) error {
+func (d *protocolDevice) Configure(references api.ReferencesHandler, configuration interface{}) error {
 	var spec, ok = configuration.(v1alpha1.DummyProtocolDeviceSpec)
 	if !ok {
 		d.log.Error(errors.New("invalidate configuration type"), "Failed to configure")
@@ -46,9 +50,37 @@ func (d *protocolDevice) Configure(configuration interface{}) error {
 	d.Lock()
 	defer d.Unlock()
 
+	if !reflect.DeepEqual(d.instance.Spec.Extension.MQTT, spec.Extension.MQTT) {
+		if d.mqttClient != nil {
+			d.mqttClient.Disconnect(5 * time.Second)
+			d.mqttClient = nil
+
+			// since there is only a MQTT inside extension field, here can set to nil directly.
+			d.instance.Status.Extension = nil
+		}
+
+		if spec.Extension.MQTT != nil {
+			var cli, outline, err = mqtt.NewClient(d.instance, *spec.Extension.MQTT, references.ToDataMap())
+			if err != nil {
+				return errors.Wrap(err, "failed to create MQTT client")
+			}
+
+			err = cli.Connect()
+			if err != nil {
+				return errors.Wrap(err, "failed to connect MQTT broker")
+			}
+			d.mqttClient = cli
+
+			if d.instance.Status.Extension == nil {
+				d.instance.Status.Extension = &v1alpha1.DeviceExtensionStatus{}
+			}
+			d.instance.Status.Extension.MQTT = outline
+		}
+	}
+
 	d.instance.Spec = spec
 	shuffleStatus(d.instance)
-	d.toLimb(d.instance.DeepCopy())
+	d.sync()
 
 	d.Do(func() {
 		d.stop = make(chan struct{})
@@ -61,6 +93,11 @@ func (d *protocolDevice) Configure(configuration interface{}) error {
 func (d *protocolDevice) Shutdown() {
 	d.Lock()
 	defer d.Unlock()
+
+	if d.mqttClient != nil {
+		d.mqttClient.Disconnect(5 * time.Second)
+		d.mqttClient = nil
+	}
 
 	if d.stop != nil {
 		close(d.stop)
@@ -94,13 +131,27 @@ func (d *protocolDevice) mockPhysicalWatching(stop <-chan struct{}) {
 			defer d.Unlock()
 
 			shuffleStatus(d.instance)
-			d.toLimb(d.instance.DeepCopy())
+			d.sync()
 		}()
 
 		select {
 		case <-stop:
 			return
 		default:
+		}
+	}
+}
+
+func (d *protocolDevice) sync() {
+	if d.toLimb != nil {
+		d.toLimb(d.instance)
+	}
+	if d.mqttClient != nil {
+		// NB(thxCode) we don't need to send extension status outside.
+		var status = d.instance.Status.DeepCopy()
+		status.Extension = nil
+		if err := d.mqttClient.Publish(status); err != nil {
+			d.log.Error(err, "Failed to publish MQTT broker")
 		}
 	}
 }

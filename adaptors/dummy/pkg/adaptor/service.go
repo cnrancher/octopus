@@ -2,35 +2,20 @@ package adaptor
 
 import (
 	jsoniter "github.com/json-iterator/go"
-	uberzap "go.uber.org/zap"
-	uberzapcore "go.uber.org/zap/zapcore"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	logr "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/rancher/octopus/adaptors/dummy/api/v1alpha1"
 	"github.com/rancher/octopus/adaptors/dummy/pkg/physical"
 	api "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
 	"github.com/rancher/octopus/pkg/adaptor/connection"
+	"github.com/rancher/octopus/pkg/adaptor/log"
 	"github.com/rancher/octopus/pkg/util/object"
 )
-
-var log = logr.NewDelegatingLogger(nil)
-
-func init() {
-	log.Fulfill(zap.New(
-		zap.UseDevMode(true),
-		zap.Level(func() *uberzap.AtomicLevel {
-			level := uberzap.NewAtomicLevelAt(uberzapcore.DebugLevel)
-			return &level
-		}()),
-	))
-}
 
 func NewService() *Service {
 	var scheme = k8sruntime.NewScheme()
@@ -121,7 +106,7 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 			}
 
 			// configure device
-			if err := holder.Configure(device.Spec); err != nil {
+			if err := holder.Configure(req.GetReferencesHandler(), device.Spec); err != nil {
 				return status.Errorf(codes.InvalidArgument, "failed to configure the device: %v", err)
 			}
 
@@ -161,7 +146,7 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 			}
 
 			// configure device
-			if err := holder.Configure(device.Spec); err != nil {
+			if err := holder.Configure(req.GetReferencesHandler(), device.Spec); err != nil {
 				return status.Errorf(codes.InvalidArgument, "failed to configure the device: %v", err)
 			}
 

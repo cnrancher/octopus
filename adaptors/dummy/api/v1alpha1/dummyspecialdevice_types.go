@@ -22,6 +22,10 @@ const (
 
 // DummySpecialDeviceSpec defines the desired state of DummySpecialDevice.
 type DummySpecialDeviceSpec struct {
+	// Specifies the extension of device.
+	// +optional
+	Extension DeviceExtensionSpec `json:"extension,omitempty"`
+
 	// Protocol for accessing the dummy special device.
 	// +kubebuilder:validation:Required
 	Protocol DummySpecialDeviceProtocol `json:"protocol"`
@@ -37,6 +41,10 @@ type DummySpecialDeviceSpec struct {
 
 // DummySpecialDeviceStatus defines the observed state of DummySpecialDevice.
 type DummySpecialDeviceStatus struct {
+	// Reports the extension of device.
+	// +optional
+	Extension *DeviceExtensionStatus `json:"extension,omitempty"`
+
 	// Reports the current gear of dummy special device.
 	// +optional
 	Gear DummySpecialDeviceGear `json:"gear,omitempty"`
