@@ -99,12 +99,13 @@ func (c *connection) receive() {
 				c.name,
 				err,
 			)
-		} else {
-			c.notifier.NoticeConnectionReceivedData(
-				c.adaptorName,
-				c.name,
-				resp.GetDevice(),
-			)
+			return
 		}
+
+		c.notifier.NoticeConnectionReceivedData(
+			c.adaptorName,
+			c.name,
+			resp.GetDevice(),
+		)
 	}
 }

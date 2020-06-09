@@ -106,7 +106,7 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 			}
 
 			// configure device
-			if err := holder.Configure(device.Spec); err != nil {
+			if err := holder.Configure(req.GetReferencesHandler(), device.Spec); err != nil {
 				return status.Errorf(codes.InvalidArgument, "failed to configure the device: %v", err)
 			}
 
@@ -146,7 +146,7 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 			}
 
 			// configure device
-			if err := holder.Configure(device.Spec); err != nil {
+			if err := holder.Configure(req.GetReferencesHandler(), device.Spec); err != nil {
 				return status.Errorf(codes.InvalidArgument, "failed to configure the device: %v", err)
 			}
 

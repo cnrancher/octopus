@@ -1,0 +1,47 @@
+apiVersion: edge.cattle.io/v1alpha1
+kind: DeviceLink
+metadata:
+  name: living-room-fan
+spec:
+  adaptor:
+    node: edge-worker
+    name: adaptors.edge.cattle.io/dummy
+  model:
+    apiVersion: "devices.edge.cattle.io/v1alpha1"
+    kind: "DummySpecialDevice"
+  references:
+    - name: "ca"
+      secret:
+        name: "living-room-fan-mqtt-ca"
+    - name: "tls"
+      secret:
+        name: "living-room-fan-mqtt-tls"
+  template:
+    metadata:
+      labels:
+        device: living-room-fan
+    spec:
+      extension:
+        mqtt:
+          client:
+            server: tcps://test.mosquitto.org:8884
+            tlsConfig:
+              caFilePEMRef:
+                name: ca
+                item: ca.crt
+              certFilePEMRef:
+                name: tls
+                item: tls.crt
+              keyFilePEMRef:
+                name: tls
+                item: tls.key
+              serverName: test.mosquitto.org
+              insecureSkipVerify: true
+          message:
+            topic:
+              prefix: cattle.io/octopus
+            qos: 1
+      protocol:
+        location: "living_room"
+      gear: slow
+      "on": true

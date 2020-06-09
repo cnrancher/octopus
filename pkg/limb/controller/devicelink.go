@@ -283,40 +283,53 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	// validates device connected or not
 	switch devicelink.GetDeviceConnectedStatus(&link.Status) {
 	case metav1.ConditionFalse:
-		// NB(thxCode) could not send any data to unhealthy connection,
-		// this status changes maybe can drive by suction cup.
+		if link.Status.DeviceTemplateGeneration != link.Generation {
+			devicelink.ToCheckDeviceConnected(&link.Status)
+			if err := r.Status().Update(ctx, &link); err != nil {
+				log.Error(err, "Unable to change the status of DeviceLink")
+				return ctrl.Result{Requeue: true}, nil
+			}
+			r.Eventf(&link, "Warning", "Reconnecting", "triggered by modification")
+		}
 		return ctrl.Result{}, nil
 	case metav1.ConditionTrue:
 		// fetches the device references if needed
 		var references, err = r.fetchReferences(ctx, &link)
 		if err != nil {
 			log.Error(err, "Unable to fetch the reference parameters of DeviceLink")
+			r.Eventf(&link, "Warning", "FailedSent", "cannot send data to adaptor as failed to fetch the reference parameters: %v", err)
 			return ctrl.Result{Requeue: true, RequeueAfter: 10 * time.Second}, nil
 		}
 
 		if err := r.SuctionCup.Send(references, &device, &link); err != nil {
 			devicelink.FailOnDeviceConnected(&link.Status, "cannot send data to adaptor")
-			r.Eventf(&link, "Warning", "FailedSent", "cannot send data to adaptor: %v", err)
-
+			link.Status.DeviceTemplateGeneration = link.Generation
 			if err := r.Status().Update(ctx, &link); err != nil {
 				log.Error(err, "Unable to change the status of DeviceLink")
 				return ctrl.Result{Requeue: true}, nil
 			}
+			r.Eventf(&link, "Warning", "FailedSent", "cannot send data to adaptor: %v", err)
 		}
 		return ctrl.Result{}, nil
 	default:
 		if _, err := r.SuctionCup.Connect(&link); err != nil {
 			devicelink.FailOnDeviceConnected(&link.Status, "unable to connect to adaptor")
+			link.Status.DeviceTemplateGeneration = link.Generation
+			if err := r.Status().Update(ctx, &link); err != nil {
+				log.Error(err, "Unable to change the status of DeviceLink")
+				return ctrl.Result{Requeue: true}, nil
+			}
 			r.Eventf(&link, "Warning", "FailedConnected", "cannot connect to adaptor: %v", err)
-		} else {
-			devicelink.SuccessOnDeviceConnected(&link.Status)
-			r.Eventf(&link, "Normal", "Connected", "connected to adaptor")
+			return ctrl.Result{}, nil
 		}
 
+		devicelink.SuccessOnDeviceConnected(&link.Status)
+		link.Status.DeviceTemplateGeneration = link.Generation
 		if err := r.Status().Update(ctx, &link); err != nil {
 			log.Error(err, "Unable to change the status of DeviceLink")
 			return ctrl.Result{Requeue: true}, nil
 		}
+		r.Eventf(&link, "Normal", "Connected", "connected to adaptor")
 		return ctrl.Result{}, nil
 	}
 }
