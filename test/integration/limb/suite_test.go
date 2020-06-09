@@ -55,6 +55,7 @@ func TestAPIs(t *testing.T) {
 var _ = BeforeSuite(func(done Done) {
 	testCtx, testCtxCancel = context.WithCancel(context.Background())
 
+	// sets the log of controller-runtime as dev mode
 	logf.SetLogger(zap.New(zap.UseDevMode(true)))
 
 	var err error
@@ -137,6 +138,6 @@ var _ = AfterSuite(func() {
 
 func init() {
 	var currDir = filepath.Dir(".")
-	// calculate the project root dir of ${GOPATH}/github.com/rancher/octopus/test/integration/brain
+	// calculate the project root dir of ${GOPATH}/github.com/rancher/octopus/test/integration/limb
 	testRootDir, _ = filepath.Abs(filepath.Join(currDir, "..", "..", ".."))
 }

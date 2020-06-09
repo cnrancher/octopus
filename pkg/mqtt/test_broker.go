@@ -4,7 +4,6 @@ package mqtt
 
 import (
 	"fmt"
-	"testing"
 	"time"
 
 	"github.com/256dpi/gomqtt/broker"
@@ -42,13 +41,13 @@ func NewTestMemoryBroker(address string, log logr.Logger) (*TestMemoryBroker, er
 	var backend = broker.NewMemoryBackend()
 	backend.Logger = func(e broker.LogEvent, c *broker.Client, pkt packet.Generic, msg *packet.Message, err error) {
 		if err != nil {
-			log.Info("[%s] %s", e, err)
+			log.Error(err, fmt.Sprintf("[%s]", e))
 		} else if msg != nil {
-			log.Info("[%s] %s", e, msg.String())
+			log.Info(fmt.Sprintf("[%s] %s", e, msg.String()))
 		} else if pkt != nil {
-			log.Info("[%s] %s", e, pkt.String())
+			log.Info(fmt.Sprintf("[%s] %s", e, pkt.String()))
 		} else {
-			log.Info("%s", e)
+			log.Info(fmt.Sprintf("%s", e))
 		}
 	}
 
@@ -56,40 +55,4 @@ func NewTestMemoryBroker(address string, log logr.Logger) (*TestMemoryBroker, er
 		server:  server,
 		backend: backend,
 	}, nil
-}
-
-type testingTLogger struct {
-	t *testing.T
-}
-
-func (t *testingTLogger) Info(msg string, keysAndValues ...interface{}) {
-	if len(keysAndValues) != 0 {
-		t.t.Logf(msg, keysAndValues...)
-	} else {
-		t.t.Log(msg)
-	}
-}
-
-func (t *testingTLogger) Enabled() bool {
-	return true
-}
-
-func (t *testingTLogger) Error(err error, msg string, keysAndValues ...interface{}) {
-	if len(keysAndValues) != 0 {
-		t.t.Errorf("%s: %v", fmt.Sprintf(msg, keysAndValues...), err)
-	} else {
-		t.t.Errorf("%s: %v", msg, err)
-	}
-}
-
-func (t *testingTLogger) V(level int) logr.InfoLogger {
-	return t
-}
-
-func (t *testingTLogger) WithValues(keysAndValues ...interface{}) logr.Logger {
-	return t
-}
-
-func (t *testingTLogger) WithName(name string) logr.Logger {
-	return t
 }

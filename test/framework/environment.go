@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/rancher/octopus/test/framework/cluster"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 )
@@ -15,11 +16,11 @@ const (
 	envLocalClusterKind   = "LOCAL_CLUSTER_KIND"
 )
 
-var testLocalCluster LocalCluster
+var testLocalCluster cluster.LocalCluster
 
 func StartEnv(rootDir string, testEnv *envtest.Environment, writer io.Writer) (cfg *rest.Config, err error) {
 	if !IsUsingExistingCluster() {
-		testLocalCluster = NewLocalCluster(GetLocalClusterKind())
+		testLocalCluster = cluster.NewLocalCluster(GetLocalClusterType())
 		if err := testLocalCluster.Startup(rootDir, writer); err != nil {
 			return nil, err
 		}
@@ -54,14 +55,14 @@ func IsUsingExistingCluster() bool {
 	return strings.EqualFold(os.Getenv(envUseExistingCluster), "true")
 }
 
-func GetLocalClusterKind() ClusterKind {
+func GetLocalClusterType() cluster.LocalClusterType {
 	var kind = os.Getenv(envLocalClusterKind)
-	if strings.EqualFold(kind, string(KindCluster)) {
-		return KindCluster
+	if strings.EqualFold(kind, string(cluster.LocalClusterTypeKind)) {
+		return cluster.LocalClusterTypeKind
 	}
-	return K3dCluster
+	return cluster.LocalClusterTypeK3d
 }
 
-func GetLocalCluster() LocalCluster {
+func GetLocalCluster() cluster.LocalCluster {
 	return testLocalCluster
 }
