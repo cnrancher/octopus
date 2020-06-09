@@ -20,7 +20,7 @@ func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
 
 	RunSpecsWithDefaultAndCustomReporters(t,
-		"adaptor suite",
+		"physical suite",
 		[]Reporter{printer.NewlineReporter{}})
 }
 

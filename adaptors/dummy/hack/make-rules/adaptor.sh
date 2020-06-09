@@ -248,10 +248,12 @@ function test() {
     # NB(thxCode): race detector doesn't support `arm` arch, ref to:
     # - https://golang.org/doc/articles/race_detector.html#Supported_Systems
     GOOS=${os} GOARCH=${arch} CGO_ENABLED=1 go test \
+      -tags=test \
       -cover -coverprofile "${CURR_DIR}/dist/coverage_${adaptor}_${os}_${arch}.out" \
       "${unit_test_targets[@]}"
   else
     GOOS=${os} GOARCH=${arch} CGO_ENABLED=1 go test \
+      -tags=test \
       -race \
       -cover -coverprofile "${CURR_DIR}/dist/coverage_${adaptor}_${os}_${arch}.out" \
       "${unit_test_targets[@]}"
@@ -268,6 +270,9 @@ function verify() {
 
   CGO_ENABLED=0 go test \
     "${CURR_DIR}/test/integration/adaptor/..." -v -ginkgo.v -ginkgo.progress
+  CGO_ENABLED=0 go test \
+    -tags=test \
+    "${CURR_DIR}/test/integration/physical/..." -v -ginkgo.v -ginkgo.progress
 
   octopus::log::info "...done"
 }
