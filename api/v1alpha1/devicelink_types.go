@@ -6,6 +6,19 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
+// DeviceLinkReferenceRelationship defines the relationship to refer the reference item of DeviceLink.
+// +kubebuilder:object:generate=true
+// +kubebuilder:object:root=false
+type DeviceLinkReferenceRelationship struct {
+	// Specifies the name of reference.
+	// +kubebuilder:validation:Required
+	Name string `json:"name"`
+
+	// Specifies the item name of the referred reference.
+	// +kubebuilder:validation:Required
+	Item string `json:"item"`
+}
+
 // DeviceLinkReferenceSecretSource defines the source of a same name Secret instance.
 type DeviceLinkReferenceSecretSource struct {
 	// Specifies the name of the Secret in the same Namespace to use.

@@ -16,6 +16,9 @@
 			"api\\.pb\\.go"
 		],
 		"deadline": "5m",
-		"tests": true
+		"tests": true,
+		"build-tags": [
+			"test"
+		]
 	}
 }

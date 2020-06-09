@@ -2,6 +2,7 @@ package brain
 
 import (
 	"github.com/spf13/cobra"
+	ctrl "sigs.k8s.io/controller-runtime"
 
 	ctrl "sigs.k8s.io/controller-runtime"
 

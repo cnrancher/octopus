@@ -33,7 +33,7 @@ function octopus::cluster_kind::validate() {
   return 1
 }
 
-function octopus::cluster_kind:setup_configuration() {
+function octopus::cluster_kind::setup_configuration() {
   local config="/tmp/kind-${CLUSTER_NAME}-cluster-config.yaml"
   cat >"${config}" <<EOF
 kind: Cluster
@@ -107,7 +107,7 @@ function octopus::cluster_kind::startup() {
 
   octopus::log::info "creating ${CLUSTER_NAME} cluster with ${K8S_VERSION}"
   # setup cluster
-  octopus::cluster_kind:setup_configuration
+  octopus::cluster_kind::setup_configuration
   local kind_image="kindest/node:${K8S_VERSION}"
   kind create cluster --name "${CLUSTER_NAME}" --config "/tmp/kind-${CLUSTER_NAME}-cluster-config.yaml" --image "${kind_image}" --wait 5m
 
