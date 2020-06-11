@@ -70,7 +70,7 @@ func (r *NodeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			}
 		}
 
-		// removesfinalizer
+		// removes finalizer
 		node.Finalizers = collection.StringSliceRemove(node.Finalizers, ReconcilingNode)
 		if err := r.Update(ctx, &node); err != nil {
 			log.Error(err, "Unable to remove finalizer from Node")

@@ -13,8 +13,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
+	limbctrl "github.com/rancher/octopus/pkg/limb/controller"
 	"github.com/rancher/octopus/pkg/status/devicelink"
 	statusnode "github.com/rancher/octopus/pkg/status/node"
+	"github.com/rancher/octopus/pkg/util/collection"
 	"github.com/rancher/octopus/pkg/util/model"
 	"github.com/rancher/octopus/pkg/util/object"
 )
@@ -47,6 +49,29 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	}
 
 	if object.IsDeleted(&link) {
+		// NB(thxCode) the limb's finalizer needs to be removed if the Node is deleted(the limb is deleted too).
+		if !collection.StringSliceContain(link.Finalizers, limbctrl.ReconcilingDeviceLink) {
+			return ctrl.Result{}, nil
+		}
+
+		var isControlledByLimb bool
+		if devicelink.GetNodeExistedStatus(&link.Status) != metav1.ConditionFalse {
+			var node corev1.Node
+			if err := r.Get(ctx, types.NamespacedName{Name: link.Spec.Adaptor.Node}, &node); err != nil {
+				if !apierrs.IsNotFound(err) {
+					log.Error(err, "Unable to fetch the adaptor node of DeviceLink")
+					return ctrl.Result{Requeue: true}, nil
+				}
+			}
+			isControlledByLimb = object.IsActivating(&node)
+		}
+		if !isControlledByLimb {
+			link.Finalizers = collection.StringSliceRemove(link.Finalizers, limbctrl.ReconcilingDeviceLink)
+			if err := r.Update(ctx, &link); err != nil {
+				log.Error(err, "Unable to remove finalizer from DeviceLink")
+				return ctrl.Result{Requeue: true}, nil
+			}
+		}
 		return ctrl.Result{}, nil
 	}
 
