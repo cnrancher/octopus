@@ -102,6 +102,7 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 
 			mqttClient, err := physical.NewMqttClient(mqtt.Name, mqtt.Spec.Config)
 			if err != nil {
+				log.Error(err, "connect receive new device NewMqttClient error")
 				return status.Errorf(codes.InvalidArgument, "failed to connect mqtt: %v", err)
 			}
 
@@ -113,7 +114,8 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 			)
 
 			go device.On()
-			log.Info("connect recve new device success", "name", mqtt.Name)
+
+			log.Info("connect receive new device success", "name", mqtt.Name)
 
 		} else {
 			device.Configure(&mqtt.Spec)

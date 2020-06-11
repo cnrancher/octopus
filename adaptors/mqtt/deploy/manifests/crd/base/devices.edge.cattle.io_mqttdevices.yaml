@@ -46,8 +46,6 @@ spec:
                     type: string
                 required:
                 - broker
-                - password
-                - username
                 type: object
               properties:
                 items:

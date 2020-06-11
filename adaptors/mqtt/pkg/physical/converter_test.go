@@ -58,12 +58,12 @@ func TestConvertToStatusProperty(t *testing.T) {
 		"simple": {
 			input:    simpleData,
 			jsonPath: "store.bicycle.price",
-			want:     []byte(`{"apiVersion":"devices.edge.cattle.io/v1alpha1","kind":"MqttDevice","metadata":{"creationTimestamp":null,"name":"testDevice"},"spec":{"config":{"broker":"","password":"","username":""},"properties":[{"description":"test property","jsonPath":"store.bicycle.price","name":"test_property","pubInfo":{"qos":0,"topic":""},"subInfo":{"payloadType":"json","qos":2,"topic":"test/abc"},"value":{"valueType":""}}]},"status":{"properties":[{"description":"test property","name":"test_property","updateAt":"2020-01-01T01:01:01Z","value":{"floatValue":"19.950000","valueType":"float"}}]}}`),
+			want:     []byte(`{"apiVersion":"devices.edge.cattle.io/v1alpha1","kind":"MqttDevice","metadata":{"creationTimestamp":null,"name":"testDevice"},"spec":{"config":{"broker":""},"properties":[{"description":"test property","jsonPath":"store.bicycle.price","name":"test_property","pubInfo":{"qos":0,"topic":""},"subInfo":{"payloadType":"json","qos":2,"topic":"test/abc"},"value":{"valueType":""}}]},"status":{"properties":[{"description":"test property","name":"test_property","updateAt":"2020-01-01T01:01:01Z","value":{"floatValue":"19.950000","valueType":"float"}}]}}`),
 		},
 		"room light": {
 			input:    roomLightData,
 			jsonPath: "power",
-			want:     []byte(`{"apiVersion":"devices.edge.cattle.io/v1alpha1","kind":"MqttDevice","metadata":{"creationTimestamp":null,"name":"testDevice"},"spec":{"config":{"broker":"","password":"","username":""},"properties":[{"description":"test property","jsonPath":"power","name":"test_property","pubInfo":{"qos":0,"topic":""},"subInfo":{"payloadType":"json","qos":2,"topic":"test/abc"},"value":{"valueType":""}}]},"status":{"properties":[{"description":"test property","name":"test_property","updateAt":"2020-01-01T01:01:01Z","value":{"objectValue":{"electricQuantity":19.99,"powerDissipation":"10KWH"},"valueType":"object"}}]}}`),
+			want:     []byte(`{"apiVersion":"devices.edge.cattle.io/v1alpha1","kind":"MqttDevice","metadata":{"creationTimestamp":null,"name":"testDevice"},"spec":{"config":{"broker":""},"properties":[{"description":"test property","jsonPath":"power","name":"test_property","pubInfo":{"qos":0,"topic":""},"subInfo":{"payloadType":"json","qos":2,"topic":"test/abc"},"value":{"valueType":""}}]},"status":{"properties":[{"description":"test property","name":"test_property","updateAt":"2020-01-01T01:01:01Z","value":{"objectValue":{"electricQuantity":19.99,"powerDissipation":"10KWH"},"valueType":"object"}}]}}`),
 		},
 	}
 
