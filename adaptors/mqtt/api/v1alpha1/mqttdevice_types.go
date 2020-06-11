@@ -35,8 +35,8 @@ type QosType int
 
 type MqttConfig struct {
 	Broker   string `json:"broker"`
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Username string `json:"username,omitempty"`
+	Password string `json:"password,omitempty"`
 }
 
 type SubInfo struct {

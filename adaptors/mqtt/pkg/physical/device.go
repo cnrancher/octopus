@@ -1,6 +1,7 @@
 package physical
 
 import (
+	"errors"
 	"sync"
 	"time"
 
@@ -14,6 +15,13 @@ import (
 const (
 	disconnectQuiesce = 1000
 	waitTimeout       = time.Second * 10
+)
+
+var (
+	errorBrokerConnectTimeout = errors.New("Broker Connect Timeout")
+	errorSubscribeTimeout     = errors.New("Subscribe Timeout")
+	errorUnsubscribeTimeout   = errors.New("Unsubscribe Timeout")
+	errorPublishTimeout       = errors.New("Publish Timeout")
 )
 
 type Device interface {
@@ -121,7 +129,8 @@ func (dev *device) publishProperties(properties []v1alpha1.Property) error {
 		dev.log.Info("device publish cmd", "payload", string(newValuePayload), "propertyName", property.Name, "pubTopic", pubTopic)
 
 		token := dev.client.Publish(pubTopic, qos, true, newValuePayload)
-		if token.WaitTimeout(waitTimeout) && token.Error() != nil {
+		// TODO  change to WaitTimeout , but func have bug in lib
+		if token.Wait() && token.Error() != nil {
 			return err
 		}
 
@@ -137,7 +146,8 @@ func (dev *device) subscribe() error {
 	}
 
 	token := dev.client.SubscribeMultiple(filters, dev.callback)
-	if token.WaitTimeout(time.Second*10) && token.Error() != nil {
+	// TODO  change to WaitTimeout , but func have bug in lib
+	if token.Wait() && token.Error() != nil {
 		return token.Error()
 	}
 
@@ -207,7 +217,9 @@ func (dev *device) unsubscribeOld(spec *v1alpha1.MqttDeviceSpec) error {
 	}
 
 	if len(unSubTopic) > 1 {
-		if token := dev.client.Unsubscribe(unSubTopic...); token.Wait() && token.Error() != nil {
+		token := dev.client.Unsubscribe(unSubTopic...)
+		// TODO  change to WaitTimeout , but func have bug in lib
+		if token.Wait() && token.Error() != nil {
 			return token.Error()
 		}
 	}
@@ -229,7 +241,8 @@ func (dev *device) reSubscribeAll(spec *v1alpha1.MqttDeviceSpec) error {
 	}
 
 	token := dev.client.SubscribeMultiple(filters, dev.callback)
-	if token.WaitTimeout(waitTimeout) && token.Error() != nil {
+	// TODO  change to WaitTimeout , but func have bug in lib
+	if token.Wait() && token.Error() != nil {
 		return token.Error()
 	}
 
@@ -261,7 +274,8 @@ func (dev *device) unsubscribeAll() {
 		subSet.Insert(property.SubInfo.Topic)
 	}
 	token := dev.client.Unsubscribe(subSet.List()...)
-	if token.WaitTimeout(waitTimeout) && token.Error() != nil {
+	// TODO  change to WaitTimeout , but func have bug in lib
+	if token.Wait() && token.Error() != nil {
 		dev.log.Error(token.Error(), "device unsubscribeAll error")
 	}
 	return
@@ -282,7 +296,8 @@ func NewMqttClient(clientID string, config v1alpha1.MqttConfig) (MQTT.Client, er
 	opts.SetCleanSession(false)
 
 	client := MQTT.NewClient(opts)
-	if token := client.Connect(); token.WaitTimeout(waitTimeout) && token.Error() != nil {
+	token := client.Connect()
+	if token.Wait() && token.Error() != nil {
 		return nil, token.Error()
 	}
 
