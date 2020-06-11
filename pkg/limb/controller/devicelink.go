@@ -67,20 +67,6 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		return ctrl.Result{}, nil
 	}
 
-	// rejects if not the requested node
-	if link.Status.NodeName != r.NodeName {
-		// NB(thxCode) disconnects the link to avoid connection leak when the requested node has been changed
-		r.SuctionCup.Disconnect(&link)
-		return ctrl.Result{}, nil
-	}
-
-	// rejects if the conditions are not met
-	if devicelink.GetModelExistedStatus(&link.Status) != metav1.ConditionTrue {
-		// NB(thxCode) disconnects the link to avoid connection leak when the model has been changed or removed
-		r.SuctionCup.Disconnect(&link)
-		return ctrl.Result{}, nil
-	}
-
 	if object.IsDeleted(&link) {
 		if !collection.StringSliceContain(link.Finalizers, ReconcilingDeviceLink) {
 			return ctrl.Result{}, nil
@@ -96,6 +82,20 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			return ctrl.Result{Requeue: true}, nil
 		}
 
+		return ctrl.Result{}, nil
+	}
+
+	// rejects if not the requested node
+	if link.Status.NodeName != r.NodeName {
+		// NB(thxCode) disconnects the link to avoid connection leak when the requested node has been changed
+		r.SuctionCup.Disconnect(&link)
+		return ctrl.Result{}, nil
+	}
+
+	// rejects if the conditions are not met
+	if devicelink.GetModelExistedStatus(&link.Status) != metav1.ConditionTrue {
+		// NB(thxCode) disconnects the link to avoid connection leak when the model has been changed or removed
+		r.SuctionCup.Disconnect(&link)
 		return ctrl.Result{}, nil
 	}
 
