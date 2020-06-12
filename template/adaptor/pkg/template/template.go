@@ -6,6 +6,7 @@ import (
 
 	api "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
 	"github.com/rancher/octopus/pkg/adaptor/connection"
+	"github.com/rancher/octopus/pkg/adaptor/log"
 	"github.com/rancher/octopus/pkg/adaptor/registration"
 	"github.com/rancher/octopus/pkg/util/critical"
 	"github.com/rancher/octopus/template/adaptor/pkg/adaptor"
@@ -21,6 +22,8 @@ const (
 // +kubebuilder:rbac:groups=devices.edge.cattle.io,resources=templatedevices/status,verbs=get;update;patch
 
 func Run() error {
+	log.Info("Starting")
+
 	var stop = ctrl.SetupSignalHandler()
 	var ctx = critical.Context(stop)
 	eg, ctx := errgroup.WithContext(ctx)

@@ -8,8 +8,13 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+type LoggerWrapper interface {
+	ToZapLogger() *zap.Logger
+}
+
+// NewLogger creates a Zap logger.
 func NewLogger(asJSON, inProduction bool) *zap.Logger {
-	var zapLevel = zap.InfoLevel
+	var zapLevel = zap.DebugLevel
 	var zapWriteSyncer = zapcore.AddSync(os.Stderr)
 	var zapOptions = []zap.Option{
 		zap.AddCallerSkip(1),
@@ -19,6 +24,7 @@ func NewLogger(asJSON, inProduction bool) *zap.Logger {
 
 	var zapEncoderConfig = zap.NewDevelopmentEncoderConfig()
 	if inProduction {
+		zapLevel = zap.InfoLevel
 		zapEncoderConfig = zap.NewProductionEncoderConfig()
 		zapOptions = append(zapOptions,
 			zap.WrapCore(func(core zapcore.Core) zapcore.Core {
@@ -33,4 +39,9 @@ func NewLogger(asJSON, inProduction bool) *zap.Logger {
 	}
 
 	return zap.New(zapcore.NewCore(zapEncoder, zapWriteSyncer, zapLevel), zapOptions...)
+}
+
+// NewDevelopmentLogger creates a Zap logger with development configuration.
+func NewDevelopmentLogger() *zap.Logger {
+	return NewLogger(false, false)
 }
