@@ -10,10 +10,10 @@ kubectl get daemonset octopus-adaptor-modbus-adaptor -n octopus-system
 ```
 
 ## Connect Modbus device to edge node
-Please ensure that Modbus device is connected to your edge node. 
+Please ensure that Modbus device is connecting to your edge node. 
 If the device is not accessible to any node of the remote cluster, you can create a virtual machine on your local PC and join the cluster.
 
-### Create virtual machine and mount the device from host PC
+### Create a virtual machine and mount the device from host PC
 For example, we can use [VirtualBox](https://www.virtualbox.org/wiki/Downloads) to create a virtual machine and join the cluster as a worker. 
 With the device connected to the local PC, we enable the serial port/USB as applicable on the virtual machine.
 
@@ -29,9 +29,6 @@ spec:
   adaptor:
     node: test  #node name
     name: adaptors.edge.cattle.io/modbus
-    parameters:
-      syncInterval: 5
-      timout: 10
   model:
     apiVersion: "devices.edge.cattle.io/v1alpha1"
     kind: "ModbusDevice"
@@ -40,6 +37,9 @@ spec:
       labels:
         device: modbus-rtu
     spec:
+      parameters:
+        syncInterval: 5
+        timeout: 10
       protocol:
         rtu:
           serialPort: /dev/ttyUSB0  #serial port

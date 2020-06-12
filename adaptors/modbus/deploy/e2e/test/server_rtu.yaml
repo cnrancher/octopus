@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: modbus-rtu
+  labels:
+    app: modbus-rtu
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: modbus-rtu
+  template:
+    metadata:
+      labels:
+        app: modbus-rtu
+    spec:
+      containers:
+        - name: socat
+          command: [ "/bin/sh", "-c", "--" ]
+          args: [ "socat -d -d pty,raw,echo=0 pty,raw,echo=0" ]
+          securityContext:
+            privileged: true
+          image: guangbo/modbus-server:latest
+          volumeMounts:
+            - mountPath: /dev
+              name: path
+        - name: modbus
+          command: [ "./main"]
+          args: ["rtu", "-a", "/dev/pts/1"]
+          securityContext:
+            privileged: true
+          image: guangbo/modbus-server:latest
+          ports:
+            - containerPort: 5020
+          volumeMounts:
+            - mountPath: /dev
+              name: path
+      hostNetwork: true
+      volumes:
+        - name: path
+          hostPath:
+            path: /dev
+            type: DirectoryOrCreate
