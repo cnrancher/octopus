@@ -155,9 +155,9 @@ for more complete information please check out [GJSON Syntax](https://github.com
 ```shell script
 k3d create
 ```
-2.deploy octopus in your k3s cluster use [all_in_one_without_webhook.yaml](../../../../deploy/e2e)
+2.deploy octopus in your k3s cluster use [all_in_one.yaml](../../../../deploy/e2e)
 ```shell script
-kubectl apply -f all_in_one_without_webhook.yaml
+kubectl apply -f all_in_one.yaml
 ```
 3.deploy MQTT adaptor use [all_in_one.yaml](../../deploy/e2e)
 ```shell script
