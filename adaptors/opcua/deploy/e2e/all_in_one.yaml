@@ -34,7 +34,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: OPCUADevice is the Schema for the OPCUA device API
+        description: OPCUADevice is the Schema for the OPC-UA device API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -51,6 +51,13 @@ spec:
           spec:
             description: OPCUADeviceSpec defines the desired state of OPCUADevice
             properties:
+              parameters:
+                properties:
+                  syncInterval:
+                    type: string
+                  timeout:
+                    type: string
+                type: object
               properties:
                 items:
                   description: DeviceProperty describes an individual device property
@@ -70,6 +77,8 @@ spec:
                       - uint16
                       - string
                       - boolean
+                      - byteString
+                      - datetime
                       type: string
                     description:
                       description: The device property description.
@@ -155,6 +164,8 @@ spec:
                       - uint16
                       - string
                       - boolean
+                      - byteString
+                      - datetime
                       type: string
                     name:
                       type: string

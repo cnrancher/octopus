@@ -6,9 +6,6 @@ spec:
   adaptor:
     node: edge-worker
     name: adaptors.edge.cattle.io/modbus
-    parameters:
-      syncInterval: 5
-      timout: 10
   model:
     apiVersion: "devices.edge.cattle.io/v1alpha1"
     kind: "ModbusDevice"
@@ -17,6 +14,9 @@ spec:
       labels:
         device: modbus-rtu
     spec:
+      parameters:
+        syncInterval: 5s
+        timeout: 10s
       protocol:
         rtu:
           serialPort: /dev/tty.usbserial-1410

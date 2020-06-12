@@ -58,19 +58,13 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 			return nil
 		}
 
-		// validate parameters
-		var parameters = physical.DefaultParameters()
-		if req.GetParameters() != nil {
-			if err := jsoniter.Unmarshal(req.GetParameters(), &parameters); err != nil {
-				return status.Errorf(codes.InvalidArgument, "failed to unmarshal parameters: %v", err)
-			}
+		// set default parameters
+		var modbus = v1alpha1.ModbusDevice{
+			Spec: v1alpha1.ModbusDeviceSpec{
+				Parameters: defaultParameters(),
+			},
 		}
-		if err := parameters.Validate(); err != nil {
-			return status.Errorf(codes.InvalidArgument, "failed to validate parameters: %v", err)
-		}
-
 		// validate device
-		var modbus v1alpha1.ModbusDevice
 		if err := jsoniter.Unmarshal(req.GetDevice(), &modbus); err != nil {
 			return status.Errorf(codes.InvalidArgument, "failed to unmarshal device: %v", err)
 		}
@@ -100,24 +94,22 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 				}
 			}
 
-			// create handler connecting to modbus physical device
-			var modbusHandler, err = physical.NewModbusHandler(modbus.Spec.ProtocolConfig, parameters.Timeout)
-			if err != nil {
-				log.Error(err, "Failed to connect to modbus device endpoint")
-				return status.Errorf(codes.FailedPrecondition, "failed to connect to modbus device endpoint: %v", err)
-			}
-
 			device = physical.NewDevice(
 				log.WithValues("device", deviceName),
 				deviceName,
 				dataHandler,
-				modbusHandler,
-				parameters,
-				modbus.Spec,
 			)
-
-			go device.On()
 		}
-		device.Configure(modbus.Spec)
+
+		if err := device.Configure(modbus.Spec); err != nil {
+			return status.Errorf(codes.FailedPrecondition, "failed to connect to modbus device endpoint: %v", err)
+		}
+	}
+}
+
+func defaultParameters() *v1alpha1.Parameters {
+	return &v1alpha1.Parameters{
+		SyncInterval: metav1.Duration{Duration: v1alpha1.DefaultSyncInterval},
+		Timeout:      metav1.Duration{Duration: v1alpha1.DefaultTimeout},
 	}
 }
