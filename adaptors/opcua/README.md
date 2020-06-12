@@ -54,7 +54,7 @@ spec:
     name: adaptors.edge.cattle.io/opcua
     parameters:
       syncInterval: 5
-      timout: 10
+      timeout: 10
   model:
     apiVersion: "devices.edge.cattle.io/v1alpha1"
     kind: "OPCUADevice"
@@ -103,8 +103,36 @@ spec:
      | privateKeyFile | Optional. File of the private key to access opc server. |string|  | 
 -->
 
-### Property Visitor
+### Device Property
+
+| Parameter | Description | Type | 
+|:--|:--|:--|
+| name | Required. The property's name. | string
+| description |  Optional. The description of this property. | string
+| readonly |  Optional. If it is true, the value is readonly, otherwise readwrite. | boolean
+| datatype |  Required. The datatype of this property | [DataType](#DataType)
+| visitor |  Required. The visitor configuration of this property | [PropertyVisitor](#PropertyVisitor)
+| value |  Required. The value of this property | string
+
+### PropertyVisitor
 | Parameter | Description | Type | 
 |:--|:--|:--|
 | nodeID | Required. The ID of opc-ua node, e.g. "ns=1,i=1005" | string
 | browseName |  Optional. The name of opc-ua node | string
+
+### DataType
+
+| Parameter | Description | Type | 
+|:--|:--|:--|
+| boolean | Property data type is boolean. | string
+| int64 | Property data type is int64. | string
+| int32 |  Property data type is int32. | string
+| int16 |  Property data type is int16. | string
+| uint64 | Property data type is uint64. | string
+| uint32 |  Property data type is uint32. | string
+| uint16 |  Property data type is uint16. | string
+| float |  Property data type is float. | string
+| double |  Property data type is double. | string
+| string |  Property data type is string. | string
+| byteString |  Property data type is bytestring. Will be converted to string for display. | string
+| datetime |  Property data type is datetime. | string

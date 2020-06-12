@@ -1,6 +1,11 @@
 package v1alpha1
 
-import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+import (
+	"time"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
 
 const (
 	PropertyDataTypeInt64 PropertyDataType = "int64"
@@ -11,16 +16,29 @@ const (
 	PropertyDataTypeUInt32 PropertyDataType = "uint32"
 	PropertyDataTypeUInt16 PropertyDataType = "uint16"
 
-	PropertyDataTypeString  PropertyDataType = "string"
-	PropertyDataTypeFloat   PropertyDataType = "float"
-	PropertyDataTypeDouble  PropertyDataType = "double"
-	PropertyDataTypeBoolean PropertyDataType = "boolean"
+	PropertyDataTypeFloat  PropertyDataType = "float"
+	PropertyDataTypeDouble PropertyDataType = "double"
+
+	PropertyDataTypeString     PropertyDataType = "string"
+	PropertyDataTypeByteString PropertyDataType = "byteString"
+
+	PropertyDataTypeBoolean  PropertyDataType = "boolean"
+	PropertyDataTypeDatetime PropertyDataType = "datetime"
+
+	DefaultSyncInterval = 5 * time.Second
+	DefaultTimeout      = 10 * time.Second
 )
 
 // OPCUADeviceSpec defines the desired state of OPCUADevice
 type OPCUADeviceSpec struct {
+	Parameters     *Parameters          `json:"parameters,omitempty"`
 	ProtocolConfig *OPCUAProtocolConfig `json:"protocol,omitempty"`
 	Properties     []DeviceProperty     `json:"properties,omitempty"`
+}
+
+type Parameters struct {
+	SyncInterval v1.Duration `json:"syncInterval,omitempty"`
+	Timeout      v1.Duration `json:"timeout,omitempty"`
 }
 
 type OPCUAProtocolConfig struct {
@@ -57,7 +75,7 @@ type DeviceProperty struct {
 }
 
 // The property data type.
-// +kubebuilder:validation:Enum=float;double;int64;int32;int16;uint64;uint32;uint16;string;boolean
+// +kubebuilder:validation:Enum=float;double;int64;int32;int16;uint64;uint32;uint16;string;boolean;byteString;datetime
 type PropertyDataType string
 
 type PropertyVisitor struct {
@@ -84,7 +102,7 @@ type StatusProperties struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:printcolumn:name="ENDPOINT",type="string",JSONPath=".spec.protocol.url"
-// OPCUADevice is the Schema for the OPCUA device API
+// OPCUADevice is the Schema for the OPC-UA device API
 type OPCUADevice struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -94,7 +112,7 @@ type OPCUADevice struct {
 }
 
 // +kubebuilder:object:root=true
-// OPCUADeviceList contains a list of OPCUA devices
+// OPCUADeviceList contains a list of OPC-UA devices
 type OPCUADeviceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

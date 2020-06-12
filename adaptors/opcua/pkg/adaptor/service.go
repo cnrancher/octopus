@@ -58,19 +58,13 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 			return nil
 		}
 
-		// validate parameters
-		var parameters = physical.DefaultParameters()
-		if req.Parameters != nil {
-			if err := jsoniter.Unmarshal(req.GetParameters(), &parameters); err != nil {
-				return status.Errorf(codes.InvalidArgument, "failed to unmarshal parameters: %v", err)
-			}
+		// set default parameters
+		var opcua = v1alpha1.OPCUADevice{
+			Spec: v1alpha1.OPCUADeviceSpec{
+				Parameters: defaultParameters(),
+			},
 		}
-		if err := parameters.Validate(); err != nil {
-			return status.Errorf(codes.InvalidArgument, "failed to validate parameters: %v", err)
-		}
-
 		// validate device
-		var opcua v1alpha1.OPCUADevice
 		if err := jsoniter.Unmarshal(req.GetDevice(), &opcua); err != nil {
 			return status.Errorf(codes.InvalidArgument, "failed to unmarshal device: %v", err)
 		}
@@ -100,20 +94,21 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 				}
 			}
 
-			// create handler connecting to opcua physical device
-			if err != nil {
-				log.Error(err, "Failed to connect to opcua device endpoint")
-			}
 			device = physical.NewDevice(
 				log.WithValues("device", deviceName),
 				deviceName,
 				dataHandler,
-				parameters.SyncInterval,
-				opcua.Spec.ProtocolConfig,
 			)
-
-			device.On(opcua.Spec)
 		}
-		device.Configure(opcua.Spec)
+		if err := device.Configure(opcua.Spec); err != nil {
+			return status.Errorf(codes.FailedPrecondition, "failed to connect to opc-ua device endpoint: %v", err)
+		}
+	}
+}
+
+func defaultParameters() *v1alpha1.Parameters {
+	return &v1alpha1.Parameters{
+		SyncInterval: metav1.Duration{Duration: v1alpha1.DefaultSyncInterval},
+		Timeout:      metav1.Duration{Duration: v1alpha1.DefaultTimeout},
 	}
 }

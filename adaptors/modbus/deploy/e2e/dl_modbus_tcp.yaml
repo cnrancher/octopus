@@ -4,11 +4,8 @@ metadata:
   name: modbus-tcp
 spec:
   adaptor:
-    node: k3s
+    node: edge-worker
     name: adaptors.edge.cattle.io/modbus
-    parameters:
-      syncInterval: 5
-      timout: 10
   model:
     apiVersion: "devices.edge.cattle.io/v1alpha1"
     kind: "ModbusDevice"
@@ -17,6 +14,8 @@ spec:
       labels:
         device: modbus-tcp
     spec:
+      parameters:
+        syncInterval: 5s
       protocol:
         tcp:
           ip: 192.168.1.3

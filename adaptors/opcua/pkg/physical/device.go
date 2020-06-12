@@ -2,6 +2,7 @@ package physical
 
 import (
 	"context"
+	"reflect"
 	"sync"
 	"time"
 
@@ -15,18 +16,15 @@ import (
 )
 
 type Device interface {
-	Configure(spec v1alpha1.OPCUADeviceSpec)
-	On(spec v1alpha1.OPCUADeviceSpec)
+	Configure(spec v1alpha1.OPCUADeviceSpec) error
 	Shutdown()
 }
 
-func NewDevice(log logr.Logger, name types.NamespacedName, handler DataHandler, syncInterval time.Duration, config *v1alpha1.OPCUAProtocolConfig) Device {
+func NewDevice(log logr.Logger, name types.NamespacedName, handler DataHandler) Device {
 	return &device{
-		log:          log,
-		name:         name,
-		handler:      handler,
-		syncInterval: syncInterval,
-		config:       config,
+		log:     log,
+		name:    name,
+		handler: handler,
 	}
 }
 
@@ -39,25 +37,38 @@ type device struct {
 	name    types.NamespacedName
 	handler DataHandler
 
-	status       v1alpha1.OPCUADeviceStatus
-	syncInterval time.Duration
-	config       *v1alpha1.OPCUAProtocolConfig
-	client       *opcua.Client
+	status v1alpha1.OPCUADeviceStatus
+	spec   v1alpha1.OPCUADeviceSpec
+	client *opcua.Client
 }
 
-func (d *device) Configure(spec v1alpha1.OPCUADeviceSpec) {
+func (d *device) Configure(spec v1alpha1.OPCUADeviceSpec) error {
+	deviceSpec := d.spec
+	d.spec = spec
+
+	// configure protocol config and parameters
+	if !reflect.DeepEqual(spec.ProtocolConfig, deviceSpec.ProtocolConfig) || !reflect.DeepEqual(spec.Parameters, deviceSpec.Parameters) {
+		if err := d.on(); err != nil {
+			return err
+		}
+	}
+
+	// configure device properties
 	properties := spec.Properties
 	for _, property := range properties {
 		if property.ReadOnly {
 			continue
 		}
 		if err := d.writeProperty(property.DataType, property.Visitor, property.Value); err != nil {
-			d.log.Error(err, "Error write property", "property", property.Name)
+			d.log.Error(err, "Error write property", "property", property)
+			continue
 		}
+		d.log.Info("Write property", "property", property)
 	}
+	return nil
 }
 
-// write data of a property to coil register or holding register
+// write data of a property to the corresponding opc-ua node
 func (d *device) writeProperty(dataType v1alpha1.PropertyDataType, visitor v1alpha1.PropertyVisitor, value string) error {
 	data, err := StringToVariant(dataType, value)
 	if err != nil {
@@ -89,26 +100,44 @@ func (d *device) writeProperty(dataType v1alpha1.PropertyDataType, visitor v1alp
 	return nil
 }
 
-func (d *device) On(spec v1alpha1.OPCUADeviceSpec) {
+func (d *device) on() error {
 	if d.stop != nil {
 		close(d.stop)
 	}
 	d.stop = make(chan struct{})
 
-	ctx := critical.Context(d.stop)
+	// close old client
+	if d.client != nil {
+		if err := d.client.Close(); err != nil {
+			d.log.Error(err, "Fail to close old opc-ua client")
+		}
+	}
 
-	d.newClient(d.config)
+	// create client
+	var err error
+	spec := d.spec
+	d.client, err = newClient(spec.ProtocolConfig, spec.Parameters.Timeout.Duration)
+	if err != nil {
+		d.log.Error(err, "Fail to create opc-ua client")
+		return err
+	}
+
+	// connect to device
+	ctx := critical.Context(d.stop)
 	if err := d.client.Connect(ctx); err != nil {
 		d.log.Error(err, "Error connecting to device")
+		return err
 	}
-	d.subscribe(ctx, spec)
+
+	d.subscribe(ctx, d.spec)
+	return nil
 }
 
 func (d *device) subscribe(ctx context.Context, spec v1alpha1.OPCUADeviceSpec) {
 	notifyCh := make(chan *opcua.PublishNotificationData)
 
 	sub, err := d.client.Subscribe(&opcua.SubscriptionParameters{
-		Interval: d.syncInterval,
+		Interval: d.spec.Parameters.SyncInterval.Duration,
 	}, notifyCh)
 	if err != nil {
 		d.log.Error(err, "Subscription error")
@@ -132,13 +161,15 @@ func (d *device) Shutdown() {
 	if d.stop != nil {
 		close(d.stop)
 	}
-	if err := d.client.Close(); err != nil {
-		d.log.Error(err, "Error closing connection")
+	if d.client != nil {
+		if err := d.client.Close(); err != nil {
+			d.log.Error(err, "Error closing connection")
+		}
 	}
 	d.log.Info("Closed connection")
 }
 
-// read data of a property from its corresponding register
+// monitor data of a property from its corresponding opc-ua node
 func (d *device) monitorProperty(idx int, property v1alpha1.DeviceProperty, sub *opcua.Subscription) {
 	node := property.Visitor.NodeID
 
@@ -153,7 +184,9 @@ func (d *device) monitorProperty(idx int, property v1alpha1.DeviceProperty, sub 
 	res, err := sub.Monitor(ua.TimestampsToReturnBoth, miCreateRequest)
 	if err != nil || res.Results[0].StatusCode != ua.StatusOK {
 		d.log.Error(err, "")
+		return
 	}
+	d.log.Info("Monitoring property", "property", property)
 }
 
 // update the properties from physical device to status
@@ -181,6 +214,7 @@ func (d *device) receiveNotification(ctx context.Context, notifyCh chan *opcua.P
 					d.log.Info("MonitoredItem with client", "handle", item.ClientHandle, "value", data)
 				}
 				d.handler(d.name, d.status)
+				d.log.Info("Sync opc-ua device status", "properties", d.status.Properties)
 			default:
 				d.log.Info("what's this publish result? ", "value", res.Value)
 			}
@@ -210,17 +244,18 @@ func (d *device) updateDeviceStatus(property *v1alpha1.DeviceProperty, data stri
 	}
 }
 
-func (d *device) newClient(config *v1alpha1.OPCUAProtocolConfig) {
+func newClient(config *v1alpha1.OPCUAProtocolConfig, timeout time.Duration) (*opcua.Client, error) {
 	url := config.URL
 	endpoints, err := opcua.GetEndpoints(url)
 	if err != nil {
-		d.log.Error(err, "Error get endpoints")
+		return nil, err
 	}
 	policy := config.SecurityPolicy
 	mode := config.SecurityMode
 	ep := opcua.SelectEndpoint(endpoints, policy, ua.MessageSecurityModeFromString(mode))
 
 	opts := []opcua.Option{
+		opcua.RequestTimeout(timeout),
 		opcua.SecurityPolicy(policy),
 		opcua.SecurityModeString(mode),
 		// TODO read CA file from the container
@@ -230,5 +265,5 @@ func (d *device) newClient(config *v1alpha1.OPCUAProtocolConfig) {
 		opcua.AuthUsername(config.UserName, config.Password),
 		opcua.SecurityFromEndpoint(ep, ua.UserTokenTypeAnonymous),
 	}
-	d.client = opcua.NewClient(url, opts...)
+	return opcua.NewClient(url, opts...), nil
 }

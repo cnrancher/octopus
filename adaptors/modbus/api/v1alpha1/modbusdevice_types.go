@@ -1,7 +1,10 @@
 package v1alpha1
 
 import (
+	"time"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -16,6 +19,9 @@ const (
 	PropertyDataTypeString  PropertyDataType = "string"
 	PropertyDataTypeFloat   PropertyDataType = "float"
 	PropertyDataTypeBoolean PropertyDataType = "boolean"
+
+	DefaultSyncInterval = 5 * time.Second
+	DefaultTimeout      = 10 * time.Second
 )
 
 // The Modbus register type to read a device property.
@@ -28,8 +34,14 @@ type PropertyDataType string
 
 // ModbusDeviceSpec defines the desired state of ModbusDevice
 type ModbusDeviceSpec struct {
+	Parameters     *Parameters           `json:"parameters,omitempty"`
 	ProtocolConfig *ModbusProtocolConfig `json:"protocol"`
 	Properties     []DeviceProperty      `json:"properties,omitempty"`
+}
+
+type Parameters struct {
+	SyncInterval v1.Duration `json:"syncInterval,omitempty"`
+	Timeout      v1.Duration `json:"timeout,omitempty"`
 }
 
 // Only one of its members may be specified.

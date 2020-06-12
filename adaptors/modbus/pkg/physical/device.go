@@ -14,19 +14,15 @@ import (
 )
 
 type Device interface {
-	Configure(spec v1alpha1.ModbusDeviceSpec)
-	On()
+	Configure(spec v1alpha1.ModbusDeviceSpec) error
 	Shutdown()
 }
 
-func NewDevice(log logr.Logger, name types.NamespacedName, handler DataHandler, modbusHandler modbus.ClientHandler, parameters Parameters, spec v1alpha1.ModbusDeviceSpec) Device {
+func NewDevice(log logr.Logger, name types.NamespacedName, handler DataHandler) Device {
 	return &device{
-		log:           log,
-		name:          name,
-		handler:       handler,
-		modbusHandler: modbusHandler,
-		parameters:    parameters,
-		spec:          spec,
+		log:     log,
+		name:    name,
+		handler: handler,
 	}
 }
 
@@ -43,53 +39,66 @@ type device struct {
 	spec   v1alpha1.ModbusDeviceSpec
 
 	modbusHandler modbus.ClientHandler
-	parameters    Parameters
 }
 
-func (d *device) Configure(spec v1alpha1.ModbusDeviceSpec) {
-	// configure protocol config
-	if !reflect.DeepEqual(spec.ProtocolConfig, d.spec.ProtocolConfig) {
-		var modbusHandler, err = NewModbusHandler(spec.ProtocolConfig, d.parameters.Timeout)
+func (d *device) Configure(spec v1alpha1.ModbusDeviceSpec) error {
+	deviceSpec := d.spec
+	d.spec = spec
+
+	// configure protocol config and parameters
+	if !reflect.DeepEqual(spec.ProtocolConfig, deviceSpec.ProtocolConfig) || !reflect.DeepEqual(spec.Parameters, deviceSpec.Parameters) {
+		var modbusHandler, err = newModbusHandler(spec.ProtocolConfig, spec.Parameters.Timeout.Duration)
 		d.modbusHandler = modbusHandler
 		if err != nil {
 			d.log.Error(err, "Failed to connect to modbus device endpoint")
-			return
+			return err
 		}
+		// if connected and sync interval changed, reconfigure sync interval
+		d.on()
 	}
 
 	// configure properties
-	d.spec = spec
 	properties := spec.Properties
 	for _, property := range properties {
 		if property.ReadOnly {
 			continue
 		}
 		if err := d.writeProperty(property.DataType, property.Visitor, property.Value); err != nil {
-			d.log.Error(err, "Error write property", "property", property.Name)
+			d.log.Error(err, "Error write property", "property", property)
+			continue
 		}
+		d.log.Info("Write property", "property", property)
 	}
 	d.updateStatus(properties)
+
+	return nil
 }
 
-func (d *device) On() {
+func (d *device) on() {
+	// close connection to old device
 	if d.stop != nil {
 		close(d.stop)
 	}
 	d.stop = make(chan struct{})
 
-	var ticker = time.NewTicker(d.parameters.SyncInterval * time.Second)
-	defer ticker.Stop()
+	d.log.Info("Connect to device", "device", d.name)
 
 	// periodically sync device status
-	for {
-		select {
-		case <-d.stop:
-			return
-		case <-ticker.C:
+	go func() {
+		spec := d.spec
+		var ticker = time.NewTicker(spec.Parameters.SyncInterval.Duration)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-d.stop:
+				return
+			case <-ticker.C:
+			}
+			d.updateStatus(spec.Properties)
+			d.log.Info("Sync modbus device status", "properties", d.status.Properties)
 		}
-		d.updateStatus(d.spec.Properties)
-		d.log.Info("Sync modbus device status", "device", d.name)
-	}
+	}()
 }
 
 func (d *device) Shutdown() {
@@ -219,7 +228,7 @@ func (d *device) updateStatusProperty(name, value string, dataType v1alpha1.Prop
 		d.status.Properties = append(d.status.Properties, sp)
 	}
 }
-func NewModbusHandler(config *v1alpha1.ModbusProtocolConfig, timeout time.Duration) (modbus.ClientHandler, error) {
+func newModbusHandler(config *v1alpha1.ModbusProtocolConfig, timeout time.Duration) (modbus.ClientHandler, error) {
 	var TCPConfig = config.TCP
 	var RTUConfig = config.RTU
 	var handler modbus.ClientHandler
@@ -227,7 +236,7 @@ func NewModbusHandler(config *v1alpha1.ModbusProtocolConfig, timeout time.Durati
 	if TCPConfig != nil {
 		endpoint := TCPConfig.IP + ":" + strconv.Itoa(TCPConfig.Port)
 		handlerTCP := modbus.NewTCPClientHandler(endpoint)
-		handlerTCP.Timeout = timeout * time.Second
+		handlerTCP.Timeout = timeout
 		handlerTCP.SlaveId = byte(TCPConfig.SlaveID)
 		if err := handlerTCP.Connect(); err != nil {
 			return nil, err
@@ -242,7 +251,7 @@ func NewModbusHandler(config *v1alpha1.ModbusProtocolConfig, timeout time.Durati
 		handlerRTU.Parity = RTUConfig.Parity
 		handlerRTU.StopBits = RTUConfig.StopBits
 		handlerRTU.SlaveId = byte(RTUConfig.SlaveID)
-		handlerRTU.Timeout = timeout * time.Second
+		handlerRTU.Timeout = timeout
 		if err := handlerRTU.Connect(); err != nil {
 			return nil, err
 		}

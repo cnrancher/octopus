@@ -59,6 +59,13 @@ spec:
           spec:
             description: ModbusDeviceSpec defines the desired state of ModbusDevice
             properties:
+              parameters:
+                properties:
+                  syncInterval:
+                    type: string
+                  timeout:
+                    type: string
+                type: object
               properties:
                 items:
                   description: DeviceProperty describes an individual device property

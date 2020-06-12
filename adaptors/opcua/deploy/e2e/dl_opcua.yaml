@@ -6,9 +6,6 @@ spec:
   adaptor:
     node: edge-worker
     name: adaptors.edge.cattle.io/opcua
-    parameters:
-      syncInterval: 5
-      timout: 10
   model:
     apiVersion: "devices.edge.cattle.io/v1alpha1"
     kind: "OPCUADevice"
@@ -17,6 +14,9 @@ spec:
       labels:
         device: opcua
     spec:
+      parameters:
+        syncInterval: 5s
+        timeout: 10s
       protocol:
         url: opc.tcp://10.0.2.2:53530/OPCUA/SimulationServer
         username: dadmin
