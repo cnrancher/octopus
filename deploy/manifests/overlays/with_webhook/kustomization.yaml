@@ -1,0 +1,69 @@
+# Adds namespace to all resources.
+namespace: octopus-system
+
+# Value of this field is prepended to the
+# names of all resources, e.g. a deployment named
+# "wordpress" becomes "alices-wordpress".
+# Note that it should also match with the prefix (text before '-') of the namespace
+# field above.
+namePrefix: octopus-
+
+# Labels to add to all resources and selectors.
+commonLabels:
+  app.kubernetes.io/name: "octopus"
+  app.kubernetes.io/version: "master"
+
+## Images to overwrite the default images.
+images:
+  - name: rancher/octopus
+    newName: rancher/octopus
+    newTag: master
+
+## NB(thxCode) Since kustomize v2.1.0, the `bases` field has been deprecated by `resources`, ref to:
+## - https://github.com/kubernetes-sigs/kustomize/blob/v2.1.0/docs/v_2.1.0.md#field-changes--deprecations
+## Select the appropriate kubectl to generate according to https://github.com/kubernetes-sigs/kustomize#kubectl-integration.
+bases:
+  - ../../crd
+  - ../../rbac
+  - ../../workload
+
+resources:
+  - manifests.yaml
+  - service.yaml
+  - certificate.yaml
+
+patchesStrategicMerge:
+  - patches/merge_crd_devicelinks.yaml
+  - patches/merge_webhook.yaml
+  - patches/merge_deployment.yaml
+
+configurations:
+  - kustomizeconfig.yaml
+
+vars:
+  - name: CERTIFICATE_NAMESPACE # namespace of the certificate CR
+    objref:
+      kind: Certificate
+      group: cert-manager.io
+      version: v1alpha2
+      name: serving-cert # this name should match the one in certificate.yaml
+    fieldref:
+      fieldpath: metadata.namespace
+  - name: CERTIFICATE_NAME
+    objref:
+      kind: Certificate
+      group: cert-manager.io
+      version: v1alpha2
+      name: serving-cert # this name should match the one in certificate.yaml
+  - name: SERVICE_NAMESPACE # namespace of the service
+    objref:
+      kind: Service
+      version: v1
+      name: webhook-service
+    fieldref:
+      fieldpath: metadata.namespace
+  - name: SERVICE_NAME
+    objref:
+      kind: Service
+      version: v1
+      name: webhook-service

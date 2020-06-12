@@ -91,7 +91,7 @@ In this walkthrough, we try to use Octopus to manage a dummy device. We will per
 There are [two ways](docs/octopus/deployment.md) to deploy Octopus, for convenience, we use the deployment manifest file to bring up the Octopus. The installer YAML file is under the [`deploy/e2e`](./deploy/e2e) directory:
 
 ```shell script
-$ kubectl apply -f https://raw.githubusercontent.com/cnrancher/octopus/master/deploy/e2e/all_in_one_without_webhook.yaml
+$ kubectl apply -f https://raw.githubusercontent.com/cnrancher/octopus/master/deploy/e2e/all_in_one.yaml
 namespace/octopus-system created
 customresourcedefinition.apiextensions.k8s.io/devicelinks.edge.cattle.io created
 role.rbac.authorization.k8s.io/octopus-leader-election-role created

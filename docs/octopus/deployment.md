@@ -28,25 +28,20 @@ deploy/manifests
     - workload - stores workload files
 ```
 
-During [Octopus generated stage](./develop.md), these topmost overlay will be rendered accordingly:
+During [Octopus generation stage](./develop.md), the topmost overlays will be rendered accordingly:
 
 - `default` overlay -> `deploy/e2e/all_in_one.yaml`
-- `without_webhook` overlay -> `deploy/e2e/all_in_one_without_webhook.yaml`
-
-> If deploying `deploy/e2e/all_in_one.yaml`, it's required to deploy [cert manager](https://github.com/jetstack/cert-manager) for provisioning the certificates, please follow [the cert manager document](https://docs.cert-manager.io/en/latest/getting-started/install/kubernetes.html) to install it.
 
 ### Animated quick demo
 
-Deploy Octopus without admission webhooks for developing:
-
-[![asciicast](https://asciinema.org/a/hGFPKIJeod9wooa5TKyvfRVl2.svg)](https://asciinema.org/a/hGFPKIJeod9wooa5TKyvfRVl2)
+[![asciicast](https://asciinema.org/a/338649.svg)](https://asciinema.org/a/338649)
 
 <details>
   <summary>process instruction</summary>
   <code>
   
     # deploy octopus without webhook
-    kubectl apply -f deploy/e2e/all_in_one_without_webhook.yaml
+    kubectl apply -f deploy/e2e/all_in_one.yaml
     
     # confirm the octopus deployment
     kubectl get all -n octopus-system
@@ -75,22 +70,23 @@ Deploy Octopus without admission webhooks for developing:
   </code>
 </details>
 
-Deploy Octopus with admission webhooks for producing:
+If the users are not allowed to modify the node, adapter name, or model group and kind of the deployed DeviceLink instance, it can be prevented with the admission webhooks:
 
-[![asciicast](https://asciinema.org/a/hENspSHULJzvXw95EgwooHXzZ.svg)](https://asciinema.org/a/hENspSHULJzvXw95EgwooHXzZ)
+[![asciicast](https://asciinema.org/a/338660.svg)](https://asciinema.org/a/338660)
 
 <details>
   <summary>process instruction</summary>
   <code>
   
     # deploy cert-manager
+    kubectl create ns cert-manager
     kubectl apply --validate=false -f https://github.com/jetstack/cert-manager/releases/download/v0.14.0/cert-manager.yaml
     
     # confirm the cert-manager deployment
     kubectl get all -n cert-manager
     
     # deploy octopus with webhook
-    kubectl apply -f deploy/e2e/all_in_one.yaml
+    kubectl apply -f deploy/e2e/all_in_one_with_webhook.yaml
     
     # confirm the octopus deployment
     kubectl get all -n octopus-system
@@ -101,6 +97,18 @@ Deploy Octopus with admission webhooks for producing:
     # verify the webhooks
     kubectl get mutatingwebhookconfigurations octopus-mutating-webhook-configuration -n octopus-system -o yaml
     kubectl get validatingwebhookconfigurations octopus-validating-webhook-configuration -n octopus-system -o yaml
+    
+    # deploy dummy adaptor and model
+    kubectl apply -f adaptors/dummy/deploy/e2e/all_in_one.yaml
+    
+    # deploy a devicelink
+    kubectl apply -f adaptors/dummy/deploy/e2e/dl_specialdevice.yaml
+    
+    # confirm the state of devicelink
+    kubectl get dl living-room-fan -n default
+    
+    # try to modify the spec.adaptor.node
+    kubectl patch devicelink living-room-fan -n default --type merge --patch '{"spec":{"adaptor":{"node":"edge-worker2"}}}'
     
   </code>
 </details>
