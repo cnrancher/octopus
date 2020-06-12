@@ -4,8 +4,6 @@ import (
 	"github.com/bettercap/gatt"
 	"github.com/bettercap/gatt/examples/option"
 	jsoniter "github.com/json-iterator/go"
-	uberzap "go.uber.org/zap"
-	uberzapcore "go.uber.org/zap/zapcore"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,27 +11,14 @@ import (
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	logr "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/rancher/octopus/adaptors/ble/api/v1alpha1"
 	"github.com/rancher/octopus/adaptors/ble/pkg/physical"
 	api "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
 	"github.com/rancher/octopus/pkg/adaptor/connection"
+	"github.com/rancher/octopus/pkg/adaptor/log"
 	"github.com/rancher/octopus/pkg/util/object"
 )
-
-var log = logr.NewDelegatingLogger(nil)
-
-func init() {
-	log.Fulfill(zap.New(
-		zap.UseDevMode(true),
-		zap.Level(func() *uberzap.AtomicLevel {
-			level := uberzap.NewAtomicLevelAt(uberzapcore.DebugLevel)
-			return &level
-		}()),
-	))
-}
 
 func NewService() *Service {
 	var scheme = k8sruntime.NewScheme()
@@ -75,7 +60,7 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 			return nil
 		}
 
-		//validate parameters
+		// validate parameters
 		var parameters = physical.DefaultParameters()
 		if req.GetParameters() != nil {
 			if err := jsoniter.Unmarshal(req.GetParameters(), &parameters); err != nil {
@@ -95,7 +80,10 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 		// process device
 		if device == nil {
 			var deviceName = object.GetNamespacedName(&bleDevice)
-			log.WithValues("device name", deviceName)
+			if deviceName.Namespace == "" || deviceName.Name == "" {
+				return status.Error(codes.InvalidArgument, "failed to recognize the empty device as the namespace/name is blank")
+			}
+
 			var dataHandler = func(name types.NamespacedName, status v1alpha1.BluetoothDeviceStatus) {
 				// send device by {name, namespace, status} tuple
 				var resp v1alpha1.BluetoothDevice

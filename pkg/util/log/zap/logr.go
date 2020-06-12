@@ -7,60 +7,55 @@ import (
 	"go.uber.org/zap"
 )
 
+const maxInt = int(^uint(0) >> 1)
+
 type nullLogger struct {
+	nullInfoLogger
 }
 
-func (nullLogger) Enabled() bool { return false }
+func (l nullLogger) Error(err error, msg string, keysAndValues ...interface{}) {}
+func (l nullLogger) V(level int) logr.InfoLogger                               { return l }
+func (l nullLogger) WithValues(keysAndValues ...interface{}) logr.Logger       { return l }
+func (l nullLogger) WithName(name string) logr.Logger                          { return l }
 
-func (nullLogger) Info(_ string, _ ...interface{}) {}
-
-type infoLogger struct {
-	z *zap.Logger
-}
-
-func (l *infoLogger) Enabled() bool { return true }
-
-func (l *infoLogger) Info(msg string, keysAndValues ...interface{}) {
-	l.z.Info(msg, handleFields(keysAndValues)...)
-}
-
-type zapLogger struct {
+type logger struct {
 	v int
 	z *zap.Logger
 }
 
-func (l *zapLogger) Enabled() bool { return true }
+func (l *logger) Enabled() bool { return true }
 
-func (l *zapLogger) Info(msg string, keysAndValues ...interface{}) {
+func (l *logger) Info(msg string, keysAndValues ...interface{}) {
 	l.z.Info(msg, handleFields(keysAndValues)...)
 }
 
-func (l *zapLogger) Error(err error, msg string, keysAndValues ...interface{}) {
+func (l *logger) Error(err error, msg string, keysAndValues ...interface{}) {
 	l.z.Error(msg, handleFields(keysAndValues, zap.Error(err))...)
 }
 
-func (l *zapLogger) V(level int) logr.InfoLogger {
+func (l *logger) V(level int) logr.InfoLogger {
 	if 0 <= level && level <= l.v {
-		return &infoLogger{
-			z: l.z,
-		}
+		return WrapAsInfoInfoLogr(l.z)
 	}
-
-	return nullLogger{}
+	return NewNullInfoLogr()
 }
 
-func (l *zapLogger) WithValues(keysAndValues ...interface{}) logr.Logger {
-	return &zapLogger{
+func (l *logger) WithValues(keysAndValues ...interface{}) logr.Logger {
+	return &logger{
 		v: l.v,
 		z: l.z.With(handleFields(keysAndValues)...),
 	}
 }
 
-func (l *zapLogger) WithName(name string) logr.Logger {
-	return &zapLogger{
+func (l *logger) WithName(name string) logr.Logger {
+	return &logger{
 		v: l.v,
 		z: l.z.Named(name),
 	}
+}
+
+func (l *logger) ToZapLogger() *zap.Logger {
+	return l.z
 }
 
 func handleFields(args []interface{}, additional ...zap.Field) []zap.Field {
@@ -96,10 +91,20 @@ func handleFields(args []interface{}, additional ...zap.Field) []zap.Field {
 	return append(fields, additional...)
 }
 
-// WrapAsLogr wraps a Zap log as logr.Logger.
-func WrapAsLogr(v int, z *zap.Logger) logr.Logger {
-	return &zapLogger{
+// NewNullInfoLogr returns a null logr.Logger.
+func NewNullLogger() logr.Logger {
+	return nullLogger{}
+}
+
+// WrapAsLogrWithVerbosity is the same as WrapAsLogr, but with verbosity.
+func WrapAsLogrWithVerbosity(v int, z *zap.Logger) logr.Logger {
+	return &logger{
 		v: v,
 		z: z,
 	}
+}
+
+// WrapAsLogr wraps a Zap log as logr.Logger.
+func WrapAsLogr(z *zap.Logger) logr.Logger {
+	return WrapAsLogrWithVerbosity(maxInt, z)
 }

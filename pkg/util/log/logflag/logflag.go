@@ -1,8 +1,8 @@
 package logflag
 
 import (
+	"github.com/go-logr/logr"
 	flag "github.com/spf13/pflag"
-	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/rancher/octopus/pkg/util/log/zap"
 )
@@ -21,7 +21,11 @@ func AddFlags(fs *flag.FlagSet) {
 	fs.BoolVar(&logging.inProduction, "log-in-production", logging.inProduction, "Use the reasonable production logging configuration of zap.")
 }
 
-func Configure() {
-	var logger = zap.NewLogger(logging.asJSON, logging.inProduction)
-	ctrl.SetLogger(zap.WrapAsLogr(logging.verbosity, logger))
+// LoggerSetter injects a function to set logger.
+type LoggerSetter func(logger logr.Logger)
+
+// SetLogger calls the setter to set the logr.logger.
+func SetLogger(setter LoggerSetter) {
+	var zapLogger = zap.NewLogger(logging.asJSON, logging.inProduction)
+	setter(zap.WrapAsLogrWithVerbosity(logging.verbosity, zapLogger))
 }

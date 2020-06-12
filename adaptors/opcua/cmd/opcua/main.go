@@ -3,9 +3,12 @@ package main
 import (
 	"os"
 
-	"github.com/rancher/octopus/adaptors/opcua/pkg/opcua"
-	"github.com/rancher/octopus/pkg/util/version/verflag"
 	"github.com/spf13/cobra"
+
+	"github.com/rancher/octopus/adaptors/opcua/pkg/opcua"
+	"github.com/rancher/octopus/pkg/adaptor/log"
+	"github.com/rancher/octopus/pkg/util/log/logflag"
+	"github.com/rancher/octopus/pkg/util/version/verflag"
 )
 
 const (
@@ -19,10 +22,14 @@ func newCommand() *cobra.Command {
 		Long: description,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			verflag.PrintAndExitIfRequested(name)
+			logflag.SetLogger(log.SetLogger)
+
 			return opcua.Run()
 		},
 	}
+
 	verflag.AddFlags(c.Flags())
+	logflag.AddFlags(c.Flags())
 	return c
 }
 
