@@ -282,23 +282,30 @@ function entry() {
   local adaptor="${1:-}"
   shift 1
 
-  local stage="${1:-build}"
+  local stages="${1:-build}"
   shift $(($# > 0 ? 1 : 0))
 
-  octopus::log::info "make adaptor ${adaptor} ${stage} $*"
+  IFS="," read -r -a stages <<<"${stages}"
+  local commands=$*
+  if [[ ${#stages[@]} -ne 1 ]]; then
+    commands="only"
+  fi
 
-  case ${stage} in
-  g | gen | generate) generate "${adaptor}" "$@" ;;
-  m | mod) mod "${adaptor}" "$@" ;;
-  l | lint) lint "${adaptor}" "$@" ;;
-  b | build) build "${adaptor}" "$@" ;;
-  p | pkg | package) package "${adaptor}" "$@" ;;
-  d | dep | deploy) deploy "${adaptor}" "$@" ;;
-  t | test) test "${adaptor}" "$@" ;;
-  v | ver | verify) verify "${adaptor}" "$@" ;;
-  e | e2e) e2e "${adaptor}" "$@" ;;
-  *) octopus::log::fatal "unknown action '${stage}', select from generate,mod,lint,build,test,verify,package,deploy,e2e" ;;
-  esac
+  for stage in "${stages[@]}"; do
+    octopus::log::info "# make adaptor ${adaptor} ${stage} ${commands}"
+    case ${stage} in
+    g | gen | generate) generate "${adaptor}" "${commands}" ;;
+    m | mod) mod "${adaptor}" "${commands}" ;;
+    l | lint) lint "${adaptor}" "${commands}" ;;
+    b | build) build "${adaptor}" "${commands}" ;;
+    p | pkg | package) package "${adaptor}" "${commands}" ;;
+    d | dep | deploy) deploy "${adaptor}" "${commands}" ;;
+    t | test) test "${adaptor}" "${commands}" ;;
+    v | ver | verify) verify "${adaptor}" "${commands}" ;;
+    e | e2e) e2e "${adaptor}" "${commands}" ;;
+    *) octopus::log::fatal "unknown action '${stage}', select from generate,mod,lint,build,test,verify,package,deploy,e2e" ;;
+    esac
+  done
 }
 
 if [[ ${BY:-} == "dapper" ]]; then

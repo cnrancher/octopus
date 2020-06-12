@@ -313,23 +313,30 @@ function e2e() {
 }
 
 function entry() {
-  local stage="${1:-build}"
+  local stages="${1:-build}"
   shift $(($# > 0 ? 1 : 0))
 
-  octopus::log::info "make octopus ${stage} $*"
+  IFS="," read -r -a stages <<<"${stages}"
+  local commands=$*
+  if [[ ${#stages[@]} -ne 1 ]]; then
+    commands="only"
+  fi
 
-  case ${stage} in
-  g | gen | generate) generate ;;
-  m | mod) mod "$@" ;;
-  l | lint) lint "$@" ;;
-  b | build) build "$@" ;;
-  p | pkg | package) package "$@" ;;
-  d | dep | deploy) deploy "$@" ;;
-  t | test) test "$@" ;;
-  v | ver | verify) verify "$@" ;;
-  e | e2e) e2e "$@" ;;
-  *) octopus::log::fatal "unknown action '${stage}', select from generate,mod,lint,build,test,verify,package,deploy,e2e" ;;
-  esac
+  for stage in "${stages[@]}"; do
+    octopus::log::info "# make octopus ${stage} ${commands}"
+    case ${stage} in
+    g | gen | generate) generate "${commands}" ;;
+    m | mod) mod "${commands}" ;;
+    l | lint) lint "${commands}" ;;
+    b | build) build "${commands}" ;;
+    p | pkg | package) package "${commands}" ;;
+    d | dep | deploy) deploy "${commands}" ;;
+    t | test) test "${commands}" ;;
+    v | ver | verify) verify "${commands}" ;;
+    e | e2e) e2e "${commands}" ;;
+    *) octopus::log::fatal "unknown action '${stage}', select from generate,mod,lint,build,test,verify,package,deploy,e2e" ;;
+    esac
+  done
 }
 
 if [[ ${BY:-} == "dapper" ]]; then

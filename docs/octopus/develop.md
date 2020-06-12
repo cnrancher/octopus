@@ -21,19 +21,21 @@ Explanation of each action:
 
 | Action | Usage |
 |---:|:---|
-| `generate` | Generate deployment manifests and deepcopy/runtime.Object implementations of `octopus` via [`controller-gen`](https://github.com/kubernetes-sigs/controller-tools/blob/master/cmd/controller-gen/main.go); Generate proto files of `adaptor` interfaces via [`protoc`](https://github.com/protocolbuffers/protobuf). |
-| `mod` | Download `octopus` dependencies. |
-| `lint` | Verify `octopus` via [`golangci-lint`](https://github.com/golangci/golangci-lint), roll back to `go fmt` and `go vet` if the installation fails. |
-| `build` | Compile `octopus` according to the type and architecture of the OS, generate the binary into `bin` directory. <br/><br/> Use `CROSS=true` to compile binaries of the supported platforms(search `constant.sh` file in this repo). |
-| `test` | Run unit tests. |
-| `verify` | Run integration tests with a Kubernetes cluster. <br/><br/> Use `LOCAL_CLUSTER_KIND` to specify the type for local cluster, default is `k3d`. Instead of setting up a local cluster, you can also use environment variable `USE_EXISTING_CLUSTER=true` to point out an existing cluster, and then the integration tests will use the kubeconfig of the current environment to communicate with the existing cluster. |
-| `package` | Package Docker image. |
-| `e2e` | Run E2E tests. |
-| `deploy` | Push Docker images and create manifest images for the current version. <br/><br/> Use `WITHOUT_MANIFEST=true` to prevent pushing manifest image, or `ONLY_MANIFEST=true` to push the manifest images only and `IGNORE_MISSING=true` to warn on missing images defined in platform list if needed. |
+| `generate`, `gen`, `g` | Generate deployment manifests and deepcopy/runtime.Object implementations of `octopus` via [`controller-gen`](https://github.com/kubernetes-sigs/controller-tools/blob/master/cmd/controller-gen/main.go); Generate proto files of `adaptor` interfaces via [`protoc`](https://github.com/protocolbuffers/protobuf). |
+| `mod`, `m` | Download `octopus` dependencies. |
+| `lint`, `l` | Verify `octopus` via [`golangci-lint`](https://github.com/golangci/golangci-lint), roll back to `go fmt` and `go vet` if the installation fails. |
+| `build`, `b` | Compile `octopus` according to the type and architecture of the OS, generate the binary into `bin` directory. <br/><br/> Use `CROSS=true` to compile binaries of the supported platforms(search `constant.sh` file in this repo). |
+| `test`, `t` | Run unit tests. |
+| `verify`, `v` | Run integration tests with a Kubernetes cluster. <br/><br/> Use `LOCAL_CLUSTER_KIND` to specify the type for local cluster, default is `k3d`. Instead of setting up a local cluster, you can also use environment variable `USE_EXISTING_CLUSTER=true` to point out an existing cluster, and then the integration tests will use the kubeconfig of the current environment to communicate with the existing cluster. |
+| `package`, `pkg`, `p` | Package Docker image. |
+| `e2e`, `e` | Run E2E tests. |
+| `deploy`, `dep`, `d` | Push Docker images and create manifest images for the current version. <br/><br/> Use `WITHOUT_MANIFEST=true` to prevent pushing manifest image, or `ONLY_MANIFEST=true` to push the manifest images only and `IGNORE_MISSING=true` to warn on missing images defined in platform list if needed. |
 
 Executing a stage can run `make octopus <stage name>`, for example, when executing the `test` stage, please run `make octopus test`. To execute a stage will execute all actions in the previous sequence, if running `make octopus test`, it actually includes executing `generate`, `mod`, `lint`, `build` and `test` actions.
 
 To run an action by adding `only` command, for example, if only run `build` action, please use `make octopus build only`.
+
+To combine multiple actions can use a comma list, for example, if want to run `build`, `package` and `deploy` actions orderly, please use `make octopus build,package,deploy`.
 
 Integrate with [`dapper`](https://github.com/rancher/dapper) via `BY` environment variable, for example, if only run `build` action via [`dapper`](https://github.com/rancher/dapper), please use `BY=dapper make octopus build only`. 
 
