@@ -32,7 +32,6 @@ func Run(name string, opts *options.Options) error {
 		ctrl.Options{
 			Scheme:             scheme,
 			MetricsBindAddress: fmt.Sprintf(":%d", opts.MetricsAddr),
-			Port:               opts.AdmissionWebhookAddr,
 			LeaderElection:     opts.EnableLeaderElection,
 			LeaderElectionID:   "octopus-brain-leader-election-id",
 		},
@@ -63,14 +62,6 @@ func Run(name string, opts *options.Options) error {
 	}).SetupWithManager(controllerMgr); err != nil {
 		log.Error(err, "Unable to create controller", "controller", "CRD")
 		return err
-	}
-
-	if !opts.DisableAdmissionWebhook {
-		log.V(0).Info("Creating admission webhooks")
-		if err = (&edgev1alpha1.DeviceLink{}).SetupWebhookWithManager(controllerMgr); err != nil {
-			log.Error(err, "Unable to create webhook", "webhook", "DeviceLink")
-			return err
-		}
 	}
 
 	log.Info("Starting")

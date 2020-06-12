@@ -45,11 +45,6 @@ function generate() {
     crd:crdVersions=v1 \
     paths="${CURR_DIR}/api/..." \
     output:crd:dir="${CURR_DIR}/deploy/manifests/crd/base"
-  # generate webhook
-  octopus::controller_gen::generate \
-    webhook \
-    paths="${CURR_DIR}/api/..." \
-    output:webhook:dir="${CURR_DIR}/deploy/manifests/overlays/with_webhook"
   # generate rbac role
   octopus::controller_gen::generate \
     rbac:roleName=manager-role \
@@ -65,10 +60,6 @@ function generate() {
     >"${CURR_DIR}/deploy/e2e/all_in_one.yaml"
   local tmpfile
   tmpfile=$(mktemp)
-  # generate all_in_one_with_webhook yaml & replace the admissionregistration version
-  kubectl kustomize "${CURR_DIR}/deploy/manifests/overlays/with_webhook" \
-    >"${CURR_DIR}/deploy/e2e/all_in_one_with_webhook.yaml"
-  sed "s#admissionregistration.k8s.io/v1beta1#admissionregistration.k8s.io/v1#g" "${CURR_DIR}/deploy/e2e/all_in_one_with_webhook.yaml" >"${tmpfile}" && mv "${tmpfile}" "${CURR_DIR}/deploy/e2e/all_in_one_with_webhook.yaml"
   # generate integrate_with_prometheus_operator yaml
   kubectl kustomize "${CURR_DIR}/deploy/manifests/overlays/integrate/prometheus_operator" \
     >"${CURR_DIR}/deploy/e2e/integrate_with_prometheus_operator.yaml"
@@ -247,12 +238,6 @@ function deploy() {
       "${CURR_DIR}/dist/octopus_all_in_one.yaml" >"${tmpfile}" && mv "${tmpfile}" "${CURR_DIR}/dist/octopus_all_in_one.yaml"
     sed "s#image: cnrancher/octopus:master#image: ${repo}/${image_name}:${tag}#g" \
       "${CURR_DIR}/dist/octopus_all_in_one.yaml" >"${tmpfile}" && mv "${tmpfile}" "${CURR_DIR}/dist/octopus_all_in_one.yaml"
-
-    cp -f "${CURR_DIR}/deploy/e2e/all_in_one_with_webhook.yaml" "${CURR_DIR}/dist/octopus_all_in_one_with_webhook.yaml"
-    sed "s#app.kubernetes.io/version: master#app.kubernetes.io/version: ${tag}#g" \
-      "${CURR_DIR}/dist/octopus_all_in_one_with_webhook.yaml" >"${tmpfile}" && mv "${tmpfile}" "${CURR_DIR}/dist/octopus_all_in_one_with_webhook.yaml"
-    sed "s#image: cnrancher/octopus:master#image: ${repo}/${image_name}:${tag}#g" \
-      "${CURR_DIR}/dist/octopus_all_in_one_with_webhook.yaml" >"${tmpfile}" && mv "${tmpfile}" "${CURR_DIR}/dist/octopus_all_in_one_with_webhook.yaml"
 
     cp -f "${CURR_DIR}/deploy/e2e/integrate_with_prometheus_operator.yaml" "${CURR_DIR}/dist/octopus_integrate_with_prometheus_operator.yaml"
     sed "s#app.kubernetes.io/version: master#app.kubernetes.io/version: ${tag}#g" \

@@ -50,7 +50,6 @@ spec:
           args:
             - brain
             - --enable-leader-election
-            - --disable-admission-webhook
           image: cnrancher/octopus:master
           imagePullPolicy: Always
           ports:

@@ -196,7 +196,7 @@ Using [prometheus-operator HELM chart](https://github.com/helm/charts/blob/maste
     ```
 1. Create `octopus-monitoring` Namespace via `kubectl create ns octopus-monitoring`.
 1. Apply the prometheus-operator all-in-one deployment into the local cluster via `kubectl apply -f /tmp/prometheus-operator_all_in_one.yaml`.
-1. Apply the Octopus all-in-one deployment via `kubectl apply -f https://raw.githubusercontent.com/cnrancher/octopus/master/deploy/e2e/all_in_one.yaml` or with admission webhooks deployment via `kubectl apply -f https://raw.githubusercontent.com/cnrancher/octopus/master/deploy/e2e/all_in_one_with_webhook.yaml`.
+1. Apply the Octopus all-in-one deployment via `kubectl apply -f https://raw.githubusercontent.com/cnrancher/octopus/master/deploy/e2e/all_in_one.yaml`.
 1. Apply the monitoring integration into the local cluster via `kubectl apply -f https://raw.githubusercontent.com/cnrancher/octopus/master/deploy/e2e/integrate_with_prometheus_operator.yaml`
 1. Visit `http://localhost:${INGRESS_HTTP_PORT}/prometheus` to view the Prometheus web console through the browser, or visit `http://localhost:${INGRESS_HTTP_PORT}/grafana` to view the Grafana console(the administrator account is `admin/admin`).
 1. (Optional) Import the [Octopus Overview dashboard](https://raw.githubusercontent.com/cnrancher/octopus/master/deploy/e2e/integrate_with_grafana.json) from Grafana console.
