@@ -1,0 +1,69 @@
+apiVersion: edge.cattle.io/v1alpha1
+kind: DeviceLink
+metadata:
+  name: thermometer-tcp
+spec:
+  adaptor:
+    node: edge-worker
+    name: adaptors.edge.cattle.io/modbus
+  model:
+    apiVersion: "devices.edge.cattle.io/v1alpha1"
+    kind: "ModbusDevice"
+  template:
+    metadata:
+      labels:
+        device: modbus-tcp
+    spec:
+      parameters:
+        syncInterval: 10s
+        timeout: 10s
+      protocol:
+        tcp:
+          ip: 18.138.238.121
+          port: 5020
+          slaveID: 1
+      properties:
+        - name: temperature
+          description: temperature value, should be divided by 10
+          readOnly: true
+          visitor:
+            register: HoldingRegister
+            offset: 0
+            quantity: 1
+            orderOfOperations:
+              - operationType: Divide
+                operationValue: "10"
+          dataType: float
+        - name: humidity
+          description: humidity value, should be divided by 10
+          readOnly: true
+          visitor:
+            register: HoldingRegister
+            offset: 1
+            quantity: 1
+            orderOfOperations:
+              - operationType: Divide
+                operationValue: "10"
+          dataType: float
+        - name: alert
+          description: the value reaches alert limitation
+          readOnly: true
+          visitor:
+            register: CoilRegister
+            offset: 0
+            quantity: 1
+          dataType: boolean
+        - name: limitation
+          description: the limitation
+          readOnly: false
+          value: "20"
+          visitor:
+            register: HoldingRegister
+            offset: 5
+            quantity: 1
+            orderOfOperations:
+              - operationType: Divide
+                operationValue: "10"
+          dataType: float
+
+
