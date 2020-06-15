@@ -4,8 +4,6 @@ import (
 	"github.com/spf13/cobra"
 	ctrl "sigs.k8s.io/controller-runtime"
 
-	ctrl "sigs.k8s.io/controller-runtime"
-
 	"github.com/rancher/octopus/cmd/decorator"
 	"github.com/rancher/octopus/cmd/limb/options"
 	"github.com/rancher/octopus/pkg/limb"
