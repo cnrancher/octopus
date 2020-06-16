@@ -90,6 +90,14 @@ func (r *DeviceLinkReconciler) ReceiveConnectionStatus(req suctioncup.RequestCon
 		return suctioncup.Response{}, nil
 	}
 
+	devicelink.SuccessOnDeviceConnected(&link.Status)
+	link.Status.DeviceTemplateGeneration = link.Generation
+	if err := r.Status().Update(ctx, &link); err != nil {
+		log.Error(err, "Unable to change the status of DeviceLink")
+		return suctioncup.Response{Requeue: true}, nil
+	}
+	r.Eventf(&link, "Normal", "Connected", "connected to device")
+
 	// updates device status
 	var updatedStatus interface{}
 	if err := func() error {

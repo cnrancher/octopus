@@ -103,6 +103,11 @@ func SuccessOnDeviceConnected(status *edgev1alpha1.DeviceLinkStatus) {
 		did(edgev1alpha1.DeviceLinkDeviceConnected, metav1.ConditionTrue, "Healthy", "")
 }
 
+func WaitForDeviceConnected(status *edgev1alpha1.DeviceLinkStatus) {
+	status.Conditions = deviceLinkConditions(status.Conditions).
+		did(edgev1alpha1.DeviceLinkDeviceConnected, metav1.ConditionTrue, "Waiting", "")
+}
+
 func ToCheckDeviceConnected(status *edgev1alpha1.DeviceLinkStatus) {
 	status.Conditions = deviceLinkConditions(status.Conditions).
 		did(edgev1alpha1.DeviceLinkDeviceConnected, metav1.ConditionUnknown, "Connecting", "connect device")

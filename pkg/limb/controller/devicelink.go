@@ -323,7 +323,7 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 			return ctrl.Result{}, nil
 		}
 
-		devicelink.SuccessOnDeviceConnected(&link.Status)
+		devicelink.WaitForDeviceConnected(&link.Status)
 		link.Status.DeviceTemplateGeneration = link.Generation
 		if err := r.Status().Update(ctx, &link); err != nil {
 			log.Error(err, "Unable to change the status of DeviceLink")
