@@ -2,8 +2,22 @@
 
 ## Introduction
 
-Modbus Adaptor is used for connecting to and manipulating modbus devices on the edge.
-Modbus Adaptor supports TCP and RTU protocol.
+[Modbus](https://www.modbustools.com/modbus.html) is a master/slave protocol, the device requesting the information is called the Modbus master and the devices supplying information are Modbus slaves. 
+In a standard Modbus network, there is one master and up to 247 slaves, each with a unique slave address from 1 to 247. 
+The master can also write information to the slaves.
+
+Modbus adaptor support both TCP and RTU protocol, it acting as the master node and connects to or manipulating the Modbus slave devices on the edge side.
+
+### Registers Operation
+
+- **Coil Registers**: readable and writable, 1 bit (off/on)
+
+- **Discrete Input Registers**: readable, 1 bit (off/on)
+
+- **Input Registers**: readable, 16 bits (0 to 65,535), essentially measurements and statuses
+
+- **Holding Registers**: readable and writable, 16 bits (0 to 65,535), essentially configuration values
+
 
 ## Registration Information
 
@@ -42,26 +56,9 @@ Grant permissions to Octopus as below:
   modbusdevices.devices.edge.cattle.io/status  []                 []              [get patch update]
 ```
 
-## Modbus Protocol
+## Modbus DeviceLink YAML
 
-Modbus is a master/slave protocol. 
-The device requesting the information is called the Modbus Master and the devices supplying information are Modbus Slaves. 
-In a standard Modbus network, there is one Master and up to 247 Slaves, each with a unique Slave Address from 1 to 247. 
-The Master can also write information to the Slaves.
-
-In Modbus Adaptor, the adaptor as the master connects to modbus slave devices。
-
-## Registers Operation
-**Coil Registers**: readable and writable, 1 bit (off/on)
-
-**Discrete Input Registers**: readable, 1 bit (off/on)
-
-**Input Registers**: readable, 16 bits (0 to 65,535), essentially measurements and statuses
-
-**Holding Registers**: readable and writable, 16 bits (0 to 65,535), essentially configuration values
-
-## DeviceLink CRD
-example deviceLink CRD
+example of modbus deviceLink YAML
 ```yaml
 apiVersion: edge.cattle.io/v1alpha1
 kind: DeviceLink
@@ -106,29 +103,76 @@ spec:
 
 ```
 
-### Parameters
-#### TCP Config
+### Modbus Device Spec
 
-| Parameter | Description | Type | 
-|:--|:--|:--|
-| ip | ip address of the device | string
-| port | tcp port of the device | int
-| slaveId | slave id of the device | int
+Parameter | Description | Scheme | Required
+--- | --- | --- | ---
+parameters | Parameter of the modbus device| *[ModbusDeviceParamters](#modbusdeviceparamters) | false
+protocol | Protocol for accessing the modbus device  | *[ModbusProtocolConfig](#modbusprotocolconfig) | true
+properties | Device properties  | []*[DeviceProperty](#deviceproperty) | false
+extension | Integrate with deivce MQTT extension  | *[DeviceExtension](#deviceextension) | false
 
-#### RTU Config
+#### ModbusDeviceParamters
 
-| Parameter | Description | Type | Default |
-|:--|:--|:--|:--|
-| serialPort | Device path (e.g. /dev/ttyS0) | string |
-| slaveId | slave id of the device | int |
-| baudRate | baud rate, a measurement of transmission speed | int | 19200 |
-| dataBits | data bits (5, 6, 7 or 8) | int | 8  |
-| parity | N - None, E - Even, O - Odd (default E) (The use of no parity requires 2 stop bits.) |string | E |
-| stopBits | 1 or 2 |int| 1 |
+Parameter | Description | Scheme | Required
+--- | --- | --- | ---
+syncInterval | Device properties sync interval, default to `5s`  | string | false
+timeout |  Device connection timeout, default to `10s` | string | false
 
-### Property Visitor
-| Parameter | Description | Type | 
-|:--|:--|:--|
-| register | CoilRegister, DiscreteInputRegister, HoldingRegister, or InputRegister | string
-| offset | Offset indicates the starting register number to read/write data | int
-| quantity | Limit number of registers to read/write | int
+#### ModbusProtocolConfig
+
+Parameter | Description | Scheme | Required
+--- | --- | --- | ---
+rtu | Modbus RTU protocol config  | *[ModbusConfigRTU](#modbusconfigrtu)| false
+tcp | Modbus TCP protocol config  | *[ModbusConfigTCP](#modbusconfigtcp)| false
+
+#### ModbusConfigRTU
+
+Parameter | Description | Scheme | Required
+--- | --- | --- | ---
+serialPort | Device path (e.g. /dev/ttyS0) | string | true
+slaveId | Slave id of the device | int | true
+baudRate | Baud rate, a measurement of transmission speed, default to `19200` | int | false
+dataBits | Data bits (5, 6, 7 or 8), default to `0` | int | false
+parity | N - None, E - Even, O - Odd (default E) (The use of no parity requires 2 stop bits.) | string | false
+stopBits | Stop bits: 1 or 2 (default 1) | int | false
+
+#### ModbusConfigTCP
+
+Parameter | Description | Scheme | Required
+--- | --- | --- | ---
+ip | IP address of the device | string | true
+port | TCP port of the device | int | true
+slaveId | Slave id of the device | int | true
+
+#### DeviceProperty
+
+Parameter | Description | Scheme | Required
+--- | --- | --- | ---
+name | Property name | string | true
+description | Property description  | string | false
+readOnly | Check if the device property is readonly, default to false | boolean | false
+dataType | Property data type, options are `int, string, float, boolean` | string | true
+visitor | Property visitor config | *[PropertyVisitor](#propertyvisitor) | true
+value | Set desired value of the property | string | false
+
+#### PropertyVisitor
+
+Parameter | Description | Scheme |  Required
+--- | --- | --- | ---
+register | CoilRegister, DiscreteInputRegister, HoldingRegister, or InputRegister | string | true
+offset | Offset indicates the starting register number to read/write data | int | true
+quantity | Limit number of registers to read/write | int | true
+orderOfOperations | The quantity of registers | []*[ModbusOperations](#modbusoperations) | false
+
+#### ModbusOperations
+
+Parameter | Description | Scheme |  Required
+--- | --- | --- | ---
+operationType | Arithmetic operation type(`Add, Subtract, Multiply, Divide`) | string | false
+operationValue | Arithmetic operation value | string | false
+
+#### DeviceExtension
+
+- reference the [example YAML](#modbus-devicelink-yaml) of modbus device for MQTT integration.
+- check [Integrate with MQTT Documentation](https://github.com/cnrancher/octopus/blob/master/docs/adaptors/integrate_with_mqtt.md) for more details.

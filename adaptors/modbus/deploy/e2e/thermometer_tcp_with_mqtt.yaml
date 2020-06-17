@@ -14,12 +14,20 @@ spec:
       labels:
         device: modbus-tcp
     spec:
+      extension:
+        mqtt:
+          client:
+            server: tcp://test.mosquitto.org:1883
+          message:
+            topic:
+              prefix: cattle.io/octopus
+              with: nn
       parameters:
-        syncInterval: 10s
+        syncInterval: 15s
         timeout: 10s
       protocol:
         tcp:
-          ip: 18.138.238.121
+          ip: 192.168.64.5
           port: 5020
           slaveID: 1
       properties:

@@ -8,13 +8,16 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/goburrow/modbus"
+	"github.com/pkg/errors"
 	"github.com/rancher/octopus/adaptors/modbus/api/v1alpha1"
+	api "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
+	"github.com/rancher/octopus/pkg/mqtt"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
 type Device interface {
-	Configure(spec v1alpha1.ModbusDeviceSpec) error
+	Configure(references api.ReferencesHandler, obj v1alpha1.ModbusDevice) error
 	Shutdown()
 }
 
@@ -26,6 +29,11 @@ func NewDevice(log logr.Logger, name types.NamespacedName, handler DataHandler) 
 	}
 }
 
+const (
+	mqttTimeout = 5 * time.Second
+	bits        = 8
+)
+
 type device struct {
 	sync.Mutex
 
@@ -35,19 +43,20 @@ type device struct {
 	name    types.NamespacedName
 	handler DataHandler
 
-	status v1alpha1.ModbusDeviceStatus
 	spec   v1alpha1.ModbusDeviceSpec
+	status v1alpha1.ModbusDeviceStatus
 
 	modbusHandler modbus.ClientHandler
+	mqttClient    mqtt.Client
 }
 
-func (d *device) Configure(spec v1alpha1.ModbusDeviceSpec) error {
-	deviceSpec := d.spec
-	d.spec = spec
+func (d *device) Configure(references api.ReferencesHandler, obj v1alpha1.ModbusDevice) error {
+	spec := d.spec
+	d.spec = obj.Spec
 
 	// configure protocol config and parameters
-	if !reflect.DeepEqual(spec.ProtocolConfig, deviceSpec.ProtocolConfig) || !reflect.DeepEqual(spec.Parameters, deviceSpec.Parameters) {
-		var modbusHandler, err = newModbusHandler(spec.ProtocolConfig, spec.Parameters.Timeout.Duration)
+	if !reflect.DeepEqual(d.spec.ProtocolConfig, spec.ProtocolConfig) || !reflect.DeepEqual(d.spec.Parameters, spec.Parameters) {
+		var modbusHandler, err = newModbusHandler(d.spec.ProtocolConfig, d.spec.Parameters.Timeout.Duration)
 		d.modbusHandler = modbusHandler
 		if err != nil {
 			d.log.Error(err, "Failed to connect to modbus device endpoint")
@@ -57,9 +66,36 @@ func (d *device) Configure(spec v1alpha1.ModbusDeviceSpec) error {
 		d.on()
 	}
 
+	if !reflect.DeepEqual(d.spec.Extension, spec.Extension) {
+		if d.mqttClient != nil {
+			d.mqttClient.Disconnect(mqttTimeout)
+			d.mqttClient = nil
+
+			// since there is only a MQTT inside extension field, here can set to nil directly.
+			d.status.Extension = nil
+		}
+
+		if d.spec.Extension.MQTT != nil {
+			var cli, outline, err = mqtt.NewClient(&obj, *d.spec.Extension.MQTT, references.ToDataMap())
+			if err != nil {
+				return errors.Wrap(err, "failed to create MQTT client")
+			}
+
+			err = cli.Connect()
+			if err != nil {
+				return errors.Wrap(err, "failed to connect MQTT broker")
+			}
+			d.mqttClient = cli
+
+			if d.status.Extension == nil {
+				d.status.Extension = &v1alpha1.DeviceExtensionStatus{}
+			}
+			d.status.Extension.MQTT = outline
+		}
+	}
+
 	// configure properties
-	properties := spec.Properties
-	for _, property := range properties {
+	for _, property := range d.spec.Properties {
 		if property.ReadOnly {
 			continue
 		}
@@ -69,8 +105,7 @@ func (d *device) Configure(spec v1alpha1.ModbusDeviceSpec) error {
 		}
 		d.log.Info("Write property", "property", property)
 	}
-	d.updateStatus(properties)
-
+	d.updateStatus(d.spec.Properties)
 	return nil
 }
 
@@ -85,18 +120,17 @@ func (d *device) on() {
 
 	// periodically sync device status
 	go func() {
-		spec := d.spec
-		var ticker = time.NewTicker(spec.Parameters.SyncInterval.Duration)
+		var ticker = time.NewTicker(d.spec.Parameters.SyncInterval.Duration)
 		defer ticker.Stop()
 
 		for {
+			d.updateStatus(d.spec.Properties)
+			d.log.Info("Sync modbus device status", "properties", d.status.Properties)
 			select {
 			case <-d.stop:
 				return
 			case <-ticker.C:
 			}
-			d.updateStatus(spec.Properties)
-			d.log.Info("Sync modbus device status", "properties", d.status.Properties)
 		}
 	}()
 }
@@ -105,6 +139,12 @@ func (d *device) Shutdown() {
 	if d.stop != nil {
 		close(d.stop)
 	}
+
+	if d.mqttClient != nil {
+		d.mqttClient.Disconnect(mqttTimeout)
+		d.mqttClient = nil
+	}
+
 	d.log.Info("Closed connection")
 }
 
@@ -118,8 +158,8 @@ func (d *device) writeProperty(dataType v1alpha1.PropertyDataType, visitor v1alp
 	switch register {
 	case v1alpha1.ModbusRegisterTypeCoilRegister:
 		// one bit per register
-		l := quantity / 8
-		if quantity%8 != 0 {
+		l := quantity / bits
+		if quantity%bits != 0 {
 			l++
 		}
 		data, err := StringToByteArray(value, dataType, int(l))
@@ -207,6 +247,14 @@ func (d *device) updateStatus(properties []v1alpha1.DeviceProperty) {
 		d.updateStatusProperty(property.Name, value, property.DataType)
 	}
 	d.handler(d.name, d.status)
+
+	if d.mqttClient != nil {
+		var status = d.status.DeepCopy()
+		status.Extension = nil
+		if err := d.mqttClient.Publish(status); err != nil {
+			d.log.Error(err, "Failed to publish MQTT message")
+		}
+	}
 }
 
 func (d *device) updateStatusProperty(name, value string, dataType v1alpha1.PropertyDataType) {

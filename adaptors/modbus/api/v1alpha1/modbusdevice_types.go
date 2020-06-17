@@ -34,9 +34,21 @@ type PropertyDataType string
 
 // ModbusDeviceSpec defines the desired state of ModbusDevice
 type ModbusDeviceSpec struct {
-	Parameters     *Parameters           `json:"parameters,omitempty"`
+	// Parameter of the modbus device.
+	// +optional
+	Parameters *Parameters `json:"parameters,omitempty"`
+
+	// Specifies the extension of device.
+	// +optional
+	Extension *DeviceExtensionSpec `json:"extension,omitempty"`
+
+	// Protocol for accessing the modbus device.
+	// +kubebuilder:validation:Required
 	ProtocolConfig *ModbusProtocolConfig `json:"protocol"`
-	Properties     []DeviceProperty      `json:"properties,omitempty"`
+
+	// Specifies the properties of the modbus device.
+	// +optional
+	Properties []DeviceProperty `json:"properties,omitempty"`
 }
 
 type Parameters struct {
@@ -113,6 +125,12 @@ const (
 
 // ModbusDeviceStatus defines the observed state of ModbusDevice
 type ModbusDeviceStatus struct {
+	// Reports the extension of device.
+	// +optional
+	Extension *DeviceExtensionStatus `json:"extension,omitempty"`
+
+	// Reports the status of the modbus device.
+	// +optional
 	Properties []StatusProperties `json:"properties,omitempty"`
 }
 

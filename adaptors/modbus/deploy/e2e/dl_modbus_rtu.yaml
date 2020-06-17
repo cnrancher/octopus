@@ -15,7 +15,7 @@ spec:
         device: modbus-rtu
     spec:
       parameters:
-        syncInterval: 5s
+        syncInterval: 10s
         timeout: 10s
       protocol:
         rtu:
