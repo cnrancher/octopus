@@ -101,7 +101,7 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 			)
 		}
 
-		if err := device.Configure(modbus.Spec); err != nil {
+		if err := device.Configure(req.GetReferencesHandler(), modbus); err != nil {
 			return status.Errorf(codes.FailedPrecondition, "failed to connect to modbus device endpoint: %v", err)
 		}
 	}
