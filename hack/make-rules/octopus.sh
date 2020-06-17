@@ -33,9 +33,11 @@ function generate() {
   done
 
   octopus::log::info "generating mocks"
-  rm -f "${CURR_DIR}/pkg/adaptor/api/*/*.pb_mock.go"
+  rm -f "${CURR_DIR}/pkg/adaptor/api/*/mock/*.pb.go"
   for d in $(octopus::util::find_subdirs "${CURR_DIR}/pkg/adaptor/api"); do
-    octopus::mockgen::generate \
+    # NB(thxCode) According to https://github.com/golang/mock/issues/401, we need to
+    # change to use the reflect mode of mockgen.
+    octopus::mockgen::generate_by_reflect \
       "${CURR_DIR}/pkg/adaptor/api/${d}/api.pb.go"
   done
 

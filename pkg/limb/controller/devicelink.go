@@ -12,7 +12,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -39,8 +38,8 @@ type DeviceLinkReconciler struct {
 	client.Client
 	record.EventRecorder
 
-	Scheme *k8sruntime.Scheme
-	Log    logr.Logger
+	Ctx context.Context
+	Log logr.Logger
 
 	SuctionCup suctioncup.Neurons
 	NodeName   string
@@ -53,7 +52,7 @@ type DeviceLinkReconciler struct {
 // +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch
 
 func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	var ctx = context.Background()
+	var ctx = r.Ctx
 	var log = r.Log.WithValues("deviceLink", req.NamespacedName)
 
 	// fetches link
@@ -294,7 +293,7 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		return ctrl.Result{}, nil
 	case metav1.ConditionTrue:
 		// fetches the device references if needed
-		var references, err = r.fetchReferences(ctx, &link)
+		var references, err = r.fetchReferences(&link)
 		if err != nil {
 			log.Error(err, "Unable to fetch the reference parameters of DeviceLink")
 			r.Eventf(&link, "Warning", "FailedSent", "cannot send data to adaptor as failed to fetch the reference parameters: %v", err)
@@ -341,6 +340,7 @@ func (r *DeviceLinkReconciler) SetupWithManager(ctrlMgr ctrl.Manager, suctionCup
 
 	// indexes DeviceLink by `status.adaptorName`
 	if err := ctrlMgr.GetFieldIndexer().IndexField(
+		r.Ctx,
 		&edgev1alpha1.DeviceLink{},
 		index.DeviceLinkByAdaptorField,
 		index.DeviceLinkByAdaptorFunc,
@@ -356,7 +356,8 @@ func (r *DeviceLinkReconciler) SetupWithManager(ctrlMgr ctrl.Manager, suctionCup
 }
 
 // fetchReferences fetches the references of deviceLink.
-func (r *DeviceLinkReconciler) fetchReferences(ctx context.Context, deviceLink *edgev1alpha1.DeviceLink) (map[string]map[string][]byte, error) {
+func (r *DeviceLinkReconciler) fetchReferences(deviceLink *edgev1alpha1.DeviceLink) (map[string]map[string][]byte, error) {
+	var ctx = r.Ctx
 	var references = deviceLink.Spec.References
 	var namespace = deviceLink.Namespace
 

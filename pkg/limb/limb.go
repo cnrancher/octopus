@@ -1,6 +1,7 @@
 package limb
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -25,6 +26,9 @@ import (
 func Run(name string, opts *options.Options) error {
 	var log = ctrl.Log.WithName(name).WithName("setup")
 	defer runtime.HandleCrash(handler.NewPanicsLogHandler(log))
+
+	var ctx, cancel = context.WithCancel(context.Background())
+	defer cancel()
 
 	log.V(0).Info("Registering metrics")
 	if err := RegisterMetrics(ctrlmetrics.Registry); err != nil {
@@ -74,7 +78,7 @@ func Run(name string, opts *options.Options) error {
 	if err = (&controller.DeviceLinkReconciler{
 		Client:        controllerMgr.GetClient(),
 		EventRecorder: controllerMgr.GetEventRecorderFor(name),
-		Scheme:        controllerMgr.GetScheme(),
+		Ctx:           ctx,
 		Log:           ctrl.Log.WithName("controller").WithName("deviceLink"),
 		SuctionCup:    suctionCupMgr.GetNeurons(),
 		NodeName:      nodeName,
@@ -85,8 +89,8 @@ func Run(name string, opts *options.Options) error {
 
 	log.Info("Starting")
 	var stop = ctrl.SetupSignalHandler()
-	var eg, ctx = errgroup.WithContext(critical.Context(stop))
-	stop = ctx.Done()
+	var eg, egCtx = errgroup.WithContext(critical.Context(stop))
+	stop = egCtx.Done()
 	eg.Go(func() error {
 		return suctionCupMgr.Start(stop)
 	})

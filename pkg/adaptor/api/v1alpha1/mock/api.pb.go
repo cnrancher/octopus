@@ -51,10 +51,10 @@ func (m *MockRegistrationClient) EXPECT() *MockRegistrationClientMockRecorder {
 }
 
 // Register mocks base method
-func (m *MockRegistrationClient) Register(ctx context.Context, in *v1alpha1.RegisterRequest, opts ...grpc.CallOption) (*v1alpha1.Empty, error) {
+func (m *MockRegistrationClient) Register(arg0 context.Context, arg1 *v1alpha1.RegisterRequest, arg2 ...grpc.CallOption) (*v1alpha1.Empty, error) {
 	m.ctrl.T.Helper()
-	varargs := []interface{}{ctx, in}
-	for _, a := range opts {
+	varargs := []interface{}{arg0, arg1}
+	for _, a := range arg2 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Register", varargs...)
@@ -64,9 +64,9 @@ func (m *MockRegistrationClient) Register(ctx context.Context, in *v1alpha1.Regi
 }
 
 // Register indicates an expected call of Register
-func (mr *MockRegistrationClientMockRecorder) Register(ctx, in interface{}, opts ...interface{}) *gomock.Call {
+func (mr *MockRegistrationClientMockRecorder) Register(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]interface{}{ctx, in}, opts...)
+	varargs := append([]interface{}{arg0, arg1}, arg2...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Register", reflect.TypeOf((*MockRegistrationClient)(nil).Register), varargs...)
 }
 
@@ -132,10 +132,10 @@ func (m *MockConnectionClient) EXPECT() *MockConnectionClientMockRecorder {
 }
 
 // Connect mocks base method
-func (m *MockConnectionClient) Connect(ctx context.Context, opts ...grpc.CallOption) (v1alpha1.Connection_ConnectClient, error) {
+func (m *MockConnectionClient) Connect(arg0 context.Context, arg1 ...grpc.CallOption) (v1alpha1.Connection_ConnectClient, error) {
 	m.ctrl.T.Helper()
-	varargs := []interface{}{ctx}
-	for _, a := range opts {
+	varargs := []interface{}{arg0}
+	for _, a := range arg1 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Connect", varargs...)
@@ -145,9 +145,9 @@ func (m *MockConnectionClient) Connect(ctx context.Context, opts ...grpc.CallOpt
 }
 
 // Connect indicates an expected call of Connect
-func (mr *MockConnectionClientMockRecorder) Connect(ctx interface{}, opts ...interface{}) *gomock.Call {
+func (mr *MockConnectionClientMockRecorder) Connect(arg0 interface{}, arg1 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]interface{}{ctx}, opts...)
+	varargs := append([]interface{}{arg0}, arg1...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Connect", reflect.TypeOf((*MockConnectionClient)(nil).Connect), varargs...)
 }
 
@@ -172,64 +172,6 @@ func NewMockConnection_ConnectClient(ctrl *gomock.Controller) *MockConnection_Co
 // EXPECT returns an object that allows the caller to indicate expected use
 func (m *MockConnection_ConnectClient) EXPECT() *MockConnection_ConnectClientMockRecorder {
 	return m.recorder
-}
-
-// Send mocks base method
-func (m *MockConnection_ConnectClient) Send(arg0 *v1alpha1.ConnectRequest) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Send", arg0)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Send indicates an expected call of Send
-func (mr *MockConnection_ConnectClientMockRecorder) Send(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Send", reflect.TypeOf((*MockConnection_ConnectClient)(nil).Send), arg0)
-}
-
-// Recv mocks base method
-func (m *MockConnection_ConnectClient) Recv() (*v1alpha1.ConnectResponse, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Recv")
-	ret0, _ := ret[0].(*v1alpha1.ConnectResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Recv indicates an expected call of Recv
-func (mr *MockConnection_ConnectClientMockRecorder) Recv() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Recv", reflect.TypeOf((*MockConnection_ConnectClient)(nil).Recv))
-}
-
-// Header mocks base method
-func (m *MockConnection_ConnectClient) Header() (metadata.MD, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Header")
-	ret0, _ := ret[0].(metadata.MD)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Header indicates an expected call of Header
-func (mr *MockConnection_ConnectClientMockRecorder) Header() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Header", reflect.TypeOf((*MockConnection_ConnectClient)(nil).Header))
-}
-
-// Trailer mocks base method
-func (m *MockConnection_ConnectClient) Trailer() metadata.MD {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Trailer")
-	ret0, _ := ret[0].(metadata.MD)
-	return ret0
-}
-
-// Trailer indicates an expected call of Trailer
-func (mr *MockConnection_ConnectClientMockRecorder) Trailer() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Trailer", reflect.TypeOf((*MockConnection_ConnectClient)(nil).Trailer))
 }
 
 // CloseSend mocks base method
@@ -260,32 +202,90 @@ func (mr *MockConnection_ConnectClientMockRecorder) Context() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Context", reflect.TypeOf((*MockConnection_ConnectClient)(nil).Context))
 }
 
-// SendMsg mocks base method
-func (m_2 *MockConnection_ConnectClient) SendMsg(m interface{}) error {
-	m_2.ctrl.T.Helper()
-	ret := m_2.ctrl.Call(m_2, "SendMsg", m)
-	ret0, _ := ret[0].(error)
-	return ret0
+// Header mocks base method
+func (m *MockConnection_ConnectClient) Header() (metadata.MD, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Header")
+	ret0, _ := ret[0].(metadata.MD)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
-// SendMsg indicates an expected call of SendMsg
-func (mr *MockConnection_ConnectClientMockRecorder) SendMsg(m interface{}) *gomock.Call {
+// Header indicates an expected call of Header
+func (mr *MockConnection_ConnectClientMockRecorder) Header() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendMsg", reflect.TypeOf((*MockConnection_ConnectClient)(nil).SendMsg), m)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Header", reflect.TypeOf((*MockConnection_ConnectClient)(nil).Header))
+}
+
+// Recv mocks base method
+func (m *MockConnection_ConnectClient) Recv() (*v1alpha1.ConnectResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Recv")
+	ret0, _ := ret[0].(*v1alpha1.ConnectResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Recv indicates an expected call of Recv
+func (mr *MockConnection_ConnectClientMockRecorder) Recv() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Recv", reflect.TypeOf((*MockConnection_ConnectClient)(nil).Recv))
 }
 
 // RecvMsg mocks base method
-func (m_2 *MockConnection_ConnectClient) RecvMsg(m interface{}) error {
-	m_2.ctrl.T.Helper()
-	ret := m_2.ctrl.Call(m_2, "RecvMsg", m)
+func (m *MockConnection_ConnectClient) RecvMsg(arg0 interface{}) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RecvMsg", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // RecvMsg indicates an expected call of RecvMsg
-func (mr *MockConnection_ConnectClientMockRecorder) RecvMsg(m interface{}) *gomock.Call {
+func (mr *MockConnection_ConnectClientMockRecorder) RecvMsg(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecvMsg", reflect.TypeOf((*MockConnection_ConnectClient)(nil).RecvMsg), m)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecvMsg", reflect.TypeOf((*MockConnection_ConnectClient)(nil).RecvMsg), arg0)
+}
+
+// Send mocks base method
+func (m *MockConnection_ConnectClient) Send(arg0 *v1alpha1.ConnectRequest) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Send", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Send indicates an expected call of Send
+func (mr *MockConnection_ConnectClientMockRecorder) Send(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Send", reflect.TypeOf((*MockConnection_ConnectClient)(nil).Send), arg0)
+}
+
+// SendMsg mocks base method
+func (m *MockConnection_ConnectClient) SendMsg(arg0 interface{}) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SendMsg", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SendMsg indicates an expected call of SendMsg
+func (mr *MockConnection_ConnectClientMockRecorder) SendMsg(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendMsg", reflect.TypeOf((*MockConnection_ConnectClient)(nil).SendMsg), arg0)
+}
+
+// Trailer mocks base method
+func (m *MockConnection_ConnectClient) Trailer() metadata.MD {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Trailer")
+	ret0, _ := ret[0].(metadata.MD)
+	return ret0
+}
+
+// Trailer indicates an expected call of Trailer
+func (mr *MockConnection_ConnectClientMockRecorder) Trailer() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Trailer", reflect.TypeOf((*MockConnection_ConnectClient)(nil).Trailer))
 }
 
 // MockConnectionServer is a mock of ConnectionServer interface
@@ -348,18 +348,18 @@ func (m *MockConnection_ConnectServer) EXPECT() *MockConnection_ConnectServerMoc
 	return m.recorder
 }
 
-// Send mocks base method
-func (m *MockConnection_ConnectServer) Send(arg0 *v1alpha1.ConnectResponse) error {
+// Context mocks base method
+func (m *MockConnection_ConnectServer) Context() context.Context {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Send", arg0)
-	ret0, _ := ret[0].(error)
+	ret := m.ctrl.Call(m, "Context")
+	ret0, _ := ret[0].(context.Context)
 	return ret0
 }
 
-// Send indicates an expected call of Send
-func (mr *MockConnection_ConnectServerMockRecorder) Send(arg0 interface{}) *gomock.Call {
+// Context indicates an expected call of Context
+func (mr *MockConnection_ConnectServerMockRecorder) Context() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Send", reflect.TypeOf((*MockConnection_ConnectServer)(nil).Send), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Context", reflect.TypeOf((*MockConnection_ConnectServer)(nil).Context))
 }
 
 // Recv mocks base method
@@ -377,18 +377,32 @@ func (mr *MockConnection_ConnectServerMockRecorder) Recv() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Recv", reflect.TypeOf((*MockConnection_ConnectServer)(nil).Recv))
 }
 
-// SetHeader mocks base method
-func (m *MockConnection_ConnectServer) SetHeader(arg0 metadata.MD) error {
+// RecvMsg mocks base method
+func (m *MockConnection_ConnectServer) RecvMsg(arg0 interface{}) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetHeader", arg0)
+	ret := m.ctrl.Call(m, "RecvMsg", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// SetHeader indicates an expected call of SetHeader
-func (mr *MockConnection_ConnectServerMockRecorder) SetHeader(arg0 interface{}) *gomock.Call {
+// RecvMsg indicates an expected call of RecvMsg
+func (mr *MockConnection_ConnectServerMockRecorder) RecvMsg(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetHeader", reflect.TypeOf((*MockConnection_ConnectServer)(nil).SetHeader), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecvMsg", reflect.TypeOf((*MockConnection_ConnectServer)(nil).RecvMsg), arg0)
+}
+
+// Send mocks base method
+func (m *MockConnection_ConnectServer) Send(arg0 *v1alpha1.ConnectResponse) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Send", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Send indicates an expected call of Send
+func (mr *MockConnection_ConnectServerMockRecorder) Send(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Send", reflect.TypeOf((*MockConnection_ConnectServer)(nil).Send), arg0)
 }
 
 // SendHeader mocks base method
@@ -405,6 +419,34 @@ func (mr *MockConnection_ConnectServerMockRecorder) SendHeader(arg0 interface{})
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendHeader", reflect.TypeOf((*MockConnection_ConnectServer)(nil).SendHeader), arg0)
 }
 
+// SendMsg mocks base method
+func (m *MockConnection_ConnectServer) SendMsg(arg0 interface{}) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SendMsg", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SendMsg indicates an expected call of SendMsg
+func (mr *MockConnection_ConnectServerMockRecorder) SendMsg(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendMsg", reflect.TypeOf((*MockConnection_ConnectServer)(nil).SendMsg), arg0)
+}
+
+// SetHeader mocks base method
+func (m *MockConnection_ConnectServer) SetHeader(arg0 metadata.MD) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetHeader", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetHeader indicates an expected call of SetHeader
+func (mr *MockConnection_ConnectServerMockRecorder) SetHeader(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetHeader", reflect.TypeOf((*MockConnection_ConnectServer)(nil).SetHeader), arg0)
+}
+
 // SetTrailer mocks base method
 func (m *MockConnection_ConnectServer) SetTrailer(arg0 metadata.MD) {
 	m.ctrl.T.Helper()
@@ -415,46 +457,4 @@ func (m *MockConnection_ConnectServer) SetTrailer(arg0 metadata.MD) {
 func (mr *MockConnection_ConnectServerMockRecorder) SetTrailer(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetTrailer", reflect.TypeOf((*MockConnection_ConnectServer)(nil).SetTrailer), arg0)
-}
-
-// Context mocks base method
-func (m *MockConnection_ConnectServer) Context() context.Context {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Context")
-	ret0, _ := ret[0].(context.Context)
-	return ret0
-}
-
-// Context indicates an expected call of Context
-func (mr *MockConnection_ConnectServerMockRecorder) Context() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Context", reflect.TypeOf((*MockConnection_ConnectServer)(nil).Context))
-}
-
-// SendMsg mocks base method
-func (m_2 *MockConnection_ConnectServer) SendMsg(m interface{}) error {
-	m_2.ctrl.T.Helper()
-	ret := m_2.ctrl.Call(m_2, "SendMsg", m)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// SendMsg indicates an expected call of SendMsg
-func (mr *MockConnection_ConnectServerMockRecorder) SendMsg(m interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendMsg", reflect.TypeOf((*MockConnection_ConnectServer)(nil).SendMsg), m)
-}
-
-// RecvMsg mocks base method
-func (m_2 *MockConnection_ConnectServer) RecvMsg(m interface{}) error {
-	m_2.ctrl.T.Helper()
-	ret := m_2.ctrl.Call(m_2, "RecvMsg", m)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// RecvMsg indicates an expected call of RecvMsg
-func (mr *MockConnection_ConnectServerMockRecorder) RecvMsg(m interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecvMsg", reflect.TypeOf((*MockConnection_ConnectServer)(nil).RecvMsg), m)
 }

@@ -25,6 +25,7 @@ import (
 type DeviceLinkReconciler struct {
 	client.Client
 
+	Ctx context.Context
 	Log logr.Logger
 }
 
@@ -34,7 +35,7 @@ type DeviceLinkReconciler struct {
 // +kubebuilder:rbac:groups="apiextensions.k8s.io",resources=customresourcedefinitions,verbs=get
 
 func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	var ctx = context.Background()
+	var ctx = r.Ctx
 	var log = r.Log.WithValues("deviceLink", req.NamespacedName)
 
 	// fetches link
