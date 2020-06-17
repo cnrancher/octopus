@@ -86,16 +86,19 @@ var _ = BeforeSuite(func(done Done) {
 	By("creating controllers")
 	err = (&controller.DeviceLinkReconciler{
 		Client: controllerMgr.GetClient(),
+		Ctx:    testCtx,
 		Log:    ctrl.Log.WithName("controller").WithName("deviceLink"),
 	}).SetupWithManager(controllerMgr)
 	Expect(err).ToNot(HaveOccurred())
 	err = (&controller.NodeReconciler{
 		Client: controllerMgr.GetClient(),
+		Ctx:    testCtx,
 		Log:    ctrl.Log.WithName("controller").WithName("node"),
 	}).SetupWithManager(controllerMgr)
 	Expect(err).ToNot(HaveOccurred())
 	err = (&controller.ModelReconciler{
 		Client: controllerMgr.GetClient(),
+		Ctx:    testCtx,
 		Log:    ctrl.Log.WithName("controller").WithName("crd"),
 	}).SetupWithManager(controllerMgr)
 	Expect(err).ToNot(HaveOccurred())

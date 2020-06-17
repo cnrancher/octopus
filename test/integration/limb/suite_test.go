@@ -106,7 +106,7 @@ var _ = BeforeSuite(func(done Done) {
 	err = (&controller.DeviceLinkReconciler{
 		Client:        controllerMgr.GetClient(),
 		EventRecorder: controllerMgr.GetEventRecorderFor("limb"),
-		Scheme:        controllerMgr.GetScheme(),
+		Ctx:           testCtx,
 		Log:           ctrl.Log.WithName("controller").WithName("deviceLink"),
 		NodeName:      targetNode,
 		SuctionCup:    suctionCupMgr.GetNeurons(),

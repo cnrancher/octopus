@@ -27,6 +27,7 @@ const (
 type ModelReconciler struct {
 	client.Client
 
+	Ctx context.Context
 	Log logr.Logger
 }
 
@@ -34,7 +35,7 @@ type ModelReconciler struct {
 // +kubebuilder:rbac:groups="apiextensions.k8s.io",resources=customresourcedefinitions,verbs=get;list;watch;update;patch
 
 func (r *ModelReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	var ctx = context.Background()
+	var ctx = r.Ctx
 	var log = r.Log.WithValues("crd", req.NamespacedName)
 
 	// fetches model
@@ -118,6 +119,7 @@ func (r *ModelReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 func (r *ModelReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// indexes DeviceLink by `status.model`
 	if err := mgr.GetFieldIndexer().IndexField(
+		r.Ctx,
 		&edgev1alpha1.DeviceLink{},
 		index.DeviceLinkByModelField,
 		index.DeviceLinkByModelFunc,

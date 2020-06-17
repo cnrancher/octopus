@@ -1,6 +1,7 @@
 package brain
 
 import (
+	"context"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
@@ -18,6 +19,9 @@ import (
 func Run(name string, opts *options.Options) error {
 	var log = ctrl.Log.WithName(name).WithName("setup")
 	defer runtime.HandleCrash(handler.NewPanicsLogHandler(log))
+
+	var ctx, cancel = context.WithCancel(context.Background())
+	defer cancel()
 
 	log.V(0).Info("Registering APIs scheme")
 	var scheme = k8sruntime.NewScheme()
@@ -44,6 +48,7 @@ func Run(name string, opts *options.Options) error {
 	log.V(0).Info("Creating controllers")
 	if err = (&controller.DeviceLinkReconciler{
 		Client: controllerMgr.GetClient(),
+		Ctx:    ctx,
 		Log:    ctrl.Log.WithName("controller").WithName("deviceLink"),
 	}).SetupWithManager(controllerMgr); err != nil {
 		log.Error(err, "Unable to create controller", "controller", "DeviceLink")
@@ -51,6 +56,7 @@ func Run(name string, opts *options.Options) error {
 	}
 	if err = (&controller.NodeReconciler{
 		Client: controllerMgr.GetClient(),
+		Ctx:    ctx,
 		Log:    ctrl.Log.WithName("controller").WithName("node"),
 	}).SetupWithManager(controllerMgr); err != nil {
 		log.Error(err, "Unable to create controller", "controller", "Node")
@@ -58,6 +64,7 @@ func Run(name string, opts *options.Options) error {
 	}
 	if err = (&controller.ModelReconciler{
 		Client: controllerMgr.GetClient(),
+		Ctx:    ctx,
 		Log:    ctrl.Log.WithName("controller").WithName("crd"),
 	}).SetupWithManager(controllerMgr); err != nil {
 		log.Error(err, "Unable to create controller", "controller", "CRD")

@@ -27,6 +27,7 @@ const (
 type NodeReconciler struct {
 	client.Client
 
+	Ctx context.Context
 	Log logr.Logger
 }
 
@@ -34,7 +35,7 @@ type NodeReconciler struct {
 // +kubebuilder:rbac:groups="",resources=nodes,verbs=get;list;watch;update;patch
 
 func (r *NodeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	var ctx = context.Background()
+	var ctx = r.Ctx
 	var log = r.Log.WithValues("node", req.NamespacedName)
 
 	// fetches node
@@ -119,6 +120,7 @@ func (r *NodeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 func (r *NodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// indexes DeviceLink by `status.nodeName`
 	if err := mgr.GetFieldIndexer().IndexField(
+		r.Ctx,
 		&edgev1alpha1.DeviceLink{},
 		index.DeviceLinkByNodeField,
 		index.DeviceLinkByNodeFunc,
