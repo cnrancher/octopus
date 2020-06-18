@@ -171,7 +171,7 @@ Integration testing bases on [the envtest of sigs.k8s.io/controller-runtime](htt
 - Adaptor: `make adaptors <adaptor directory name> verify only`
 - Octopus: `make octopus verify only`
 
-When running integration tests, the [framework](./test/framework) will launch a local Kubernetes cluster using Docker. There are two supported local clusters inside: `kind` and `k3d`, you can use environment variable `LOCAL_CLUSTER_KIND` to select, default is `k3d`. Instead of setting up a local cluster, you can also use environment variable `USE_EXISTING_CLUSTER=true` to point out an existing cluster, and then the integration tests will use the kubeconfig of the current environment to communicate with the existing cluster.
+When running integration tests, the [framework](./test/framework) will launch a local Kubernetes cluster using Docker. There are two supported local clusters inside: `kind` and `k3d`, you can use environment variable `CLUSTER_TYPE` to select, default is `k3d`. Instead of setting up a local cluster, you can also use environment variable `USE_EXISTING_CLUSTER=true` to point out an existing cluster, and then the integration tests will use the kubeconfig of the current environment to communicate with the existing cluster.
 
 ### E2E testing
 

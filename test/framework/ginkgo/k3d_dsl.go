@@ -1,7 +1,10 @@
+// +build test
+
 package ginkgo
 
 import (
 	"github.com/onsi/ginkgo"
+
 	"github.com/rancher/octopus/test/framework"
 	"github.com/rancher/octopus/test/framework/cluster"
 )
@@ -16,5 +19,5 @@ func K3dIt(text string, body interface{}, timeout ...float64) bool {
 }
 
 func init() {
-	isK3dCluster = !framework.IsUsingExistingCluster() && framework.GetLocalClusterType() == cluster.LocalClusterTypeK3d
+	isK3dCluster = !framework.IsUsingExistingCluster() && framework.GetCluster() == cluster.K3d
 }

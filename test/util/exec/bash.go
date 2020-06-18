@@ -1,3 +1,5 @@
+// +build test
+
 package exec
 
 import (
@@ -8,7 +10,7 @@ import (
 	"github.com/gopcua/opcua/errors"
 )
 
-// RunBashScripts runs the bash script and redirects Stdout/Stderr to writer.
+// RunBashScript runs the bash script and redirects Stdout/Stderr to writer.
 func RunBashScript(writer io.Writer, projectDirPath, scriptPath string, args ...string) error {
 	if !isScriptExisted(scriptPath) {
 		return errors.Errorf("%s script isn't existed", scriptPath)

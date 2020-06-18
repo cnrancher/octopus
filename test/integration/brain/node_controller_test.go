@@ -195,7 +195,7 @@ var _ = Describe("Node controller", func() {
 			}, 30, 1).Should(Succeed())
 
 			// add node back
-			err = GetLocalCluster().AddWorker(testRootDir, GinkgoWriter, targetNodeRecord)
+			err = GetCluster().AddWorker(testRootDir, GinkgoWriter, targetNodeRecord)
 			Expect(err).ToNot(HaveOccurred())
 
 			// confirmed

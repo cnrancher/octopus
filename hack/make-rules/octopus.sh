@@ -298,7 +298,9 @@ function e2e() {
   [[ "${1:-}" != "only" ]] && verify
   octopus::log::info "running E2E tests for octopus..."
 
-  octopus::ginkgo::test "${CURR_DIR}/test/e2e"
+  # NB(thxCode) execute the E2E testing as ordered.
+  octopus::ginkgo::test "${CURR_DIR}/test/e2e/installation"
+  octopus::ginkgo::test "${CURR_DIR}/test/e2e/usability"
 
   octopus::log::info "...done"
 }

@@ -6,9 +6,6 @@ spec:
   adaptor:
     node: k3d-k3s-default-server
     name: adaptors.edge.cattle.io/mqtt
-    parameters:
-      syncInterval: 5
-      timeout: 10
   model:
     apiVersion: "devices.edge.cattle.io/v1alpha1"
     kind: "MqttDevice"

@@ -157,7 +157,22 @@ var _ = Describe("Connection", func() {
 					APIVersion: "devices.edge.cattle.io/v1alpha1",
 					Kind:       "DummySpecialDevice",
 				},
-				Device: []byte(`{"apiVersion":"devices.edge.cattle.io/v1alpha1","kind":"DummySpecialDevice","metadata":{"name":"living-room-fan","namespace":"default"},"spec":{"protocol":{"location":"living-room"},"gear":"slow","on":true}}`),
+				Device: []byte(`
+				{
+					"apiVersion":"devices.edge.cattle.io/v1alpha1",
+					"kind":"DummySpecialDevice",
+					"metadata":{
+						"name":"living-room-fan",
+						"namespace":"default"
+					},
+					"spec":{
+						"protocol":{
+							"location":"living-room"
+						},
+						"gear":"slow",
+						"on":true
+					}
+				}`),
 			}, nil)
 			mockServer.EXPECT().Recv().Return(nil, io.EOF) // simulate to close the connection
 			err = service.Connect(mockServer)
