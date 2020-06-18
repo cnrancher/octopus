@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 	grpccodes "google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/rancher/octopus/adaptors/mqtt/pkg/adaptor"
 	"github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
@@ -71,50 +72,36 @@ var _ = Describe("Connection", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("should process the input parameters", func() {
-			// failed unmarshal
-			mockServer.EXPECT().Recv().Return(&v1alpha1.ConnectRequest{
-				Parameters: []byte(`{this is an illegal json}`),
-			}, nil)
-			err = service.Connect(mockServer)
-			var sts = status.Convert(err)
-			Expect(sts.Code()).To(Equal(grpccodes.InvalidArgument))
-			Expect(sts.Message()).To(HavePrefix("failed to unmarshal parameters"))
-
-			// illegal parameters: blank IP
-			mockServer.EXPECT().Recv().Return(&v1alpha1.ConnectRequest{
-				Parameters: []byte(`{"ip":""}`),
-			}, nil)
-			err = service.Connect(mockServer)
-			sts = status.Convert(err)
-			Expect(sts.Code()).To(Equal(grpccodes.InvalidArgument))
-			Expect(sts.Message()).To(Equal("failed to validate parameters: ip is required"))
-		})
-
 		It("should process the input device", func() {
 			// failed unmarshal
 			mockServer.EXPECT().Recv().Return(&v1alpha1.ConnectRequest{
-				Parameters: []byte(`{"ip":"127.0.0.1"}`),
-				Device:     []byte(`{this is an illegal json}`),
+				Model: &metav1.TypeMeta{
+					APIVersion: "devices.edge.cattle.io/v1alpha1",
+					Kind:       "MqttDevice",
+				},
+				Device: []byte(`{this is an illegal json}`),
 			}, nil)
 			err = service.Connect(mockServer)
 			var sts = status.Convert(err)
 			Expect(sts.Code()).To(Equal(grpccodes.InvalidArgument))
 			Expect(sts.Message()).To(HavePrefix("failed to unmarshal device"))
 
-			// correct logic
-			mockServer.EXPECT().Send(gomock.Any()).Return(nil).AnyTimes()
+			// failed to connect a device
 			mockServer.EXPECT().Recv().Return(&v1alpha1.ConnectRequest{
-				Parameters: []byte(`{"ip":"127.0.0.1"}`),
-				Device: []byte(`{
+				Model: &metav1.TypeMeta{
+					APIVersion: "devices.edge.cattle.io/v1alpha1",
+					Kind:       "MqttDevice",
+				},
+				Device: []byte(`
+				{
 					"apiVersion": "devices.edge.cattle.io/v1alpha1",
 					"kind": "MqttDevice",
 					"metadata": {
-						"creationTimestamp": null,
-						"name": "testDevice"
+						"name": "testDevice",
+						"namespace": "default"
 					},
 					"spec": {
-						"Config": {
+						"config": {
 							"broker": "tcp://127.0.0.1:1883",
 							"password": "parchk",
 							"username": "test123"
@@ -132,9 +119,10 @@ var _ = Describe("Connection", func() {
 					}
 				}`),
 			}, nil)
-			mockServer.EXPECT().Recv().Return(nil, io.EOF) // simulate to close the connection
 			err = service.Connect(mockServer)
-			Expect(err).ToNot(HaveOccurred())
+			sts = status.Convert(err)
+			Expect(sts.Code()).To(Equal(grpccodes.InvalidArgument))
+			Expect(sts.Message()).To(Equal("failed to connect mqtt: Network Error : dial tcp 127.0.0.1:1883: connect: connection refused"))
 		})
 
 	})

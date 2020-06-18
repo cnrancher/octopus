@@ -7,8 +7,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
 var (
@@ -16,7 +14,7 @@ var (
 	testCtxCancel context.CancelFunc
 )
 
-func TestAPIs(t *testing.T) {
+func TestAdaptor(t *testing.T) {
 	defer GinkgoRecover()
 
 	RegisterFailHandler(Fail)
@@ -28,8 +26,6 @@ func TestAPIs(t *testing.T) {
 
 var _ = BeforeSuite(func(done Done) {
 	testCtx, testCtxCancel = context.WithCancel(context.Background())
-
-	logf.SetLogger(zap.New(zap.UseDevMode(true)))
 
 	close(done)
 }, 600)

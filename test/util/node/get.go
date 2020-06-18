@@ -1,3 +1,5 @@
+// +build test
+
 package node
 
 import (
@@ -6,7 +8,6 @@ import (
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -18,10 +19,9 @@ func GetValidWorker(ctx context.Context, k8sCli client.Client) (string, error) {
 
 	var workers []string
 	for _, node := range list.Items {
-		if labels.Set(node.GetLabels()).Has("node-role.kubernetes.io/master") {
-			continue
+		if IsOnlyWorker(&node) {
+			workers = append(workers, node.Name)
 		}
-		workers = append(workers, node.Name)
 	}
 
 	if len(workers) == 0 {
@@ -41,10 +41,9 @@ func GetInvalidWorker(ctx context.Context, k8sCli client.Client) (string, error)
 
 	var workers []string
 	for _, node := range list.Items {
-		if labels.Set(node.GetLabels()).Has("node-role.kubernetes.io/master") {
-			continue
+		if IsOnlyWorker(&node) {
+			workers = append(workers, node.Name)
 		}
-		workers = append(workers, node.Name)
 	}
 
 	if len(workers) == 0 {

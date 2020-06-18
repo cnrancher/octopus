@@ -14,7 +14,7 @@ var (
 	testCtxCancel context.CancelFunc
 )
 
-func TestAPIs(t *testing.T) {
+func TestAdaptor(t *testing.T) {
 	defer GinkgoRecover()
 
 	RegisterFailHandler(Fail)

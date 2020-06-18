@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 	grpccodes "google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/rancher/octopus/adaptors/opcua/pkg/adaptor"
 	"github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
@@ -71,20 +72,13 @@ var _ = Describe("Connection", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("should process the input parameters", func() {
-			// failed unmarshal
-			mockServer.EXPECT().Recv().Return(&v1alpha1.ConnectRequest{
-				Parameters: []byte(`{this is an illegal json}`),
-			}, nil)
-			err = service.Connect(mockServer)
-			var sts = status.Convert(err)
-			Expect(sts.Code()).To(Equal(grpccodes.InvalidArgument))
-			Expect(sts.Message()).To(HavePrefix("failed to unmarshal parameters"))
-		})
-
 		It("should process the input device", func() {
 			// failed unmarshal
 			mockServer.EXPECT().Recv().Return(&v1alpha1.ConnectRequest{
+				Model: &metav1.TypeMeta{
+					APIVersion: "devices.edge.cattle.io/v1alpha1",
+					Kind:       "OPCUADevice",
+				},
 				Device: []byte(`{this is an illegal json}`),
 			}, nil)
 			err = service.Connect(mockServer)
@@ -92,14 +86,31 @@ var _ = Describe("Connection", func() {
 			Expect(sts.Code()).To(Equal(grpccodes.InvalidArgument))
 			Expect(sts.Message()).To(HavePrefix("failed to unmarshal device"))
 
-			// correct logic
-			mockServer.EXPECT().Send(gomock.Any()).Return(nil).AnyTimes()
+			// failed to connect a device
 			mockServer.EXPECT().Recv().Return(&v1alpha1.ConnectRequest{
-				Device: []byte(`{"apiVersion":"devices.edge.cattle.io/v1alpha1","kind":"OpcuaDevice","metadata":{"name":"correct"},"spec":{"protocol":{"url":"opc.tcp://10.0.2.2:53530/OPCUA/SimulationServer"}}}`),
+				Model: &metav1.TypeMeta{
+					APIVersion: "devices.edge.cattle.io/v1alpha1",
+					Kind:       "OPCUADevice",
+				},
+				Device: []byte(`
+				{
+					"apiVersion":"devices.edge.cattle.io/v1alpha1",
+					"kind":"OpcuaDevice",
+					"metadata":{
+						"name":"correct",
+						"namespace":"default"
+					},
+					"spec":{
+						"protocol":{
+							"url":"opc.tcp://127.0.0.1:53530/OPCUA/SimulationServer"
+						}
+					}
+				}`),
 			}, nil)
-			mockServer.EXPECT().Recv().Return(nil, io.EOF) // simulate to close the connection
 			err = service.Connect(mockServer)
-			Expect(err).ToNot(HaveOccurred())
+			sts = status.Convert(err)
+			Expect(sts.Code()).To(Equal(grpccodes.FailedPrecondition))
+			Expect(sts.Message()).To(Equal("failed to connect to opc-ua device endpoint: dial tcp 127.0.0.1:53530: connect: connection refused"))
 		})
 
 	})

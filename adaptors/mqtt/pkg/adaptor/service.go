@@ -59,17 +59,6 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 			return nil
 		}
 
-		var parameters = physical.DefaultParameters()
-		if req.GetParameters() != nil {
-			if err := jsoniter.Unmarshal(req.GetParameters(), &parameters); err != nil {
-				return status.Errorf(codes.InvalidArgument, "failed to unmarshal parameters: %v", err)
-			}
-		}
-
-		if err := parameters.Validate(); err != nil {
-			return status.Errorf(codes.InvalidArgument, "failed to validate parameters: %v", err)
-		}
-
 		// validate device
 		var mqtt v1alpha1.MqttDevice
 		if err := jsoniter.Unmarshal(req.GetDevice(), &mqtt); err != nil {

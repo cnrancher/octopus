@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 	grpccodes "google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/rancher/octopus/adaptors/modbus/pkg/adaptor"
 	"github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
@@ -73,6 +74,10 @@ var _ = Describe("Connection", func() {
 		It("should process the input device", func() {
 			// failed unmarshal
 			mockServer.EXPECT().Recv().Return(&v1alpha1.ConnectRequest{
+				Model: &metav1.TypeMeta{
+					APIVersion: "devices.edge.cattle.io/v1alpha1",
+					Kind:       "ModbusDevice",
+				},
 				Device: []byte(`{this is an illegal json}`),
 			}, nil)
 			err = service.Connect(mockServer)
@@ -80,14 +85,35 @@ var _ = Describe("Connection", func() {
 			Expect(sts.Code()).To(Equal(grpccodes.InvalidArgument))
 			Expect(sts.Message()).To(HavePrefix("failed to unmarshal device"))
 
-			// correct logic
-			mockServer.EXPECT().Send(gomock.Any()).Return(nil).AnyTimes()
+			// failed to connect a device
 			mockServer.EXPECT().Recv().Return(&v1alpha1.ConnectRequest{
-				Device: []byte(`{"apiVersion":"devices.edge.cattle.io/v1alpha1","kind":"ModbusDevice","metadata":{"name":"correct"},"spec":{"protocol":{"tcp":{"ip":"127.0.0.1","port":80,"slaveID":1}}}}`),
+				Model: &metav1.TypeMeta{
+					APIVersion: "devices.edge.cattle.io/v1alpha1",
+					Kind:       "ModbusDevice",
+				},
+				Device: []byte(`
+				{
+					"apiVersion":"devices.edge.cattle.io/v1alpha1",
+					"kind":"ModbusDevice",
+					"metadata":{
+						"name":"correct",
+						"namespace":"default"
+					},
+					"spec":{
+						"protocol":{
+							"tcp":{
+								"ip":"127.0.0.1",
+								"port":80,
+								"slaveID":1
+							}
+						}
+					}
+				}`),
 			}, nil)
-			mockServer.EXPECT().Recv().Return(nil, io.EOF) // simulate to close the connection
 			err = service.Connect(mockServer)
-			Expect(err).ToNot(HaveOccurred())
+			sts = status.Convert(err)
+			Expect(sts.Code()).To(Equal(grpccodes.FailedPrecondition))
+			Expect(sts.Message()).To(Equal("failed to connect to modbus device endpoint: dial tcp 127.0.0.1:80: connect: connection refused"))
 		})
 
 	})

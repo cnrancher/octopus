@@ -1,3 +1,5 @@
+// +build test
+
 package framework
 
 import (
@@ -6,22 +8,20 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/rancher/octopus/test/framework/cluster"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
+
+	"github.com/rancher/octopus/test/framework/cluster"
 )
 
 const (
 	envUseExistingCluster = "USE_EXISTING_CLUSTER"
-	envLocalClusterKind   = "LOCAL_CLUSTER_KIND"
+	envClusterType        = "CLUSTER_TYPE"
 )
-
-var testLocalCluster cluster.LocalCluster
 
 func StartEnv(rootDir string, testEnv *envtest.Environment, writer io.Writer) (cfg *rest.Config, err error) {
 	if !IsUsingExistingCluster() {
-		testLocalCluster = cluster.NewLocalCluster(GetLocalClusterType())
-		if err := testLocalCluster.Startup(rootDir, writer); err != nil {
+		if err := GetCluster().Startup(rootDir, writer); err != nil {
 			return nil, err
 		}
 	}
@@ -42,10 +42,8 @@ func StopEnv(rootDir string, testEnv *envtest.Environment, writer io.Writer) err
 		}
 	}
 	if !IsUsingExistingCluster() {
-		if testLocalCluster != nil {
-			if err := testLocalCluster.Cleanup(rootDir, writer); err != nil {
-				return err
-			}
+		if err := GetCluster().Cleanup(rootDir, writer); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -55,14 +53,10 @@ func IsUsingExistingCluster() bool {
 	return strings.EqualFold(os.Getenv(envUseExistingCluster), "true")
 }
 
-func GetLocalClusterType() cluster.LocalClusterType {
-	var kind = os.Getenv(envLocalClusterKind)
-	if strings.EqualFold(kind, string(cluster.LocalClusterTypeKind)) {
-		return cluster.LocalClusterTypeKind
+func GetCluster() cluster.Cluster {
+	var cls = cluster.Cluster(os.Getenv(envClusterType))
+	if cls == "" {
+		return cluster.K3d
 	}
-	return cluster.LocalClusterTypeK3d
-}
-
-func GetLocalCluster() cluster.LocalCluster {
-	return testLocalCluster
+	return cls
 }

@@ -26,7 +26,7 @@ Explanation of each action:
 | `lint`, `l` | Verify `octopus` via [`golangci-lint`](https://github.com/golangci/golangci-lint), roll back to `go fmt` and `go vet` if the installation fails. <br/<br/> Use `DIRTY_CHECK=true` to verify the whole project is in dirty tree or not. |
 | `build`, `b` | Compile `octopus` according to the type and architecture of the OS, generate the binary into `bin` directory. <br/><br/> Use `CROSS=true` to compile binaries of the supported platforms(search `constant.sh` file in this repo). |
 | `test`, `t` | Run unit tests. |
-| `verify`, `v` | Run integration tests with a Kubernetes cluster. <br/><br/> Use `LOCAL_CLUSTER_KIND` to specify the type for local cluster, default is `k3d`. Instead of setting up a local cluster, you can also use environment variable `USE_EXISTING_CLUSTER=true` to point out an existing cluster, and then the integration tests will use the kubeconfig of the current environment to communicate with the existing cluster. |
+| `verify`, `v` | Run integration tests with a Kubernetes cluster. <br/><br/> Use `CLUSTER_TYPE` to specify the type for local cluster, default is `k3d`. Instead of setting up a local cluster, you can also use environment variable `USE_EXISTING_CLUSTER=true` to point out an existing cluster, and then the integration tests will use the kubeconfig of the current environment to communicate with the existing cluster. |
 | `package`, `pkg`, `p` | Package Docker image. |
 | `e2e`, `e` | Run E2E tests. |
 | `deploy`, `dep`, `d` | Push Docker images and create manifest images for the current version. <br/><br/> Use `WITHOUT_MANIFEST=true` to prevent pushing manifest image, or `ONLY_MANIFEST=true` to push the manifest images only and `IGNORE_MISSING=true` to warn on missing images defined in platform list if needed. |
@@ -47,7 +47,7 @@ Suppose to try the following example on Mac:
     - `make octopus build`: execute `build` stage, then get a `darwin/amd64` execution binary.
     - `make octopus test only`: execute `test` action on `darwin/amd64` platform.
     - `REPO=somebody OS=linux ARCH=amd64 make octopus package`: execute `package` stage, then get a `linux/amd64` execution binary and an octopus `linux/amd64` image of `somebody` repo.
-    - `LOCAL_CLUSTER_KIND=kind make octopus verify only`: execute `verify` action with [`kind`](https://github.com/kubernetes-sigs/kind) cluster.
+    - `CLUSTER_TYPE=kind make octopus verify only`: execute `verify` action with [`kind`](https://github.com/kubernetes-sigs/kind) cluster.
 
 1. Support multi-arch in the localhost.
     - `CROSS=true make octopus build only`: execute `build` action, then get all execution binaries of supported platform.
