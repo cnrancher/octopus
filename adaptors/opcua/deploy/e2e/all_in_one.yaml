@@ -50,7 +50,353 @@ spec:
           spec:
             description: OPCUADeviceSpec defines the desired state of OPCUADevice
             properties:
+              extension:
+                description: Specifies the extension of device.
+                properties:
+                  mqtt:
+                    description: Specifies the MQTT settings.
+                    properties:
+                      client:
+                        description: Specifies the client settings.
+                        properties:
+                          autoReconnect:
+                            description: Configures using the automatic reconnection
+                              logic. The default value is "true".
+                            type: boolean
+                          basicAuth:
+                            description: Specifies the username and password that
+                              the client connects to the MQTT broker. Without the
+                              use of TLSConfig, the account information will be sent
+                              in plaintext across the wire.
+                            properties:
+                              password:
+                                description: Specifies the password for basic authenication.
+                                type: string
+                              passwordRef:
+                                description: Specifies the relationship of DeviceLink's
+                                  references to refer to the value as the password.
+                                properties:
+                                  item:
+                                    description: Specifies the item name of the referred
+                                      reference.
+                                    type: string
+                                  name:
+                                    description: Specifies the name of reference.
+                                    type: string
+                                required:
+                                - item
+                                - name
+                                type: object
+                              username:
+                                description: Specifies the username for basic authentication.
+                                type: string
+                              usernameRef:
+                                description: Specifies the relationship of DeviceLink's
+                                  references to refer to the value as the username.
+                                properties:
+                                  item:
+                                    description: Specifies the item name of the referred
+                                      reference.
+                                    type: string
+                                  name:
+                                    description: Specifies the name of reference.
+                                    type: string
+                                required:
+                                - item
+                                - name
+                                type: object
+                            type: object
+                          cleanSession:
+                            description: Specifies setting the "clean session" flag
+                              in the connect message that the MQTT broker should not
+                              save it. If the value is "false", the broker stores
+                              all missed messages for the client that subscribed with
+                              QoS 1 or 2. Any messages that were going to be sent
+                              by this client before disconnecting previously but didn't
+                              send upon connecting to the broker. The default value
+                              is "true".
+                            type: boolean
+                          clientID:
+                            description: Specifies the client ID to be used for connection,
+                              it must be no longer than 23 characters if specified
+                              to use MQTT v3.1.
+                            type: string
+                          connectTimeout:
+                            description: Specifies the amount of time that the client
+                              try to open a connection to an MQTT broker before timing
+                              out and getting error. A duration of 0 never times out.
+                              The default value is "30s".
+                            type: string
+                          httpHeaders:
+                            additionalProperties:
+                              items:
+                                type: string
+                              type: array
+                            description: Specifies the additional HTTP headers that
+                              the client sends in the WebSocket opening handshake.
+                            type: object
+                          keepAlive:
+                            description: Specifies the amount of time that the client
+                              should wait before sending a PING request to the broker.
+                              This will allow the client to know that the connection
+                              has not been lost with the server. A duration of 0 never
+                              keeps alive. The default keep alive is "30s".
+                            type: string
+                          maxReconnectInterval:
+                            description: Specifies the amount of time that the client
+                              should wait before reconnecting to the broker. The first
+                              reconnect interval is 1 second, and then the interval
+                              is incremented by *2 until `MaxReconnectInterval` is
+                              reached. This is only valid if `AutoReconnect` is true.
+                              A duration of 0 may trigger the reconnection immediately.
+                              The default value is "10m".
+                            type: string
+                          messageChannelDepth:
+                            description: Specifies the size of the internal queue
+                              that holds messages while the client is temporarily
+                              offline, allowing the application to publish when the
+                              client is reconnected. This is only valid if `AutoReconnect`
+                              is true. The default value is "100".
+                            type: integer
+                          order:
+                            description: Specifies the message routing to guarantee
+                              order within each QoS level. If set to false, the message
+                              can be delivered asynchronously from the client to the
+                              application and possibly arrive out of order. The default
+                              value is "true".
+                            type: boolean
+                          pingTimeout:
+                            description: Specifies the amount of time that the client
+                              should wait after sending a PING request to the broker.
+                              This will allow the client to know that the connection
+                              has been lost with the server. A duration of 0 may cause
+                              unnecessary timeout error. The default value is "10s".
+                            type: string
+                          protocolVersion:
+                            description: Specifies the MQTT protocol version that
+                              the cluster uses to connect to broker. Legitimate values
+                              are currently 3 - MQTT v3.1 or 4 - MQTT v3.1.1.
+                            enum:
+                            - 3
+                            - 4
+                            type: integer
+                          resumeSubs:
+                            description: Specifies to enable resuming of stored (un)subscribe
+                              messages when connecting but not reconnecting. This
+                              is only valid if `CleanSession` is false. The default
+                              value is "false".
+                            type: boolean
+                          server:
+                            description: Specifies the server URI of MQTT broker,
+                              the format should be `schema://host:port`. The "schema"
+                              is one of the "ws", "wss", "tcp", "unix", "ssl", "tls"
+                              or "tcps".
+                            pattern: ^(ws|wss|tcp|unix|ssl|tls|tcps)+://[^\s]*$
+                            type: string
+                          store:
+                            description: Specifies to provide message persistence
+                              in cases where QoS level is 1 or 2. The default store
+                              is "memory".
+                            properties:
+                              directoryPrefix:
+                                description: Specifies the directory prefix of the
+                                  storage, if using file store. The default value
+                                  is "/var/run/octopus/mqtt".
+                                pattern: ^/.*[^/]$
+                                type: string
+                              type:
+                                description: Specifies the type of storage. The default
+                                  value is "memory".
+                                enum:
+                                - memory
+                                - file
+                                type: string
+                            type: object
+                          tlsConfig:
+                            description: Specifies the TLS configuration that the
+                              client connects to the MQTT broker.
+                            properties:
+                              caFilePEM:
+                                description: Specifies the PEM format content of the
+                                  CA certificate, which is used for validate the server
+                                  certificate with.
+                                type: string
+                              caFilePEMRef:
+                                description: Specifies the relationship of DeviceLink's
+                                  references to refer to the value as the CA file
+                                  PEM content.
+                                properties:
+                                  item:
+                                    description: Specifies the item name of the referred
+                                      reference.
+                                    type: string
+                                  name:
+                                    description: Specifies the name of reference.
+                                    type: string
+                                required:
+                                - item
+                                - name
+                                type: object
+                              certFilePEM:
+                                description: Specifies the PEM format content of the
+                                  certificate(public key), which is used for client
+                                  authenticate to the server.
+                                type: string
+                              certFilePEMRef:
+                                description: Specifies the relationship of DeviceLink's
+                                  references to refer to the value as the client certificate
+                                  file PEM content.
+                                properties:
+                                  item:
+                                    description: Specifies the item name of the referred
+                                      reference.
+                                    type: string
+                                  name:
+                                    description: Specifies the name of reference.
+                                    type: string
+                                required:
+                                - item
+                                - name
+                                type: object
+                              insecureSkipVerify:
+                                description: Doesn't validate the server certificate.
+                                type: boolean
+                              keyFilePEM:
+                                description: Specifies the PEM format content of the
+                                  key(private key), which is used for client authenticate
+                                  to the server.
+                                type: string
+                              keyFilePEMRef:
+                                description: Specifies the relationship of DeviceLink's
+                                  references to refer to the value as the client key
+                                  file PEM content.
+                                properties:
+                                  item:
+                                    description: Specifies the item name of the referred
+                                      reference.
+                                    type: string
+                                  name:
+                                    description: Specifies the name of reference.
+                                    type: string
+                                required:
+                                - item
+                                - name
+                                type: object
+                              serverName:
+                                description: Indicates the name of the server, ref
+                                  to http://tools.ietf.org/html/rfc4366#section-3.1.
+                                type: string
+                            type: object
+                          will:
+                            description: Specifies the will message that the client
+                              gives it to the broker, which can be published to any
+                              clients that are subscribed the provided topic.
+                            properties:
+                              payloadContent:
+                                description: Specifies the payload content.
+                                type: string
+                              payloadEncode:
+                                description: Specifies the encode way of payload content.
+                                  The "base64" way allows to input bytes (`PayloadContent`)
+                                  that cannot be characterized. The default way is
+                                  "raw".
+                                enum:
+                                - raw
+                                - base64
+                                type: string
+                              qos:
+                                description: Specifies the QoS of the will message.
+                                  The default value is "0".
+                                enum:
+                                - 0
+                                - 1
+                                - 2
+                                type: integer
+                              retained:
+                                description: Specifies the will message to be retained.
+                                  The default value is "false".
+                                type: boolean
+                              topic:
+                                description: Specifies the topic for publishing the
+                                  will message, if not set, the will topic will append
+                                  "$will" to the topic name specified in global settings
+                                  as its topic name.
+                                properties:
+                                  name:
+                                    description: Specifies the static name of topic.
+                                    pattern: ^[a-zA-Z0-9_]+.*[^/]$
+                                    type: string
+                                type: object
+                            required:
+                            - payloadContent
+                            type: object
+                          writeTimeout:
+                            description: Specifies the amount of time that the client
+                              publish a message successfully before getting a timeout
+                              error. A duration of 0 never times out. The default
+                              value is "30s".
+                            type: string
+                        required:
+                        - server
+                        type: object
+                      message:
+                        description: Specifies the message settings.
+                        properties:
+                          payloadEncode:
+                            description: Specifies the encode way of payload content.
+                              The default way is "raw".
+                            enum:
+                            - raw
+                            - base64
+                            type: string
+                          qos:
+                            description: Specifies the QoS of the message. The default
+                              value is "0".
+                            enum:
+                            - 0
+                            - 1
+                            - 2
+                            type: integer
+                          retained:
+                            description: Specifies if the last published message to
+                              be retained. The default value is "false".
+                            type: boolean
+                          topic:
+                            description: Specifies the topic settings.
+                            properties:
+                              name:
+                                description: Specifies the static name of topic.
+                                pattern: ^[a-zA-Z0-9_]+.*[^/]$
+                                type: string
+                              prefix:
+                                description: Specifies the prefix for the dynamic
+                                  name of topic. The prefix is required for dynamic
+                                  name.
+                                pattern: ^[a-zA-Z0-9_]+.*[^/]$
+                                type: string
+                              with:
+                                description: Specifies the mode for the dynamic name
+                                  of topic. The default mode is "nn".
+                                enum:
+                                - uid
+                                - nn
+                                type: string
+                            type: object
+                          waitTimeout:
+                            description: Specifies the amount of time that the client
+                              should wait after operating. A duration of 0 never times
+                              out. The default value is "0s".
+                            type: string
+                        required:
+                        - topic
+                        type: object
+                    required:
+                    - client
+                    - message
+                    type: object
+                type: object
               parameters:
+                description: Parameter of the OPC-UA device.
                 properties:
                   syncInterval:
                     type: string
@@ -58,6 +404,7 @@ spec:
                     type: string
                 type: object
               properties:
+                description: Specifies the OPC-UA device properties.
                 items:
                   description: DeviceProperty describes an individual device property
                     / attribute like temperature / humidity etc.
@@ -90,6 +437,8 @@ spec:
                     value:
                       type: string
                     visitor:
+                      description: PropertyVisitor represents the way to access the
+                        property.
                       properties:
                         browseName:
                           description: The name of opc-ua node
@@ -97,6 +446,8 @@ spec:
                         nodeID:
                           description: 'Required: The ID of opc-ua node, e.g. "ns=1,i=1005"'
                           type: string
+                      required:
+                      - nodeID
                       type: object
                   required:
                   - dataType
@@ -105,6 +456,7 @@ spec:
                   type: object
                 type: array
               protocol:
+                description: Protocol for accessing the OPC-UA device.
                 properties:
                   certificateFile:
                     description: Certificate file for accessing opc-ua server.
@@ -143,11 +495,159 @@ spec:
                 required:
                 - url
                 type: object
+            required:
+            - protocol
             type: object
           status:
             description: OPCUADeviceStatus defines the observed state of OPCUADevice
             properties:
+              extension:
+                description: Reports the extension of device.
+                properties:
+                  mqtt:
+                    description: Reports the MQTT settings.
+                    properties:
+                      client:
+                        description: Observes the client settings.
+                        properties:
+                          autoReconnect:
+                            default: true
+                            description: Observes if using the automatic reconnection
+                              logic.
+                            type: boolean
+                          cleanSession:
+                            default: true
+                            description: Observes if setting the "clean session" flag.
+                            type: boolean
+                          clientID:
+                            description: Observes the client ID.
+                            type: string
+                          configBasicAuth:
+                            description: Observes if configuring basic authentication.
+                            type: boolean
+                          configTLS:
+                            description: Observes if configuring TLS.
+                            type: boolean
+                          connectTimeout:
+                            default: 30s
+                            description: Observes the amount of time that the client
+                              try to open a connection to an MQTT broker before timing
+                              out and getting error.
+                            type: string
+                          httpHeaders:
+                            additionalProperties:
+                              items:
+                                type: string
+                              type: array
+                            description: Observes the additional HTTP headers that
+                              the client sends in the WebSocket opening handshake.
+                            type: object
+                          keepAlive:
+                            default: 30s
+                            description: Observes the amount of time that the client
+                              should wait before sending a PING request to the broker.
+                            type: string
+                          maxReconnectInterval:
+                            default: 10m
+                            description: Observes the amount of time that the client
+                              should wait before reconnecting to the broker.
+                            type: string
+                          messageChannelDepth:
+                            default: 100
+                            description: Observes the size of the internal queue that
+                              holds messages while the client is temporarily offline,
+                              allowing the application to publish when the client
+                              is reconnected.
+                            type: integer
+                          order:
+                            default: true
+                            description: Observes the message routing to guarantee
+                              order within each QoS level.
+                            type: boolean
+                          pingTimeout:
+                            default: 10s
+                            description: Observes the amount of time that the client
+                              should wait after sending a PING request to the broker.
+                            type: string
+                          protocolVersion:
+                            description: Observes the protocol version.
+                            type: integer
+                          resumeSubs:
+                            default: false
+                            description: Observes if enabling resuming of stored (un)subscribe
+                              messages when connecting but not reconnecting.
+                            type: boolean
+                          server:
+                            description: Observes the broker server URI.
+                            type: string
+                          store:
+                            description: Observes the store type.
+                            properties:
+                              directory:
+                                description: Observes the directory of the file storage.
+                                type: string
+                              type:
+                                default: memory
+                                description: Observes the type of storage.
+                                type: string
+                            type: object
+                          will:
+                            description: Observes the will message that the client
+                              gives it to the broker.
+                            properties:
+                              payloadEncode:
+                                default: raw
+                                description: Observes the encode way of payload content.
+                                type: string
+                              qos:
+                                default: 0
+                                description: Observes the QoS of the will message.
+                                type: integer
+                              retained:
+                                default: false
+                                description: Observes if retaining the will message.
+                                type: boolean
+                              topicName:
+                                description: Observes the topic for publishing the
+                                  will message.
+                                type: string
+                            type: object
+                          writeTimeout:
+                            default: 0s
+                            description: Observes the amount of time that the client
+                              publish a message successfully before getting a timeout
+                              error.
+                            type: string
+                        type: object
+                      message:
+                        description: Observes the message settings.
+                        properties:
+                          payloadEncode:
+                            default: raw
+                            description: Observes the encode way of payload content.
+                            type: string
+                          qos:
+                            default: 0
+                            description: Observes the QoS of the message.
+                            type: integer
+                          retained:
+                            default: false
+                            description: Observes if retaining the message.
+                            type: boolean
+                          topicName:
+                            description: Observes the topic for publishing/subscribing
+                              the message.
+                            type: string
+                          waitTimeout:
+                            default: 0s
+                            description: Observes the amount of time that the client
+                              should wait after operating.
+                            type: string
+                        type: object
+                    type: object
+                type: object
               properties:
+                description: Reports the status of the OPC-UA device.
                 items:
                   properties:
                     dataType:

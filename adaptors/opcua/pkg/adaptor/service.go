@@ -100,7 +100,7 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 				dataHandler,
 			)
 		}
-		if err := device.Configure(opcua.Spec); err != nil {
+		if err := device.Configure(req.GetReferencesHandler(), opcua); err != nil {
 			return status.Errorf(codes.FailedPrecondition, "failed to connect to opc-ua device endpoint: %v", err)
 		}
 	}

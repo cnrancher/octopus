@@ -1,8 +1,10 @@
-# OPCUA Adaptor
+# OPC-UA Adaptor
 
 ## Introduction
 
-OPCUA Adaptor is used for connecting to and manipulating opcua devices on the edge.
+[OPC Unified Architecture](https://opcfoundation.org/about/opc-technologies/opc-ua/) (OPC-UA) is a machine to machine communication protocol for industrial automation developed by the OPC Foundation.
+
+OPC-UA adaptor implements the [gopcua](https://github.com/gopcua/opcua) and focus on communicating with the industrial OPC-UA equipment and systems for data collection and data manipulation on the edge side.
 
 ## Registration Information
 
@@ -41,98 +43,127 @@ Grant permissions to Octopus as below:
   opcuadevices.devices.edge.cattle.io/status  []                 []              [get patch update]
 ```
 
-## DeviceLink CRD
-example deviceLink CRD
+## OPC-UA DeviceLink YAML
+below is an example of OPC-UA deviceLink YAML
 ```yaml
 apiVersion: edge.cattle.io/v1alpha1
 kind: DeviceLink
 metadata:
-  name: opcua
+  name: opcua-open
 spec:
   adaptor:
     node: edge-worker
     name: adaptors.edge.cattle.io/opcua
-    parameters:
-      syncInterval: 5
-      timeout: 10
   model:
     apiVersion: "devices.edge.cattle.io/v1alpha1"
     kind: "OPCUADevice"
   template:
     metadata:
       labels:
-        device: opcua
+        device: opcua-open
     spec:
+      parameters:
+        syncInterval: 10s
+        timeout: 10s
+      extension:
+        mqtt:
+          client:
+            server: tcp://test.mosquitto.org:1883
+          message:
+            topic:
+              prefix: cattle.io/octopus
+              with: nn # namespace/name
       protocol:
-        url: opc.tcp://wang-2.local:53530/OPCUA/SimulationServer
-        username: dadmin
-        password: admin
+        url: opc.tcp://192.168.64.5:30839/
       properties:
-        - name: counter
-          description: enable data collection of temperature sensor
+        - name: datetime
+          description: the current datetime
           readOnly: true
           visitor:
-            nodeID: ns=3;s=Counter
-          dataType: int32
-        - name: random
-          description: enable data collection of temperature sensor
-          readOnly: true
-          visitor:
-            nodeID: ns=3;s=Random
-          dataType: double
-        - name: constant
-          description: enable data collection of temperature sensor
+            nodeID: ns=0;i=2258
+          dataType: datetime
+        - name: integer
+          description: mock number. Default value is 42
           readOnly: false
           visitor:
-            nodeID: ns=3;s=Constant
-          value: "2.33"
-          dataType: float
+            nodeID: ns=1;s=the.answer
+          dataType: int32
+          value: "1"
+        - name: string
+          description: mock byte string. Default value is "test123"
+          readOnly: false
+          visitor:
+            nodeID: ns=1;s=myByteString
+          dataType: byteString
+          value: "newString"
 ```
 
-### Protocol Parameters
+### OPC-UA Device Spec
 
-| Parameter | Description | Type | Default |
-|:--|:--|:--|:--|
-| url |  Required. The URL for opc server endpoint. | string |
-| username | Optional. Username for access opc server. | string |
-| password | Optional. Password for access opc server. | string | 
-| securityPolicy | Optional. Valid values are "None", "Basic128Rsa15", "Basic256", "Basic256Sha256", "Aes128Sha256RsaOaep", "Aes256Sha256RsaPss". | string | none |
-| securityMode | Optional. Valid values are "None", "Sign", and "SignAndEncrypt". |string | none |
+Parameter | Description | Scheme | Required
+--- | --- | --- | ---
+parameters | Parameter of the opcua device| *[DeviceParamters](#deviceparamters) | false
+protocol | Protocol for accessing the opcua device  | *[ProtocolConfig](#protocolconfig) | true
+properties | Device properties  | []*[DeviceProperty](#deviceproperty) | false
+extension | Integrate with deivce MQTT extension  | *[DeviceExtension](#deviceextension) | false
 
-<!-- | certificateFile | Optional. File of the certificate to access opc server. |string|  |
-     | privateKeyFile | Optional. File of the private key to access opc server. |string|  | 
--->
+#### DeviceParamters
 
-### Device Property
+Parameter | Description | Scheme | Required
+--- | --- | --- | ---
+syncInterval | Device properties sync interval, default to `5s`  | string | false
+timeout |  Device connection timeout, default to `10s` | string | false
 
-| Parameter | Description | Type | 
-|:--|:--|:--|
-| name | Required. The property's name. | string
-| description |  Optional. The description of this property. | string
-| readonly |  Optional. If it is true, the value is readonly, otherwise readwrite. | boolean
-| datatype |  Required. The datatype of this property | [DataType](#DataType)
-| visitor |  Required. The visitor configuration of this property | [PropertyVisitor](#PropertyVisitor)
-| value |  Required. The value of this property | string
+#### ProtocolConfig
 
-### PropertyVisitor
-| Parameter | Description | Type | 
-|:--|:--|:--|
-| nodeID | Required. The ID of opc-ua node, e.g. "ns=1,i=1005" | string
-| browseName |  Optional. The name of opc-ua node | string
+Parameter | Description | Scheme | Required
+--- | --- | --- | ---
+url | The URL for opc-ua server endpoint | string | true
+username | Username for accessing opc-ua server | string | false
+password | Password for opc-ua server endpoint | string | false
+securityPolicy | Defaults to `None`. Valid values are `None, Basic128Rsa15, Basic256, Basic256Sha256, Aes128Sha256RsaOaep, Aes256Sha256RsaPss`. | string | false
+securityMode | Defaults to `None`. Valid values are `None, Sign, and SignAndEncrypt`. | string | false
+certificateFile | Certificate file for accessing opc-ua server | string | true
+privateKeyFile | PrivateKey file for accessing opc-ua server | string | true
 
-### DataType
+#### DeviceProperty
 
-| Parameter | Description | Type | 
-|:--|:--|:--|
-| boolean | Property data type is boolean. | string
-| int64 | Property data type is int64. | string
-| int32 |  Property data type is int32. | string
-| int16 |  Property data type is int16. | string
-| uint64 | Property data type is uint64. | string
-| uint32 |  Property data type is uint32. | string
-| uint16 |  Property data type is uint16. | string
-| float |  Property data type is float. | string
-| double |  Property data type is double. | string
-| string |  Property data type is string. | string
-| byteString |  Property data type is bytestring. Will be converted to string for display. | string
-| datetime |  Property data type is datetime. | string
+Parameter | Description | Scheme | Required
+--- | --- | --- | ---
+name | Property name | string | true
+description | Property description  | string | false
+readOnly | Check if the device property is readonly, otherwise readwrite, default to false | boolean | false
+dataType | The datatype of this property | *[PropertyDataType](#propertydatatype) | true
+visitor | The visitor configuration of this property | *[PropertyVisitor](#propertyvisitor) | true
+value | Set desired value of the property | string | false
+
+#### PropertyVisitor
+
+Parameter | Description | Scheme |  Required
+--- | --- | --- | ---
+nodeID | The ID of opc-ua node, e.g. "ns=1,i=1005" | string | true
+browseName | The name of opc-ua node | string | false
+
+
+#### PropertyDataType
+
+Parameter | Description | Scheme
+--- | --- | --- 
+boolean | Property data type is boolean. | string
+int64 | Property data type is int64. | string
+int32 |  Property data type is int32. | string
+int16 |  Property data type is int16. | string
+uint64 | Property data type is uint64. | string
+uint32 |  Property data type is uint32. | string
+uint16 |  Property data type is uint16. | string
+float |  Property data type is float. | string
+double |  Property data type is double. | string
+string |  Property data type is string. | string
+byteString |  Property data type is bytestring. Will be converted to string for display. | string
+datetime |  Property data type is datetime. | string
+
+
+#### DeviceExtension
+
+- reference the [example YAML](#opc-ua-devicelink-yaml) of opcua device for MQTT integration.
+- check [Integrate with MQTT Documentation](https://github.com/cnrancher/octopus/blob/master/docs/adaptors/integrate_with_mqtt.md) for more details.
