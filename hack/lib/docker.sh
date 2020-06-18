@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
 
+# -----------------------------------------------------------------------------
+# Docker variables helpers. These functions need the
+# following variables:
+#
+#    DOCKER_VERSION  -  The docker version for running, default is 19.03.
+
 function octopus::docker::install() {
-  curl -SfL "https://get.docker.com" | sh
+  local version=${DOCKER_VERSION:-"19.03"}
+  curl -SfL "https://get.docker.com" | sh -s VERSION="${version}"
 }
 
 function octopus::docker::validate() {

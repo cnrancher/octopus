@@ -24,6 +24,7 @@ source "${ROOT_DIR}/hack/lib/docker.sh"
 source "${ROOT_DIR}/hack/lib/kubectl.sh"
 source "${ROOT_DIR}/hack/lib/dapper.sh"
 source "${ROOT_DIR}/hack/lib/manifest-tool.sh"
+source "${ROOT_DIR}/hack/lib/ginkgo.sh"
 
 octopus::log::install_errexit
 octopus::version::get_version_vars

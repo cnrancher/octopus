@@ -32,10 +32,10 @@ octopus::log::info() {
 
   local timestamp
   timestamp="$(date +"[%m%d %H:%M:%S]")"
-  echo "[INFO] ${timestamp} ${1-}"
+  echo -e "\033[34m[INFO]\033[0m ${timestamp} ${1-}"
   shift 1
   for message; do
-    echo "       ${message}"
+    echo -e "       ${message}"
   done
 }
 
@@ -45,10 +45,10 @@ octopus::log::warn() {
 
   local timestamp
   timestamp="$(date +"[%m%d %H:%M:%S]")"
-  echo "[WARN] ${timestamp} ${1-}"
+  echo -e "\033[34m[WARN]\033[0m ${timestamp} ${1-}"
   shift 1
   for message; do
-    echo "       ${message}"
+    echo -e "       ${message}"
   done
 }
 
@@ -58,10 +58,10 @@ octopus::log::error() {
 
   local timestamp
   timestamp="$(date +"[%m%d %H:%M:%S]")"
-  echo "[ERRO] ${timestamp} ${1-}" >&2
+  echo "\033[31m[ERRO]\033[0m ${timestamp} ${1-}" >&2
   shift 1
   for message; do
-    echo "       ${message}" >&2
+    echo -e "       ${message}" >&2
   done
 }
 
@@ -71,10 +71,10 @@ octopus::log::fatal() {
 
   local timestamp
   timestamp="$(date +"[%m%d %H:%M:%S]")"
-  echo "[FATA] ${timestamp} ${1-}" >&2
+  echo -e "\033[41;33m[FATA]\033[0m ${timestamp} ${1-}" >&2
   shift 1
   for message; do
-    echo "       ${message}" >&2
+    echo -e "       ${message}" >&2
   done
 
   exit 1
@@ -91,18 +91,18 @@ octopus::log::panic() {
 
   local timestamp
   timestamp="$(date +"[%m%d %H:%M:%S]")"
-  echo "[FATA] ${timestamp} ${message}" >&2
+  echo -e "\033[41;33m[FATA]\033[0m ${timestamp} ${message}" >&2
 
   # print out the stack trace described by $function_stack
   if [[ ${#FUNCNAME[@]} -gt 2 ]]; then
-    echo "       call stack:" >&2
+    echo -e "\033[31m       call stack:\033[0m" >&2
     local i
     for ((i = 1; i < ${#FUNCNAME[@]} - 2; i++)); do
-      echo "       ${i}: ${BASH_SOURCE[${i} + 2]}:${BASH_LINENO[${i} + 1]} ${FUNCNAME[${i} + 1]}(...)" >&2
+      echo -e "       ${i}: ${BASH_SOURCE[${i} + 2]}:${BASH_LINENO[${i} + 1]} ${FUNCNAME[${i} + 1]}(...)" >&2
     done
   fi
 
-  echo "[FATA] ${timestamp} exiting with status ${code}" >&2
+  echo -e "\033[41;33m[FATA]\033[0m ${timestamp} exiting with status ${code}" >&2
 
   popd >/dev/null 2>&1 || exit "${code}"
   exit "${code}"

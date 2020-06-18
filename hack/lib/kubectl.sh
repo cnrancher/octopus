@@ -4,10 +4,10 @@
 # Kubectl variables helpers. These functions need the
 # following variables:
 #
-#    K8S_VERSION     -  The Kubernetes version for the cluster, default is v1.17.2.
+#    K8S_VERSION     -  The Kubernetes version for the cluster, default is v1.18.2.
 
 function octopus::kubectl::install() {
-  local version=${K8S_VERSION:-"v1.17.2"}
+  local version=${K8S_VERSION:-"v1.18.2"}
   curl -fL "https://storage.googleapis.com/kubernetes-release/release/${version}/bin/$(octopus::util::get_os)/$(octopus::util::get_arch)/kubectl" -o /tmp/kubectl
   chmod +x /tmp/kubectl && sudo mv /tmp/kubectl /usr/local/bin/kubectl
 }

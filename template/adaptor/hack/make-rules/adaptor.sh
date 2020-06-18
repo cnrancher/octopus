@@ -271,6 +271,15 @@ function verify() {
   octopus::log::info "running integration tests for adaptor ${adaptor}..."
 
   # TODO to implement the logic if needed, and place all integration tests to test/integration directory
+  # you can use the ginkgo cli:
+  octopus::ginkgo::test "${CURR_DIR}/test/integration"
+  # or overwrite the preconfigure arguments:
+  #   octopus::ginkgo::test -tags="test kubernetes-test" "${CURR_DIR}/test/integration"
+  # or use the raw `go test` with ginkgo:
+  #   CGO_ENABLED=0 go test \
+  #     -tags=test \
+  #     "${CURR_DIR}/test/integration/..." -v -timeout=5m -tags=test -ginkgo.failFast -ginkgo.slowSpecThreshold=60
+  # or use without ginkgo.
 
   octopus::log::info "...done"
 }
@@ -282,6 +291,15 @@ function e2e() {
   octopus::log::info "running E2E tests for adaptor ${adaptor}..."
 
   # TODO to implement the logic if needed, and place all E2E tests to test/e2e directory
+  # you can use the ginkgo cli:
+  octopus::ginkgo::test "${CURR_DIR}/test/e2e"
+  # or overwrite the preconfigure arguments:
+  #   octopus::ginkgo::test -tags="test kubernetes-test" "${CURR_DIR}/test/e2e"
+  # or use the raw `go test` with ginkgo:
+  #   CGO_ENABLED=0 go test \
+  #     -tags=test \
+  #     "${CURR_DIR}/test/e2e/..." -v -timeout=5m -tags=test -ginkgo.failFast -ginkgo.slowSpecThreshold=60
+  # or use without ginkgo.
 
   octopus::log::info "...done"
 }

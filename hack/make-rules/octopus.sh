@@ -289,10 +289,7 @@ function verify() {
   [[ "${1:-}" != "only" ]] && test
   octopus::log::info "running integration tests for octopus..."
 
-  CGO_ENABLED=0 go test \
-    "${CURR_DIR}/test/integration/brain/..." -v -ginkgo.v -ginkgo.progress
-  CGO_ENABLED=0 go test \
-    "${CURR_DIR}/test/integration/limb/..." -v -ginkgo.v -ginkgo.progress
+  octopus::ginkgo::test "${CURR_DIR}/test/integration"
 
   octopus::log::info "...done"
 }
@@ -300,6 +297,8 @@ function verify() {
 function e2e() {
   [[ "${1:-}" != "only" ]] && verify
   octopus::log::info "running E2E tests for octopus..."
+
+  octopus::ginkgo::test "${CURR_DIR}/test/e2e"
 
   octopus::log::info "...done"
 }

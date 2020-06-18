@@ -266,6 +266,8 @@ function verify() {
 
   octopus::log::info "running integration tests for adaptor ${adaptor}..."
 
+  octopus::ginkgo::test "${CURR_DIR}/test/integration"
+
   octopus::log::info "...done"
 }
 
@@ -274,6 +276,8 @@ function e2e() {
   local adaptor="${1}"
 
   octopus::log::info "running E2E tests for adaptor ${adaptor}..."
+
+  octopus::ginkgo::test "${CURR_DIR}/test/e2e"
 
   octopus::log::info "...done"
 }

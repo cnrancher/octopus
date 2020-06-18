@@ -10,9 +10,20 @@ steps:
     commands:
       - commitsar -d /drone/src -v
   - name: code
-    image: golang:1.13.9-buster
+    image: maiwj/drone-dapper:v0.4.2
+    privileged: true
+    environment:
+      BY: dapper
+      DIRTY_CHECK: true
     commands:
-      - make all lint only
+      - make all lint
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+volumes:
+  - name: docker
+    host:
+      path: /var/run/docker.sock
 trigger:
   event:
     include:

@@ -4,7 +4,7 @@ function octopus::cfssl::install() {
   tmp_dir=$(mktemp -d)
   pushd "${tmp_dir}" >/dev/null || exit 1
   go mod init tmp
-  go get github.com/cloudflare/cfssl/cmd/...
+  GO111MODULE=on go get github.com/cloudflare/cfssl/cmd/...
   rm -rf "${tmp_dir}"
   popd >/dev/null || return
 }
