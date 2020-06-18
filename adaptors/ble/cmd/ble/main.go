@@ -13,7 +13,7 @@ import (
 
 const (
 	name        = "ble"
-	description = ``
+	description = "The BLE adaptor defines the device configuration and the attributes of connected BLE device"
 )
 
 func newCommand() *cobra.Command {

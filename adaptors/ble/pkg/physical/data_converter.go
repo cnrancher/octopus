@@ -8,11 +8,10 @@ import (
 )
 
 // ConvertReadData helps to convert the data read from the device into meaningful data
-func ConvertReadData(dp v1alpha1.DeviceProperty, data []byte) float64 {
+func ConvertReadData(dataConverter v1alpha1.BluetoothDataConverter, data []byte) float64 {
 	var intermediateResult uint64
 	var initialValue []byte
 	var initialStringValue = ""
-	dataConverter := dp.Visitor.BluetoothDataConverter
 	if dataConverter.StartIndex <= dataConverter.EndIndex {
 		for index := dataConverter.StartIndex; index <= dataConverter.EndIndex; index++ {
 			initialValue = append(initialValue, data[index])

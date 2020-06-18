@@ -24,18 +24,26 @@ func NewService() *Service {
 	var scheme = k8sruntime.NewScheme()
 	utilruntime.Must(v1alpha1.AddToScheme(scheme))
 
+	var gattDevice gatt.Device
+	gattDevice, err := gatt.NewDevice(option.DefaultClientOptions...)
+	if err != nil {
+		log.Error(err, "Failed to start BLE gatt")
+	}
+
 	return &Service{
-		scheme: scheme,
+		scheme:     scheme,
+		gattDevice: gattDevice,
 	}
 }
 
 type Service struct {
-	scheme *k8sruntime.Scheme
+	scheme     *k8sruntime.Scheme
+	gattDevice gatt.Device
 }
 
 func (s *Service) toJSON(in metav1.Object) []byte {
 	var out = unstructured.Unstructured{Object: make(map[string]interface{})}
-	// NB(thxCode) scheme conversion can keep the typemeta of an object,
+	// NB(thxCode) scheme conversion can keep the typeMeta of an object,
 	// provided that the object type has been registered in scheme first.
 	_ = s.scheme.Convert(in, &out, nil)
 	var bytes, _ = out.MarshalJSON()
@@ -54,7 +62,7 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 		var req, err = server.Recv()
 		if err != nil {
 			if !connection.IsClosed(err) {
-				log.Error(err, "failed to receive connect request from Limb")
+				log.Error(err, "Failed to receive connect request from Limb")
 				return status.Errorf(codes.Unknown, "shutdown connection as receiving error from Limb")
 			}
 			return nil
@@ -97,22 +105,25 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 				// send device
 				if err := server.Send(&api.ConnectResponse{Device: respBytes}); err != nil {
 					if !connection.IsClosed(err) {
-						log.Error(err, "failed to send response to connection")
+						log.Error(err, "Failed to send response to connection")
 					}
 				}
 			}
-			gatt, err := gatt.NewDevice(option.DefaultClientOptions...)
-			if err != nil {
-				log.Error(err, "Failed to open ble device")
-			}
+
 			device = physical.NewDevice(
 				log.WithValues("device", deviceName),
 				deviceName,
 				dataHandler,
-				parameters,
-				gatt,
 			)
 		}
-		go device.Configure(bleDevice.Spec, bleDevice.Status)
+		if err := device.Configure(req.GetReferences(), bleDevice, s.gattDevice); err != nil {
+			return status.Errorf(codes.FailedPrecondition, "failed to connect to BLE device: %v", err)
+		}
+	}
+}
+
+func (s *Service) Close() {
+	if err := s.gattDevice.Stop(); err != nil {
+		log.Error(err, "Failed to close gatt device")
 	}
 }

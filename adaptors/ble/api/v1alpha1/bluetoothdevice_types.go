@@ -2,21 +2,46 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // BluetoothDeviceSpec defines the desired state of BluetoothDevice
 type BluetoothDeviceSpec struct {
+	// Parameter of the modbus device.
+	// +optional
+	Parameters *Parameters `json:"parameters,omitempty"`
+
+	// Protocol for accessing the BLE device.
+	// +kubebuilder:validation:Required
+	Protocol DeviceProtocol `json:"protocol"`
+
+	// Specifies the properties of the BLE device.
+	// +optional
 	Properties []DeviceProperty `json:"properties,omitempty"`
-	Name       string           `json:"name,omitempty"`
-	MacAddress string           `json:"macAddress,omitempty"`
+}
+
+type Parameters struct {
+	// Specifies default device sync interval
+	// +kubebuilder:default:15s
+	SyncInterval v1.Duration `json:"syncInterval,omitempty"`
+
+	// Specifies default device connection timeout
+	// +kubebuilder:default:10s
+	Timeout v1.Duration `json:"timeout,omitempty"`
 }
 
 // DeviceProperty defines an individual ble device property
 type DeviceProperty struct {
-	Name        string             `json:"name,omitempty"`
+	Name        string             `json:"name"`
 	Description string             `json:"description,omitempty"`
-	AccessMode  PropertyAccessMode `json:"accessMode,omitempty"`
-	Visitor     PropertyVisitor    `json:"visitor,omitempty"`
+	AccessMode  PropertyAccessMode `json:"accessMode"`
+	Visitor     PropertyVisitor    `json:"visitor"`
+}
+
+// DeviceProtocol defines how to connect the BLE device
+type DeviceProtocol struct {
+	Name       string `json:"name,omitempty"`
+	MacAddress string `json:"macAddress,omitempty"`
 }
 
 // The access mode for  a device property.
@@ -31,7 +56,7 @@ const (
 
 // PropertyVisitor defines the specifics of accessing a particular device property
 type PropertyVisitor struct {
-	CharacteristicUUID     string                 `json:"characteristicUUID,omitempty"`
+	CharacteristicUUID     string                 `json:"characteristicUUID"`
 	DefaultValue           string                 `json:"defaultValue,omitempty"`
 	DataWriteTo            map[string][]byte      `json:"dataWrite,omitempty"`
 	BluetoothDataConverter BluetoothDataConverter `json:"dataConverter,omitempty"`
@@ -66,18 +91,18 @@ type BluetoothDeviceStatus struct {
 }
 
 type StatusProperties struct {
-	Name      string      `json:"name,omitempty"`
-	Desired   string      `json:"desired,omitempty"`
-	Reported  string      `json:"reported,omitempty"`
-	UpdatedAt metav1.Time `json:"updatedAt,omitempty"`
+	Name       string             `json:"name,omitempty"`
+	Value      string             `json:"value,omitempty"`
+	AccessMode PropertyAccessMode `json:"accessMode,omitempty"`
+	UpdatedAt  metav1.Time        `json:"updatedAt,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 // +k8s:openapi-gen=true
 // +kubebuilder:resource:shortName=ble
 // +kubebuilder:subresource:status
-// +kubebuilder:printcolumn:name="Name",type=string,JSONPath=`.spec.name`
-// +kubebuilder:printcolumn:name="MacAddress",type=integer,JSONPath=`.spec.macAddress`
+// +kubebuilder:printcolumn:name="Name",type=string,JSONPath=`.spec.protocol.name`
+// +kubebuilder:printcolumn:name="MacAddress",type=integer,JSONPath=`.spec.protocol.macAddress`
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 // BluetoothDevice is the Schema for the ble device API
 type BluetoothDevice struct {

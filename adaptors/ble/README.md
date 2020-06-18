@@ -1,6 +1,8 @@
 # BLE Adaptor
 
-This is BLE(Bluetooth Low Energy) adaptor is used for bluetooth devices connection.
+BLE stands for Bluetooth Low Energy (marketed as Bluetooth Smart). BLE is a form of wireless communication designed for short-range communications. 
+
+BLE adaptor implements the Bluetooth protocol and helps to define the the attributes of the connected BLE device.
 
 ## Registration Information
 
@@ -43,10 +45,14 @@ Grant permissions to Octopus as below:
 
 Parameter | Description | Scheme | Required
 --- | --- | --- | ---
-name | Device name  | string | either device name or macAddress is required
-macAddress |  Device access mac address  | string | either name or macAddress is required
-properties | Device properties  | []*[DeviceProperty](#deviceproperty) | false
+protocol | Device protocol config  | [DeviceProtocol](#deviceprotocol) | true
+properties | Device properties     | []*[DeviceProperty](#deviceproperty) | false
 
+### DeviceProtocol
+Parameter | Description | Scheme | Required
+--- | --- | --- | ---
+name | Device name  | string | NOT required when the device macAddress is provided
+macAddress |  Device access mac address  | string | NOT required when the device name is provided
 
 ### DeviceProperty
 
@@ -116,8 +122,9 @@ spec:
       labels:
         device: xiaomi-temp-rs2200
     spec:
-      name: "MJ_HT_V1"
-      # macAddress: ""
+      protocol:
+        name: "MJ_HT_V1"
+        macAddress: ""
       properties:
       - name: data
         description: XiaoMi temp sensor with temperature and humidity data

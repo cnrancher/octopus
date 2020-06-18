@@ -19,10 +19,10 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .spec.name
+    - jsonPath: .spec.protocol.name
       name: Name
       type: string
-    - jsonPath: .spec.macAddress
+    - jsonPath: .spec.protocol.macAddress
       name: MacAddress
       type: integer
     - jsonPath: .metadata.creationTimestamp
@@ -48,11 +48,18 @@ spec:
           spec:
             description: BluetoothDeviceSpec defines the desired state of BluetoothDevice
             properties:
-              macAddress:
-                type: string
-              name:
-                type: string
+              parameters:
+                description: Parameter of the modbus device.
+                properties:
+                  syncInterval:
+                    description: Specifies default device sync interval
+                    type: string
+                  timeout:
+                    description: Specifies default device connection timeout
+                    type: string
+                type: object
               properties:
+                description: Specifies the properties of the BLE device.
                 items:
                   description: DeviceProperty defines an individual ble device property
                   properties:
@@ -98,9 +105,25 @@ spec:
                           type: object
                         defaultValue:
                           type: string
+                      required:
+                      - characteristicUUID
                       type: object
+                  required:
+                  - accessMode
+                  - name
+                  - visitor
                   type: object
                 type: array
+              protocol:
+                description: Protocol for accessing the BLE device.
+                properties:
+                  macAddress:
+                    type: string
+                  name:
+                    type: string
+                type: object
+            required:
+            - protocol
             type: object
           status:
             description: BluetoothDeviceStatus defines the observed state of BluetoothDevice
@@ -108,14 +131,15 @@ spec:
               properties:
                 items:
                   properties:
-                    desired:
+                    accessMode:
+                      description: The access mode for  a device property.
                       type: string
                     name:
                       type: string
-                    reported:
-                      type: string
                     updatedAt:
                       format: date-time
+                      type: string
+                    value:
                       type: string
                   type: object
                 type: array
