@@ -9,14 +9,17 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/gopcua/opcua"
 	"github.com/gopcua/opcua/ua"
+	"github.com/pkg/errors"
 	"github.com/rancher/octopus/adaptors/opcua/api/v1alpha1"
+	api "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
+	"github.com/rancher/octopus/pkg/mqtt"
 	"github.com/rancher/octopus/pkg/util/critical"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
 type Device interface {
-	Configure(spec v1alpha1.OPCUADeviceSpec) error
+	Configure(references api.ReferencesHandler, obj v1alpha1.OPCUADevice) error
 	Shutdown()
 }
 
@@ -28,6 +31,10 @@ func NewDevice(log logr.Logger, name types.NamespacedName, handler DataHandler) 
 	}
 }
 
+const (
+	mqttTimeout = 5 * time.Second
+)
+
 type device struct {
 	sync.Mutex
 
@@ -37,24 +44,54 @@ type device struct {
 	name    types.NamespacedName
 	handler DataHandler
 
-	status v1alpha1.OPCUADeviceStatus
 	spec   v1alpha1.OPCUADeviceSpec
-	client *opcua.Client
+	status v1alpha1.OPCUADeviceStatus
+
+	client     *opcua.Client
+	mqttClient mqtt.Client
 }
 
-func (d *device) Configure(spec v1alpha1.OPCUADeviceSpec) error {
+func (d *device) Configure(references api.ReferencesHandler, obj v1alpha1.OPCUADevice) error {
 	deviceSpec := d.spec
-	d.spec = spec
+	d.spec = obj.Spec
 
 	// configure protocol config and parameters
-	if !reflect.DeepEqual(spec.ProtocolConfig, deviceSpec.ProtocolConfig) || !reflect.DeepEqual(spec.Parameters, deviceSpec.Parameters) {
+	if !reflect.DeepEqual(d.spec.ProtocolConfig, deviceSpec.ProtocolConfig) || !reflect.DeepEqual(d.spec.Parameters, deviceSpec.Parameters) {
 		if err := d.on(); err != nil {
 			return err
 		}
 	}
 
+	if !reflect.DeepEqual(d.spec.Extension, deviceSpec.Extension) {
+		if d.mqttClient != nil {
+			d.mqttClient.Disconnect(mqttTimeout)
+			d.mqttClient = nil
+
+			// since there is only a MQTT inside extension field, here can set to nil directly.
+			d.status.Extension = nil
+		}
+
+		if d.spec.Extension.MQTT != nil {
+			var cli, outline, err = mqtt.NewClient(&obj, *d.spec.Extension.MQTT, references.ToDataMap())
+			if err != nil {
+				return errors.Wrap(err, "failed to create MQTT client")
+			}
+
+			err = cli.Connect()
+			if err != nil {
+				return errors.Wrap(err, "failed to connect MQTT broker")
+			}
+			d.mqttClient = cli
+
+			if d.status.Extension == nil {
+				d.status.Extension = &v1alpha1.DeviceExtensionStatus{}
+			}
+			d.status.Extension.MQTT = outline
+		}
+	}
+
 	// configure device properties
-	properties := spec.Properties
+	properties := d.spec.Properties
 	for _, property := range properties {
 		if property.ReadOnly {
 			continue
@@ -136,9 +173,7 @@ func (d *device) on() error {
 func (d *device) subscribe(ctx context.Context, spec v1alpha1.OPCUADeviceSpec) {
 	notifyCh := make(chan *opcua.PublishNotificationData)
 
-	sub, err := d.client.Subscribe(&opcua.SubscriptionParameters{
-		Interval: d.spec.Parameters.SyncInterval.Duration,
-	}, notifyCh)
+	sub, err := d.client.Subscribe(&opcua.SubscriptionParameters{Interval: d.spec.Parameters.SyncInterval.Duration}, notifyCh)
 	if err != nil {
 		d.log.Error(err, "Subscription error")
 	}
@@ -161,11 +196,20 @@ func (d *device) Shutdown() {
 	if d.stop != nil {
 		close(d.stop)
 	}
+
+	// close OPC-UA client
 	if d.client != nil {
 		if err := d.client.Close(); err != nil {
 			d.log.Error(err, "Error closing connection")
 		}
 	}
+
+	// close MQTT connection
+	if d.mqttClient != nil {
+		d.mqttClient.Disconnect(mqttTimeout)
+		d.mqttClient = nil
+	}
+
 	d.log.Info("Closed connection")
 }
 
@@ -211,10 +255,20 @@ func (d *device) receiveNotification(ctx context.Context, notifyCh chan *opcua.P
 					data := VariantToString(typeID, value)
 					property.DataType = typeMap[typeID]
 					d.updateDeviceStatus(&property, data)
-					d.log.Info("MonitoredItem with client", "handle", item.ClientHandle, "value", data)
+					d.log.V(6).Info("MonitoredItem with client", "handle", item.ClientHandle, "value", data)
 				}
 				d.handler(d.name, d.status)
 				d.log.Info("Sync opc-ua device status", "properties", d.status.Properties)
+
+				// pub updated status to the MQTT broker
+				if d.mqttClient != nil {
+					var status = d.status.DeepCopy()
+					status.Extension = nil
+					if err := d.mqttClient.Publish(status); err != nil {
+						d.log.Error(err, "Failed to publish MQTT message")
+					}
+				}
+				d.log.V(2).Info("Success pub device status to the MQTT Broker", d.status.Properties)
 			default:
 				d.log.Info("what's this publish result? ", "value", res.Value)
 			}
@@ -258,7 +312,7 @@ func newClient(config *v1alpha1.OPCUAProtocolConfig, timeout time.Duration) (*op
 		opcua.RequestTimeout(timeout),
 		opcua.SecurityPolicy(policy),
 		opcua.SecurityModeString(mode),
-		// TODO read CA file from the container
+		// TODO read CA file from the req.References
 		opcua.CertificateFile(config.CertificateFile),
 		opcua.PrivateKeyFile(config.PrivateKeyFile),
 		opcua.AuthAnonymous(),

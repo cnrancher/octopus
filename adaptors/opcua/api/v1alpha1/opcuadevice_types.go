@@ -31,9 +31,21 @@ const (
 
 // OPCUADeviceSpec defines the desired state of OPCUADevice
 type OPCUADeviceSpec struct {
-	Parameters     *Parameters          `json:"parameters,omitempty"`
-	ProtocolConfig *OPCUAProtocolConfig `json:"protocol,omitempty"`
-	Properties     []DeviceProperty     `json:"properties,omitempty"`
+	// Parameter of the OPC-UA device.
+	// +optional
+	Parameters *Parameters `json:"parameters,omitempty"`
+
+	// Protocol for accessing the OPC-UA device.
+	// +kubebuilder:validation:Required
+	ProtocolConfig *OPCUAProtocolConfig `json:"protocol"`
+
+	// Specifies the OPC-UA device properties.
+	// +optional
+	Properties []DeviceProperty `json:"properties,omitempty"`
+
+	// Specifies the extension of device.
+	// +optional
+	Extension *DeviceExtensionSpec `json:"extension,omitempty"`
 }
 
 type Parameters struct {
@@ -43,6 +55,7 @@ type Parameters struct {
 
 type OPCUAProtocolConfig struct {
 	// Required: The URL for opc-ua server endpoint.
+	// +kubebuilder:validation:Required
 	URL string `json:"url"`
 	// Username for accessing opc-ua server.
 	UserName string `json:"userName,omitempty"`
@@ -63,15 +76,19 @@ type OPCUAProtocolConfig struct {
 // DeviceProperty describes an individual device property / attribute like temperature / humidity etc.
 type DeviceProperty struct {
 	// The device property name.
+	// +kubebuilder:validation:Required
 	Name string `json:"name"`
 	// The device property description.
 	// +optional
 	Description string `json:"description,omitempty"`
 	ReadOnly    bool   `json:"readOnly,omitempty"`
 	// PropertyDataType represents the type and data validation of the property.
+	// +kubebuilder:validation:Required
 	DataType PropertyDataType `json:"dataType"`
-	Visitor  PropertyVisitor  `json:"visitor"`
-	Value    string           `json:"value,omitempty"`
+	// PropertyVisitor represents the way to access the property.
+	// +kubebuilder:validation:Required
+	Visitor PropertyVisitor `json:"visitor"`
+	Value   string          `json:"value,omitempty"`
 }
 
 // The property data type.
@@ -80,13 +97,20 @@ type PropertyDataType string
 
 type PropertyVisitor struct {
 	// Required: The ID of opc-ua node, e.g. "ns=1,i=1005"
-	NodeID string `json:"nodeID,omitempty"`
+	// +kubebuilder:validation:Required
+	NodeID string `json:"nodeID"`
 	// The name of opc-ua node
 	BrowseName string `json:"browseName,omitempty"`
 }
 
 // OPCUADeviceStatus defines the observed state of OPCUADevice
 type OPCUADeviceStatus struct {
+	// Reports the extension of device.
+	// +optional
+	Extension *DeviceExtensionStatus `json:"extension,omitempty"`
+
+	// Reports the status of the OPC-UA device.
+	// +optional
 	Properties []StatusProperties `json:"properties,omitempty"`
 }
 
