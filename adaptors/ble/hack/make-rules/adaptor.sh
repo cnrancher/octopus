@@ -264,6 +264,8 @@ function verify() {
   [[ "${2:-}" != "only" ]] && test "$@"
   local adaptor="${1}"
 
+  local os="${OS:-$(go env GOOS)}"
+  local arch="${ARCH:-$(go env GOARCH)}"
   octopus::log::info "running integration tests for adaptor ${adaptor}..."
 
   octopus::ginkgo::test "${CURR_DIR}/test/integration"

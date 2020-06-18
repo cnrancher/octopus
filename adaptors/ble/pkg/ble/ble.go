@@ -28,9 +28,11 @@ func Run() error {
 	var ctx = critical.Context(stop)
 	eg, ctx := errgroup.WithContext(ctx)
 	stop = ctx.Done()
+	svc := adaptor.NewService()
+	defer svc.Close()
 	eg.Go(func() error {
 		// start adaptor to receive requests from Limb
-		return connection.Serve(Endpoint, adaptor.NewService(), stop)
+		return connection.Serve(Endpoint, svc, stop)
 	})
 	eg.Go(func() error {
 		// register adaptor to Limb

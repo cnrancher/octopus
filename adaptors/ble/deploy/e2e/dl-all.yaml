@@ -17,8 +17,9 @@ spec:
       labels:
         device: xiaomi-temp-rs2200
     spec:
-      name: "MJ_HT_V1"
-      # macAddress: ""
+      protocol:
+        name: "MJ_HT_V1"
+        macAddress: ""
       properties:
       - name: data
         description: XiaoMi temp sensor with temperature and humidity data

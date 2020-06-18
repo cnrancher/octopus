@@ -4,11 +4,8 @@ metadata:
   name: xiaomi-temp-rs2200
 spec:
   adaptor:
-    node: ubuntu
+    node: edge-worker
     name: adaptors.edge.cattle.io/ble
-    parameters:
-      syncInterval: 30
-      timeout: 60
   model:
     apiVersion: "devices.edge.cattle.io/v1alpha1"
     kind: "BluetoothDevice"
@@ -17,8 +14,12 @@ spec:
       labels:
         device: xiaomi-temp-rs2200
     spec:
-      name: "MJ_HT_V1"
-      # macAddress: ""
+      parameters:
+        syncInterval: 15s
+        timeout: 10s
+      protocol:
+        name: "MJ_HT_V1"
+        macAddress: ""
       properties:
       - name: data
         description: XiaoMi temp sensor with temperature and humidity data

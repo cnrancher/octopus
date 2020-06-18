@@ -1,96 +1,102 @@
 package physical
 
 import (
+	"reflect"
 	"sync"
 	"time"
 
 	"github.com/bettercap/gatt"
 	"github.com/go-logr/logr"
-	"github.com/sirupsen/logrus"
+	api "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/rancher/octopus/adaptors/ble/api/v1alpha1"
 )
 
 type Device interface {
-	Configure(spec v1alpha1.BluetoothDeviceSpec, status v1alpha1.BluetoothDeviceStatus)
+	Configure(references api.ReferencesHandler, obj v1alpha1.BluetoothDevice, gattDevice gatt.Device) error
 	Shutdown()
 }
 type device struct {
 	sync.Mutex
 
 	stop chan struct{}
+	wg   sync.WaitGroup
 
 	log     logr.Logger
 	name    types.NamespacedName
 	handler DataHandler
 
-	syncInterval time.Duration
-	timeout      time.Duration
-	gattDevice   gatt.Device
-	properties   []v1alpha1.DeviceProperty
-	status       v1alpha1.BluetoothDeviceStatus
+	spec   v1alpha1.BluetoothDeviceSpec
+	status v1alpha1.BluetoothDeviceStatus
 }
 
-func NewDevice(log logr.Logger, name types.NamespacedName, handler DataHandler, param Parameters,
-	gattDevice gatt.Device) Device {
+func NewDevice(log logr.Logger, name types.NamespacedName, handler DataHandler) Device {
 	return &device{
-		log:          log,
-		name:         name,
-		handler:      handler,
-		syncInterval: param.SyncInterval,
-		timeout:      param.Timeout,
-		gattDevice:   gattDevice,
+		log:     log,
+		name:    name,
+		handler: handler,
 	}
 }
 
-func (d *device) Configure(spec v1alpha1.BluetoothDeviceSpec, status v1alpha1.BluetoothDeviceStatus) {
-	logrus.Infof("trying to connect to device: %s\n", spec.Name)
-	d.connect(spec, status)
+func (d *device) Configure(references api.ReferencesHandler, obj v1alpha1.BluetoothDevice, gatt gatt.Device) error {
+	spec := d.spec
+	d.spec = obj.Spec
+
+	// configure protocol config and parameters
+	if !reflect.DeepEqual(d.spec.Protocol, spec.Protocol) || !reflect.DeepEqual(d.spec.Parameters, spec.Parameters) {
+		d.connect(gatt)
+	}
+	return nil
 }
 
-func (d *device) connect(spec v1alpha1.BluetoothDeviceSpec, status v1alpha1.BluetoothDeviceStatus) {
+func (d *device) connect(gattDevice gatt.Device) {
 	if d.stop != nil {
 		close(d.stop)
 	}
 	d.stop = make(chan struct{})
 
-	var ticker = time.NewTicker(d.syncInterval * time.Second)
-	defer ticker.Stop()
-	logrus.Infof("sync interval is set to %s", d.syncInterval.String())
+	d.log.Info("Connect to device", "device", d.name)
 
 	// run periodically to sync device status
-	for {
-		cont := Controller{
-			spec:   spec,
-			status: status,
-			done:   make(chan struct{}),
+	var ticker = time.NewTicker(d.spec.Parameters.SyncInterval.Duration)
+	defer ticker.Stop()
+	d.log.V(2).Info("Sync interval is set to", d.spec.Parameters.SyncInterval)
+
+	go func() {
+		for {
+			cont := BLEController{
+				spec:   d.spec,
+				status: d.status,
+				done:   make(chan struct{}),
+				log:    d.log,
+			}
+			// Register BLE device handlers.
+			gattDevice.Handle(
+				gatt.PeripheralDiscovered(cont.onPeripheralDiscovered),
+				gatt.PeripheralConnected(cont.onPeripheralConnected),
+				gatt.PeripheralDisconnected(cont.onPeriphDisconnected),
+			)
+
+			gattDevice.Init(cont.onStateChanged)
+			<-cont.done
+			d.log.Info("Device Done")
+
+			d.handler(d.name, cont.status)
+			d.log.Info("Synced ble device status", cont.status)
+
+			select {
+			case <-d.stop:
+				return
+			default:
+			}
 		}
-		// Register BLE device handlers.
-		go d.gattDevice.Handle(
-			gatt.PeripheralDiscovered(cont.onPeripheralDiscovered),
-			gatt.PeripheralConnected(cont.onPeripheralConnected),
-			gatt.PeripheralDisconnected(cont.onPeriphDisconnected),
-		)
-
-		d.gattDevice.Init(onStateChanged)
-		logrus.Info("Device Done")
-
-		d.handler(d.name, cont.status)
-		logrus.Infof("Synced ble device status: %+v", cont.status)
-		<-cont.done
-
-		select {
-		case <-d.stop:
-			return
-		case <-ticker.C:
-		}
-	}
+	}()
 }
 
 func (d *device) Shutdown() {
 	if d.stop != nil {
 		close(d.stop)
 	}
-	d.log.Info("closed connection")
+	d.log.Info("Closed connection")
 }
