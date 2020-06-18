@@ -2,11 +2,24 @@
 
 function octopus::util::find_subdirs() {
   local path="$1"
-  if [ -z "$path" ]; then
+  if [[ -z "$path" ]]; then
     path="./"
   fi
   # shellcheck disable=SC2010
   ls -l "$path" | grep "^d" | awk '{print $NF}'
+}
+
+function octopus::util::is_empty_dir() {
+  local path="$1"
+  if [[ ! -d "${path}" ]]; then
+    return 0
+  fi
+
+  # shellcheck disable=SC2012
+  if [[ $(ls "${path}" | wc -l) -eq 0 ]]; then
+    return 0
+  fi
+  return 1
 }
 
 function octopus::util::join_array() {
@@ -79,7 +92,7 @@ function octopus::util::get_random_port_start() {
     done
 
     if [[ ${random_port} -ne 0 ]]; then
-      echo "${random_port}"
+      echo -n "${random_port}"
       break
     fi
   done

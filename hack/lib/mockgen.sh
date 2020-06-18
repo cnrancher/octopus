@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
 
+# -----------------------------------------------------------------------------
+# Mockgen variables helpers. These functions need the
+# following variables:
+#
+#    MOCKGEN_VERSION  -  The go mockgen version, default is v1.4.3.
+
 function octopus::mockgen::install() {
+  local version=${MOCKGEN_VERSION:-"v1.4.3"}
   tmp_dir=$(mktemp -d)
   pushd "${tmp_dir}" >/dev/null || exit 1
   go mod init tmp
-  go get github.com/golang/mock/mockgen@v1.4.3
+  GO111MODULE=on go get "github.com/golang/mock/mockgen@${version}"
   rm -rf "${tmp_dir}"
   popd >/dev/null || return
 }

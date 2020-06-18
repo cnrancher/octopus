@@ -268,11 +268,7 @@ function verify() {
 
   octopus::log::info "running integration tests for adaptor ${adaptor}..."
 
-  CGO_ENABLED=0 go test \
-    "${CURR_DIR}/test/integration/adaptor/..." -v -ginkgo.v -ginkgo.progress
-  CGO_ENABLED=0 go test \
-    -tags=test \
-    "${CURR_DIR}/test/integration/physical/..." -v -ginkgo.v -ginkgo.progress
+  octopus::ginkgo::test "${CURR_DIR}/test/integration"
 
   octopus::log::info "...done"
 }
@@ -282,6 +278,8 @@ function e2e() {
   local adaptor="${1}"
 
   octopus::log::info "running E2E tests for adaptor ${adaptor}..."
+
+  octopus::ginkgo::test "${CURR_DIR}/test/e2e"
 
   octopus::log::info "...done"
 }

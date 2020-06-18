@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
 
+# -----------------------------------------------------------------------------
+# Protoc variables helpers. These functions need the
+# following variables:
+#
+#    PROTOC_GOGO_FASTER_VERSION  -  The gogofaster protoc-gen version, default is v1.3.1.
+
 function octopus::protoc::install_gen_gogofaster() {
+  local version=${PROTOC_GOGO_FASTER_VERSION:-"v1.3.1"}
   tmp_dir=$(mktemp -d)
   pushd "${tmp_dir}" >/dev/null || exist 1
   go mod init tmp
-  go get github.com/gogo/protobuf/protoc-gen-gogofaster@v1.3.1
+  GO111MODULE=on go get "github.com/gogo/protobuf/protoc-gen-gogofaster@${version}"
   rm -rf "${tmp_dir}"
   popd >/dev/null || return
 }

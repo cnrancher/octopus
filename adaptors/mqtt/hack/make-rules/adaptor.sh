@@ -18,8 +18,6 @@ function generate() {
 
   octopus::log::info "generating adaptor ${adaptor}..."
 
-  # TODO adjust the generation logic if needed
-
   octopus::log::info "generating objects"
   rm -f "${CURR_DIR}/api/*/zz_generated*"
   octopus::controller_gen::generate \
@@ -84,7 +82,6 @@ function build() {
 
   octopus::log::info "building adaptor ${adaptor}(${GIT_VERSION},${GIT_COMMIT},${GIT_TREE_STATE},${BUILD_DATE})..."
 
-  # TODO adjust the ldflags if needed
   local version_flags="
     -X k8s.io/client-go/pkg/version.gitVersion=${GIT_VERSION}
     -X k8s.io/client-go/pkg/version.gitCommit=${GIT_COMMIT}
@@ -235,7 +232,6 @@ function test() {
 
   octopus::log::info "running unit tests for adaptor ${adaptor}..."
 
-  # TODO adjust the test targets if needed
   local unit_test_targets=(
     "${CURR_DIR}/api/..."
     "${CURR_DIR}/cmd/..."
@@ -270,7 +266,7 @@ function verify() {
 
   octopus::log::info "running integration tests for adaptor ${adaptor}..."
 
-  # TODO to implement the logic if needed, and place all integration tests to test/integration directory
+  octopus::ginkgo::test "${CURR_DIR}/test/integration"
 
   octopus::log::info "...done"
 }
@@ -281,7 +277,7 @@ function e2e() {
 
   octopus::log::info "running E2E tests for adaptor ${adaptor}..."
 
-  # TODO to implement the logic if needed, and place all E2E tests to test/e2e directory
+  octopus::ginkgo::test "${CURR_DIR}/test/e2e"
 
   octopus::log::info "...done"
 }
