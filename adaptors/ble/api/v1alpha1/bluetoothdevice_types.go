@@ -18,6 +18,10 @@ type BluetoothDeviceSpec struct {
 	// Specifies the properties of the BLE device.
 	// +optional
 	Properties []DeviceProperty `json:"properties,omitempty"`
+
+	// Specifies the extension of device.
+	// +optional
+	Extension *DeviceExtensionSpec `json:"extension,omitempty"`
 }
 
 type Parameters struct {
@@ -32,10 +36,18 @@ type Parameters struct {
 
 // DeviceProperty defines an individual ble device property
 type DeviceProperty struct {
-	Name        string             `json:"name"`
-	Description string             `json:"description,omitempty"`
-	AccessMode  PropertyAccessMode `json:"accessMode"`
-	Visitor     PropertyVisitor    `json:"visitor"`
+	// The device property name.
+	// +kubebuilder:validation:Required
+	Name string `json:"name"`
+	// The device property description.
+	// +optional
+	Description string `json:"description,omitempty"`
+	// Required: The URL for opc-ua server endpoint.
+	// +kubebuilder:validation:Required
+	AccessMode PropertyAccessMode `json:"accessMode"`
+	// PropertyVisitor represents the way to access the property.
+	// +optional
+	Visitor PropertyVisitor `json:"visitor"`
 }
 
 // DeviceProtocol defines how to connect the BLE device
@@ -87,6 +99,12 @@ const (
 
 // BluetoothDeviceStatus defines the observed state of BluetoothDevice
 type BluetoothDeviceStatus struct {
+	// Reports the extension of device.
+	// +optional
+	Extension *DeviceExtensionStatus `json:"extension,omitempty"`
+
+	// Reports the status of the BLE device.
+	// +optional
 	Properties []StatusProperties `json:"properties,omitempty"`
 }
 
