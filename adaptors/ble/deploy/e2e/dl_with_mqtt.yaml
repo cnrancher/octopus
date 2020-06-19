@@ -1,0 +1,36 @@
+apiVersion: edge.cattle.io/v1alpha1
+kind: DeviceLink
+metadata:
+  name: xiaomi-temp-rs2201
+spec:
+  adaptor:
+    node: edge-worker
+    name: adaptors.edge.cattle.io/ble
+  model:
+    apiVersion: "devices.edge.cattle.io/v1alpha1"
+    kind: "BluetoothDevice"
+  template:
+    metadata:
+      labels:
+        device: xiaomi-temp-rs2201
+    spec:
+      parameters:
+        syncInterval: 15s
+        timeout: 10s
+      extension:
+        mqtt:
+          client:
+            server: tcp://test.mosquitto.org:1883
+          message:
+            topic:
+              prefix: cattle.io/octopus
+              with: nn # namespace/name
+      protocol:
+        name: "MJ_HT_V1"
+        macAddress: ""
+      properties:
+      - name: data
+        description: XiaoMi temp sensor with temperature and humidity data
+        accessMode: NotifyOnly
+        visitor:
+          characteristicUUID: 226c000064764566756266734470666d

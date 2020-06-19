@@ -5,6 +5,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
+
+	"github.com/rancher/octopus/pkg/mqtt"
+
 	"github.com/bettercap/gatt"
 	"github.com/go-logr/logr"
 	api "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
@@ -17,6 +21,7 @@ type Device interface {
 	Configure(references api.ReferencesHandler, obj v1alpha1.BluetoothDevice, gattDevice gatt.Device) error
 	Shutdown()
 }
+
 type device struct {
 	sync.Mutex
 
@@ -29,7 +34,13 @@ type device struct {
 
 	spec   v1alpha1.BluetoothDeviceSpec
 	status v1alpha1.BluetoothDeviceStatus
+
+	mqttClient mqtt.Client
 }
+
+const (
+	mqttTimeout = 5 * time.Second
+)
 
 func NewDevice(log logr.Logger, name types.NamespacedName, handler DataHandler) Device {
 	return &device{
@@ -46,6 +57,34 @@ func (d *device) Configure(references api.ReferencesHandler, obj v1alpha1.Blueto
 	// configure protocol config and parameters
 	if !reflect.DeepEqual(d.spec.Protocol, spec.Protocol) || !reflect.DeepEqual(d.spec.Parameters, spec.Parameters) {
 		d.connect(gatt)
+	}
+
+	if !reflect.DeepEqual(d.spec.Extension, spec.Extension) {
+		if d.mqttClient != nil {
+			d.mqttClient.Disconnect(mqttTimeout)
+			d.mqttClient = nil
+
+			// since there is only a MQTT inside extension field, here can set to nil directly.
+			d.status.Extension = nil
+		}
+
+		if d.spec.Extension.MQTT != nil {
+			var cli, outline, err = mqtt.NewClient(&obj, *d.spec.Extension.MQTT, references.ToDataMap())
+			if err != nil {
+				return errors.Wrap(err, "failed to create MQTT client")
+			}
+
+			err = cli.Connect()
+			if err != nil {
+				return errors.Wrap(err, "failed to connect MQTT broker")
+			}
+			d.mqttClient = cli
+
+			if d.status.Extension == nil {
+				d.status.Extension = &v1alpha1.DeviceExtensionStatus{}
+			}
+			d.status.Extension.MQTT = outline
+		}
 	}
 	return nil
 }
@@ -85,6 +124,16 @@ func (d *device) connect(gattDevice gatt.Device) {
 			d.handler(d.name, cont.status)
 			d.log.Info("Synced ble device status", cont.status)
 
+			// pub updated status to the MQTT broker
+			if d.mqttClient != nil {
+				var status = cont.status.DeepCopy()
+				status.Extension = nil
+				if err := d.mqttClient.Publish(status); err != nil {
+					d.log.Error(err, "Failed to publish MQTT message")
+				}
+			}
+			d.log.V(2).Info("Success pub device status to the MQTT Broker", cont.status.Properties)
+
 			select {
 			case <-d.stop:
 				return
@@ -95,8 +144,18 @@ func (d *device) connect(gattDevice gatt.Device) {
 }
 
 func (d *device) Shutdown() {
+	d.Lock()
+	defer d.Unlock()
+
 	if d.stop != nil {
 		close(d.stop)
 	}
+
+	// close MQTT connection
+	if d.mqttClient != nil {
+		d.mqttClient.Disconnect(mqttTimeout)
+		d.mqttClient = nil
+	}
+
 	d.log.Info("Closed connection")
 }
