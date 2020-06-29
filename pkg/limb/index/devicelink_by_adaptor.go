@@ -18,6 +18,7 @@ func DeviceLinkByAdaptorFuncFactory(nodeName string) func(runtime.Object) []stri
 			return nil
 		}
 
+		// rejects if not the target node
 		if link.Status.NodeName != nodeName {
 			return nil
 		}

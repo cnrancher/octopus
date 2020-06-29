@@ -13,7 +13,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
-	"github.com/rancher/octopus/pkg/status/devicelink"
 	"github.com/rancher/octopus/pkg/util/object"
 	"github.com/rancher/octopus/test/util/content"
 	"github.com/rancher/octopus/test/util/node"
@@ -103,7 +102,7 @@ var _ = Describe("Model controller", func() {
 				if !object.IsActivating(&targetItem) {
 					return errors.Errorf("%s link isn't activated", key)
 				}
-				if devicelink.GetModelExistedStatus(&targetItem.Status) != metav1.ConditionTrue {
+				if targetItem.GetModelExistedStatus() != metav1.ConditionTrue {
 					return errors.Errorf("could not find the corresponding model of %s link", key)
 				}
 				return nil
@@ -128,7 +127,7 @@ var _ = Describe("Model controller", func() {
 				if !object.IsActivating(&targetItem) {
 					return errors.Errorf("%s link isn't activated", key)
 				}
-				if devicelink.GetModelExistedStatus(&targetItem.Status) != metav1.ConditionFalse {
+				if targetItem.GetModelExistedStatus() != metav1.ConditionFalse {
 					return errors.Errorf("should not find the corresponding model of %s link", key)
 				}
 				return nil
@@ -154,7 +153,7 @@ var _ = Describe("Model controller", func() {
 				if !object.IsActivating(&targetItem) {
 					return errors.Errorf("%s link isn't activated", key)
 				}
-				if devicelink.GetModelExistedStatus(&targetItem.Status) != metav1.ConditionFalse {
+				if targetItem.GetModelExistedStatus() != metav1.ConditionFalse {
 					return errors.Errorf("should not find the corresponding model of %s link", key)
 				}
 				return nil
@@ -180,7 +179,7 @@ var _ = Describe("Model controller", func() {
 				if !object.IsActivating(&targetItem) {
 					return errors.Errorf("%s link isn't activated", key)
 				}
-				if devicelink.GetModelExistedStatus(&targetItem.Status) != metav1.ConditionTrue {
+				if targetItem.GetModelExistedStatus() != metav1.ConditionTrue {
 					return errors.Errorf("could not find the corresponding model of %s link", key)
 				}
 				return nil

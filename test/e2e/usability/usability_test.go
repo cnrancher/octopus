@@ -14,7 +14,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
-	"github.com/rancher/octopus/pkg/status/devicelink"
 	"github.com/rancher/octopus/pkg/util/object"
 	"github.com/rancher/octopus/test/util/content"
 	"github.com/rancher/octopus/test/util/exec"
@@ -233,6 +232,6 @@ func verifyDeviceLink() {
 			GinkgoT().Log(err)
 			return false
 		}
-		return devicelink.GetDeviceConnectedStatus(&targetItem.Status) == metav1.ConditionTrue
+		return targetItem.GetDeviceConnectedStatus() == metav1.ConditionTrue
 	}, 300, 1).Should(BeTrue())
 }
