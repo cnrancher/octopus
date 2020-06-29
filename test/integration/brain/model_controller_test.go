@@ -6,7 +6,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
-	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -15,7 +14,6 @@ import (
 
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
 	"github.com/rancher/octopus/pkg/status/devicelink"
-	"github.com/rancher/octopus/pkg/util/collection"
 	"github.com/rancher/octopus/pkg/util/object"
 	"github.com/rancher/octopus/test/util/content"
 	"github.com/rancher/octopus/test/util/node"
@@ -82,26 +80,6 @@ var _ = Describe("Model controller", func() {
 				},
 			},
 		}
-	})
-
-	Context("CRD instance", func() {
-
-		It("should have finalizer", func() {
-			// confirmed
-			Eventually(func() error {
-				var list apiextensionsv1.CustomResourceDefinitionList
-				if err := k8sCli.List(testCtx, &list); err != nil {
-					return err
-				}
-				for _, crd := range list.Items {
-					if !collection.StringSliceContain(crd.Finalizers, "edge.cattle.io/octopus-brain") {
-						return errors.Errorf("could not find corresponding finalizer from %s CRD", crd.Name)
-					}
-				}
-				return nil
-			}, 30, 1).Should(Succeed())
-		})
-
 	})
 
 	Context("DeviceLink instance", func() {

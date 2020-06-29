@@ -28,33 +28,12 @@ func (ModelChangedPredicate) Update(e event.UpdateEvent) bool {
 	var crdOld = object.ToCustomResourceDefinitionObject(e.ObjectOld)
 	var crdNew = object.ToCustomResourceDefinitionObject(e.ObjectNew)
 
-	// handles when deleting
-	if object.IsDeleted(e.MetaNew) {
-		modelChangedPredicateLog.V(5).Info("Accept UpdateEvent as deleted object", "key", object.GetNamespacedName(e.MetaOld))
-		return true
-	}
-
 	// handles when it's not backward compatible
 	if !isBackwardCompatibleCRDVersions(crdOld.Spec.Versions, crdNew.Spec.Versions) {
-		modelChangedPredicateLog.V(5).Info("Accept UpdateEvent as bad backward compatible", "key", object.GetNamespacedName(e.MetaOld))
+		modelChangedPredicateLog.V(5).Info("Accept UpdateEvent as bad backward compatible", "object", object.GetNamespacedName(e.MetaOld))
 		return true
 	}
 
-	return false
-}
-
-func (ModelChangedPredicate) Delete(e event.DeleteEvent) bool {
-	if e.Meta == nil || e.Object == nil {
-		return false
-	}
-
-	// doesn't handle non-CRD object
-	if !object.IsCustomResourceDefinitionObject(e.Object) {
-		return true
-	}
-
-	// NB(thxCode) there is a finalizer to handler the CRD deletion event,
-	// so with the finalizer, the deletion event can be changed to an update event.
 	return false
 }
 

@@ -45,7 +45,7 @@ octopus::log::warn() {
 
   local timestamp
   timestamp="$(date +"[%m%d %H:%M:%S]")"
-  echo -e "\033[34m[WARN]\033[0m ${timestamp} ${1-}"
+  echo -e "\033[33m[WARN]\033[0m ${timestamp} ${1-}"
   shift 1
   for message; do
     echo -e "       ${message}"

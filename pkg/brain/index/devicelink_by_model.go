@@ -18,9 +18,9 @@ func DeviceLinkByModelFunc(rawObj runtime.Object) []string {
 		return nil
 	}
 
-	var crdName = model.GetCRDNameOfGroupVersionKind(link.Status.Model.GroupVersionKind())
+	var crdName = model.GetCRDNameOfGroupVersionKind(link.Spec.Model.GroupVersionKind())
 	if crdName != "" {
-		deviceLinkByModelIndexLog.V(5).Info("Indexed", "crdName", crdName, "object", object.GetNamespacedName(link))
+		deviceLinkByModelIndexLog.V(6).Info("Indexed", "crdName", crdName, "object", object.GetNamespacedName(link))
 		return []string{crdName}
 	}
 	return nil
