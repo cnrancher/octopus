@@ -13,11 +13,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
+	"github.com/rancher/octopus/pkg/brain/predicate"
 	limbctrl "github.com/rancher/octopus/pkg/limb/controller"
-	"github.com/rancher/octopus/pkg/status/devicelink"
-	statusnode "github.com/rancher/octopus/pkg/status/node"
 	"github.com/rancher/octopus/pkg/util/collection"
-	"github.com/rancher/octopus/pkg/util/model"
+	modelutil "github.com/rancher/octopus/pkg/util/model"
 	"github.com/rancher/octopus/pkg/util/object"
 )
 
@@ -56,7 +55,7 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		}
 
 		var isControlledByLimb bool
-		if devicelink.GetNodeExistedStatus(&link.Status) != metav1.ConditionFalse {
+		if link.GetNodeExistedStatus() != metav1.ConditionFalse {
 			var node corev1.Node
 			if err := r.Get(ctx, types.NamespacedName{Name: link.Spec.Adaptor.Node}, &node); err != nil {
 				if !apierrs.IsNotFound(err) {
@@ -76,126 +75,54 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		return ctrl.Result{}, nil
 	}
 
-	// validates node existing or not
-	switch devicelink.GetNodeExistedStatus(&link.Status) {
-	case metav1.ConditionFalse:
-		if link.Status.NodeName != link.Spec.Adaptor.Node {
-			devicelink.ToCheckNodeExisted(&link.Status)
-			if err := r.Status().Update(ctx, &link); err != nil {
-				log.Error(err, "Unable to change the status of DeviceLink")
-				return ctrl.Result{Requeue: true}, nil
-			}
+	// verifies Node
+	var node corev1.Node
+	if err := r.Get(ctx, types.NamespacedName{Name: link.Spec.Adaptor.Node}, &node); err != nil {
+		if !apierrs.IsNotFound(err) {
+			log.Error(err, "Unable to fetch the adaptor node of DeviceLink")
+			return ctrl.Result{Requeue: true}, nil
 		}
-		return ctrl.Result{}, nil
-	case metav1.ConditionTrue:
-		if link.Status.NodeName != link.Spec.Adaptor.Node {
-			devicelink.ToCheckNodeExisted(&link.Status)
-			if err := r.Status().Update(ctx, &link); err != nil {
-				log.Error(err, "Unable to change the status of DeviceLink")
-				return ctrl.Result{Requeue: true}, nil
-			}
-			return ctrl.Result{}, nil
-		}
-	default:
-		var node corev1.Node
-		if err := r.Get(ctx, types.NamespacedName{Name: link.Spec.Adaptor.Node}, &node); err != nil {
-			if !apierrs.IsNotFound(err) {
-				log.Error(err, "Unable to fetch the adaptor node of DeviceLink")
-				return ctrl.Result{Requeue: true}, nil
-			}
-		}
-		if statusnode.GetReady(&node.Status) != metav1.ConditionTrue || !object.IsActivating(&node) {
-			link.Status.NodeInternalDNS = ""
-			link.Status.NodeInternalIP = ""
-			link.Status.NodeExternalDNS = ""
-			link.Status.NodeExternalIP = ""
-			link.Status.NodeHostName = ""
-			devicelink.FailOnNodeExisted(&link.Status, "adaptor node isn't ready or existed")
-		} else {
-			for _, address := range node.Status.Addresses {
-				switch address.Type {
-				case corev1.NodeInternalDNS:
-					link.Status.NodeInternalDNS = address.Address
-				case corev1.NodeInternalIP:
-					link.Status.NodeInternalIP = address.Address
-				case corev1.NodeExternalDNS:
-					link.Status.NodeExternalDNS = address.Address
-				case corev1.NodeExternalIP:
-					link.Status.NodeExternalIP = address.Address
-				case corev1.NodeHostName:
-					link.Status.NodeHostName = address.Address
-				}
-			}
-			devicelink.SuccessOnNodeExisted(&link.Status)
-		}
-
-		link.Status.NodeName = link.Spec.Adaptor.Node
+	}
+	if !object.IsActivating(&node) {
+		link.FailOnNodeExisted("adaptor node isn't existed")
 		if err := r.Status().Update(ctx, &link); err != nil {
 			log.Error(err, "Unable to change the status of DeviceLink")
 			return ctrl.Result{Requeue: true}, nil
 		}
 		return ctrl.Result{}, nil
 	}
+	link.SucceedOnNodeExisted(&node)
 
-	// validates model existing or not
-	switch devicelink.GetModelExistedStatus(&link.Status) {
-	case metav1.ConditionFalse:
-		if link.Spec.Model != link.Status.Model {
-			devicelink.ToCheckModelExisted(&link.Status)
-			if err := r.Status().Update(ctx, &link); err != nil {
-				log.Error(err, "Unable to change the status of DeviceLink")
-				return ctrl.Result{Requeue: true}, nil
-			}
+	// verifies CRD
+	var model = apiextensionsv1.CustomResourceDefinition{}
+	if err := r.Get(ctx, types.NamespacedName{Name: modelutil.GetCRDNameOfGroupVersionKind(link.Spec.Model.GroupVersionKind())}, &model); err != nil {
+		if !apierrs.IsNotFound(err) {
+			log.Error(err, "Unable to fetch the model of DeviceLink")
+			return ctrl.Result{Requeue: true}, nil
 		}
-		return ctrl.Result{}, nil
-	case metav1.ConditionTrue:
-		if link.Spec.Model != link.Status.Model {
-			devicelink.ToCheckModelExisted(&link.Status)
-			if err := r.Status().Update(ctx, &link); err != nil {
-				log.Error(err, "Unable to change the status of DeviceLink")
-				return ctrl.Result{Requeue: true}, nil
-			}
-			return ctrl.Result{}, nil
-		}
-	default:
-		var mGVK = link.Spec.Model.GroupVersionKind()
-		var m = apiextensionsv1.CustomResourceDefinition{}
-		if err := r.Get(
-			ctx,
-			types.NamespacedName{Name: model.GetCRDNameOfGroupVersionKind(mGVK)},
-			&m,
-		); err != nil {
-			if !apierrs.IsNotFound(err) {
-				log.Error(err, "Unable to fetch the model of DeviceLink")
-				return ctrl.Result{Requeue: true}, nil
-			}
-		}
-
-		link.Status.Model = link.Spec.Model
-		if object.IsActivating(&m) {
-			var versionServed bool
-			for _, ver := range m.Spec.Versions {
-				if ver.Name == mGVK.Version {
-					versionServed = ver.Served
-					break
-				}
-			}
-
-			if versionServed {
-				devicelink.SuccessOnModelExisted(&link.Status)
-			} else {
-				devicelink.FailOnModelExisted(&link.Status, "model version isn't served")
-			}
-		} else {
-			devicelink.FailOnModelExisted(&link.Status, "model isn't existed")
-		}
+	}
+	if !object.IsActivating(&model) {
+		link.FailOnModelExisted("model isn't existed")
 		if err := r.Status().Update(ctx, &link); err != nil {
 			log.Error(err, "Unable to change the status of DeviceLink")
 			return ctrl.Result{Requeue: true}, nil
 		}
 		return ctrl.Result{}, nil
 	}
+	if !isModelAccepted(&link, &model) {
+		link.FailOnModelExisted("model version isn't served")
+		if err := r.Status().Update(ctx, &link); err != nil {
+			log.Error(err, "Unable to change the status of DeviceLink")
+			return ctrl.Result{Requeue: true}, nil
+		}
+		return ctrl.Result{}, nil
+	}
+	link.SucceedOnModelExisted()
 
+	if err := r.Status().Update(ctx, &link); err != nil {
+		log.Error(err, "Unable to change the status of DeviceLink")
+		return ctrl.Result{Requeue: true}, nil
+	}
 	return ctrl.Result{}, nil
 }
 
@@ -203,5 +130,6 @@ func (r *DeviceLinkReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		Named("brain_dl").
 		For(&edgev1alpha1.DeviceLink{}).
+		WithEventFilter(predicate.DeviceLinkChangedPredicate{}).
 		Complete(r)
 }

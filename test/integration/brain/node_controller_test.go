@@ -14,7 +14,6 @@ import (
 
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
 	"github.com/rancher/octopus/pkg/status/devicelink"
-	"github.com/rancher/octopus/pkg/util/collection"
 	"github.com/rancher/octopus/pkg/util/object"
 	. "github.com/rancher/octopus/test/framework"
 	"github.com/rancher/octopus/test/util/content"
@@ -82,26 +81,6 @@ var _ = Describe("Node controller", func() {
 				},
 			},
 		}
-	})
-
-	Context("Node instance", func() {
-
-		It("should have finalizer", func() {
-			// confirmed
-			Eventually(func() (bool, error) {
-				var list corev1.NodeList
-				if err := k8sCli.List(testCtx, &list); err != nil {
-					return false, err
-				}
-				for _, node := range list.Items {
-					if !collection.StringSliceContain(node.Finalizers, "edge.cattle.io/octopus-brain") {
-						return false, errors.Errorf("could not find corresponding finalizer from %s node", node.Name)
-					}
-				}
-				return true, nil
-			}, 30, 1).Should(BeTrue())
-		})
-
 	})
 
 	Context("DeviceLink instance", func() {

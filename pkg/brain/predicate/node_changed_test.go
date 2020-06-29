@@ -2,9 +2,8 @@ package predicate
 
 import (
 	"testing"
-	"time"
 
-	"github.com/davecgh/go-spew/spew"
+	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -65,64 +64,6 @@ func TestNodeChangedPredicate_Update(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "dl1",
 						Namespace: "default",
-					},
-				},
-			},
-			expect: true,
-		},
-		{
-			name: "deleting Node instance",
-			given: event.UpdateEvent{
-				MetaOld: &corev1.Node{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "edge-worker",
-					},
-				},
-				ObjectOld: &corev1.Node{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "edge-worker",
-					},
-				},
-				MetaNew: &corev1.Node{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:              "edge-worker",
-						DeletionTimestamp: &metav1.Time{Time: time.Now()},
-					},
-				},
-				ObjectNew: &corev1.Node{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:              "edge-worker",
-						DeletionTimestamp: &metav1.Time{Time: time.Now()},
-					},
-				},
-			},
-			expect: true,
-		},
-		{
-			name: "deleted Node instance",
-			given: event.UpdateEvent{
-				MetaOld: &corev1.Node{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:              "edge-worker",
-						DeletionTimestamp: &metav1.Time{Time: time.Now()},
-					},
-				},
-				ObjectOld: &corev1.Node{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:              "edge-worker",
-						DeletionTimestamp: &metav1.Time{Time: time.Now()},
-					},
-				},
-				MetaNew: &corev1.Node{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:              "edge-worker",
-						DeletionTimestamp: &metav1.Time{Time: time.Now()},
-					},
-				},
-				ObjectNew: &corev1.Node{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:              "edge-worker",
-						DeletionTimestamp: &metav1.Time{Time: time.Now()},
 					},
 				},
 			},
@@ -210,71 +151,11 @@ func TestNodeChangedPredicate_Update(t *testing.T) {
 			},
 			expect: true,
 		},
-		{
-			name: "changed Node instance's conditions",
-			given: event.UpdateEvent{
-				MetaOld: &corev1.Node{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "edge-worker",
-					},
-					Status: corev1.NodeStatus{
-						Conditions: []corev1.NodeCondition{
-							{
-								Type:   corev1.NodeReady,
-								Status: corev1.ConditionTrue,
-							},
-						},
-					},
-				},
-				ObjectOld: &corev1.Node{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "edge-worker",
-					},
-					Status: corev1.NodeStatus{
-						Conditions: []corev1.NodeCondition{
-							{
-								Type:   corev1.NodeReady,
-								Status: corev1.ConditionTrue,
-							},
-						},
-					},
-				},
-				MetaNew: &corev1.Node{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "edge-worker",
-					},
-					Status: corev1.NodeStatus{
-						Conditions: []corev1.NodeCondition{
-							{
-								Type:   corev1.NodeReady,
-								Status: corev1.ConditionUnknown,
-							},
-						},
-					},
-				},
-				ObjectNew: &corev1.Node{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "edge-worker",
-					},
-					Status: corev1.NodeStatus{
-						Conditions: []corev1.NodeCondition{
-							{
-								Type:   corev1.NodeReady,
-								Status: corev1.ConditionUnknown,
-							},
-						},
-					},
-				},
-			},
-			expect: true,
-		},
 	}
 
 	var predication = NodeChangedPredicate{}
 	for _, tc := range testCases {
 		var ret = predication.Update(tc.given)
-		if ret != tc.expect {
-			t.Errorf("case %v: expected %s, got %s", tc.name, spew.Sprintf("%#v", tc.expect), spew.Sprintf("%#v", ret))
-		}
+		assert.Equal(t, tc.expect, ret, "case %v", tc.name)
 	}
 }

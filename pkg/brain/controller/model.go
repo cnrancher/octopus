@@ -13,14 +13,7 @@ import (
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
 	"github.com/rancher/octopus/pkg/brain/index"
 	"github.com/rancher/octopus/pkg/brain/predicate"
-	"github.com/rancher/octopus/pkg/status/crd"
-	"github.com/rancher/octopus/pkg/status/devicelink"
-	"github.com/rancher/octopus/pkg/util/collection"
 	"github.com/rancher/octopus/pkg/util/object"
-)
-
-const (
-	ReconcilingModel = "edge.cattle.io/octopus-brain"
 )
 
 // ModelReconciler reconciles a CRD object
@@ -45,68 +38,48 @@ func (r *ModelReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			log.Error(err, "Unable to fetch Model")
 			return ctrl.Result{Requeue: true}, nil
 		}
-		// ignores error, since they can't be fixed by an immediate requeue
-		return ctrl.Result{}, nil
 	}
 
-	if object.IsDeleted(&model) {
-		if !collection.StringSliceContain(model.Finalizers, ReconcilingModel) {
-			return ctrl.Result{}, nil
-		}
+	if !object.IsActivating(&model) {
+		// NB(thxCode) patches the CRD's name, as we don't use finalize to control the cleanup action.
+		model.Name = req.Name
 
-		// moves link ModelExisted condition from `True` to `Unknown`
+		// confirms Model isn't existed
 		var links edgev1alpha1.DeviceLinkList
 		if err := r.List(ctx, &links, client.MatchingFields{index.DeviceLinkByModelField: model.Name}); err != nil {
 			log.Error(err, "Unable to list related DeviceLink of Model")
 			return ctrl.Result{Requeue: true}, nil
 		}
 		for _, link := range links.Items {
-			if devicelink.GetModelExistedStatus(&link.Status) != metav1.ConditionTrue {
+			if link.GetModelExistedStatus() != metav1.ConditionTrue {
 				continue
 			}
-			devicelink.ToCheckModelExisted(&link.Status)
+			link.FailOnModelExisted("model isn't existed")
 			if err := r.Status().Update(ctx, &link); err != nil {
 				log.Error(err, "Unable to change the status of DeviceLink")
 				return ctrl.Result{Requeue: true}, nil
 			}
 		}
 
-		// removes finalizer
-		model.Finalizers = collection.StringSliceRemove(model.Finalizers, ReconcilingModel)
-		if err := r.Update(ctx, &model); err != nil {
-			log.Error(err, "Unable to remove finalizer from Model")
-			return ctrl.Result{Requeue: true}, nil
-		}
-
+		log.V(5).Info("Model has been removed")
 		return ctrl.Result{}, nil
 	}
 
-	// adds finalizer if needed
-	if !collection.StringSliceContain(model.Finalizers, ReconcilingModel) {
-		if crd.GetEstablished(&model.Status) != metav1.ConditionTrue {
-			return ctrl.Result{Requeue: true}, nil
-		}
-		model.Finalizers = append(model.Finalizers, ReconcilingModel)
-		if err := r.Update(ctx, &model); err != nil {
-			log.Error(err, "Unable to add finalizer to CRD")
-			return ctrl.Result{Requeue: true}, nil
-		}
-		// NB(thxCode) keeps going down, no need to reconcile again:
-		//     `return ctrl.Result{}, nil`,
-		// the predication will prevent the updated reconciling.
-	}
-
-	// moves link ModelExisted condition from `False` to `True`
+	// confirms Model is existed
 	var links edgev1alpha1.DeviceLinkList
 	if err := r.List(ctx, &links, client.MatchingFields{index.DeviceLinkByModelField: model.Name}); err != nil {
 		log.Error(err, "Unable to list related DeviceLink of Model")
 		return ctrl.Result{Requeue: true}, nil
 	}
 	for _, link := range links.Items {
-		if devicelink.GetModelExistedStatus(&link.Status) != metav1.ConditionFalse {
+		if link.GetModelExistedStatus() != metav1.ConditionFalse {
 			continue
 		}
-		devicelink.ToCheckModelExisted(&link.Status)
+		if !isModelAccepted(&link, &model) {
+			link.FailOnModelExisted("model version isn't served")
+		} else {
+			link.SucceedOnModelExisted()
+		}
 		if err := r.Status().Update(ctx, &link); err != nil {
 			log.Error(err, "Unable to change the status of DeviceLink")
 			return ctrl.Result{Requeue: true}, nil
@@ -117,7 +90,6 @@ func (r *ModelReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 }
 
 func (r *ModelReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	// indexes DeviceLink by `status.model`
 	if err := mgr.GetFieldIndexer().IndexField(
 		r.Ctx,
 		&edgev1alpha1.DeviceLink{},
@@ -132,4 +104,14 @@ func (r *ModelReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&apiextensionsv1.CustomResourceDefinition{}).
 		WithEventFilter(predicate.ModelChangedPredicate{}).
 		Complete(r)
+}
+
+func isModelAccepted(link *edgev1alpha1.DeviceLink, modelCRD *apiextensionsv1.CustomResourceDefinition) bool {
+	var requestedVersion = link.Spec.Model.GroupVersionKind().Version
+	for _, ver := range modelCRD.Spec.Versions {
+		if ver.Name == requestedVersion {
+			return ver.Served
+		}
+	}
+	return false
 }

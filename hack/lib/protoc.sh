@@ -31,7 +31,7 @@ function octopus::protoc::validate_gen_gogfaster() {
 }
 
 function octopus::protoc::validate() {
-  if [[ -z "$(command -v protoc)" || "$(protoc --version)" != "libprotoc 3.11"* ]]; then
+  if [[ -z "$(command -v protoc)" || "$(protoc --version)" == "libprotoc 3.1.*" || "$(protoc --version)" != "libprotoc 3.1"* ]]; then
     octopus::log::error "generating protobuf requires protoc 3.11.0 or newer, please download and install the platform appropriate Protobuf package for your OS: https://github.com/protocolbuffers/protobuf/releases"
     return 1
   fi
