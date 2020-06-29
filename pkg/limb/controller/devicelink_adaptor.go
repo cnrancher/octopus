@@ -36,12 +36,8 @@ func (r *DeviceLinkReconciler) ReceiveAdaptorStatus(req suctioncup.RequestAdapto
 		metrics.GetLimbMetricsRecorder().ResetConnections(req.Name)
 	}
 
+	// NB(thxCode) all items are guaranteed by indexer to be associated with the current node.
 	for _, link := range links.Items {
-		// filter out the corresponding links
-		if link.Status.NodeName != r.NodeName {
-			continue
-		}
-
 		if req.Registered {
 			if link.GetAdaptorExistedStatus() == metav1.ConditionFalse {
 				link.SucceedOnAdaptorExisted()

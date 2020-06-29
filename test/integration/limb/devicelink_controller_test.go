@@ -11,7 +11,6 @@ import (
 
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
 	api "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
-	status "github.com/rancher/octopus/pkg/status/devicelink"
 	"github.com/rancher/octopus/pkg/suctioncup/connection"
 	"github.com/rancher/octopus/pkg/util/model"
 	"github.com/rancher/octopus/pkg/util/object"
@@ -26,7 +25,7 @@ import (
 //     	- validate if the device of target link create when adding the corresponding adaptor
 var _ = Describe("DeviceLink controller", func() {
 	var (
-		mockingDummyAdaptor fakeDummyAdaptor
+		mockingAdaptor fakeAdaptor
 
 		targetModel     metav1.TypeMeta
 		targetNamespace string
@@ -52,7 +51,7 @@ var _ = Describe("DeviceLink controller", func() {
 			Spec: edgev1alpha1.DeviceLinkSpec{
 				Adaptor: edgev1alpha1.DeviceAdaptor{
 					Node: targetNode,
-					Name: mockingDummyAdaptor.GetName(),
+					Name: mockingAdaptor.GetName(),
 				},
 				Model: targetModel,
 				Template: edgev1alpha1.DeviceTemplateSpec{
@@ -82,10 +81,8 @@ var _ = Describe("DeviceLink controller", func() {
 			Expect(k8sCli.Create(testCtx, &targetItem)).Should(Succeed())
 
 			// simulated that has completed the validation of node and model
-			targetItem.Status.NodeName = targetItem.Spec.Adaptor.Node
-			status.SuccessOnNodeExisted(&targetItem.Status)
-			targetItem.Status.Model = targetItem.Spec.Model
-			status.SuccessOnModelExisted(&targetItem.Status)
+			targetItem.SuccessOnNodeExisted(nil)
+			targetItem.SuccessOnModelExisted()
 			Expect(k8sCli.Status().Update(testCtx, &targetItem)).Should(Succeed())
 
 			var key = types.NamespacedName{
@@ -103,15 +100,15 @@ var _ = Describe("DeviceLink controller", func() {
 				if !object.IsActivating(&targetItem) {
 					return errors.Errorf("%s link isn't activated", key)
 				}
-				if status.GetAdaptorExistedStatus(&targetItem.Status) != metav1.ConditionFalse {
+				if targetItem.GetAdaptorExistedStatus() != metav1.ConditionFalse {
 					return errors.Errorf("should not find the corresponding adaptor of %s link", key)
 				}
 				return nil
 			}, 30, 1).Should(Succeed())
 
 			// simulated that added the corresponding adaptor
-			testAdaptors.Put(mockingDummyAdaptor)
-			testEventQueue.GetAdaptorNotifier().NoticeAdaptorRegistered(mockingDummyAdaptor.GetName())
+			testAdaptors.Put(mockingAdaptor)
+			testEventQueue.GetAdaptorNotifier().NoticeAdaptorRegistered(mockingAdaptor.GetName())
 
 			// confirmed
 			Eventually(func() error {
@@ -123,7 +120,7 @@ var _ = Describe("DeviceLink controller", func() {
 				if !object.IsActivating(&targetItem) {
 					return errors.Errorf("%s link isn't activated", key)
 				}
-				if status.GetAdaptorExistedStatus(&targetItem.Status) != metav1.ConditionTrue {
+				if targetItem.GetAdaptorExistedStatus() != metav1.ConditionTrue {
 					return errors.Errorf("could not find the corresponding adaptor of %s link", key)
 				}
 				return nil
@@ -135,10 +132,8 @@ var _ = Describe("DeviceLink controller", func() {
 			Expect(k8sCli.Create(testCtx, &targetItem)).Should(Succeed())
 
 			// simulated that has completed the validation of node and model
-			targetItem.Status.NodeName = targetItem.Spec.Adaptor.Node
-			status.SuccessOnNodeExisted(&targetItem.Status)
-			targetItem.Status.Model = targetItem.Spec.Model
-			status.SuccessOnModelExisted(&targetItem.Status)
+			targetItem.SuccessOnNodeExisted(nil)
+			targetItem.SuccessOnModelExisted()
 			Expect(k8sCli.Status().Update(testCtx, &targetItem)).Should(Succeed())
 
 			var key = types.NamespacedName{
@@ -156,15 +151,15 @@ var _ = Describe("DeviceLink controller", func() {
 				if !object.IsActivating(&targetItem) {
 					return errors.Errorf("%s link isn't activated", key)
 				}
-				if status.GetAdaptorExistedStatus(&targetItem.Status) != metav1.ConditionTrue {
+				if targetItem.GetAdaptorExistedStatus() != metav1.ConditionTrue {
 					return errors.Errorf("could not find the corresponding adaptor of %s link", key)
 				}
 				return nil
 			}, 30, 1).Should(Succeed())
 
 			// simulated that added the corresponding adaptor
-			testAdaptors.Delete(mockingDummyAdaptor.GetName())
-			testEventQueue.GetAdaptorNotifier().NoticeAdaptorUnregistered(mockingDummyAdaptor.GetName())
+			testAdaptors.Delete(mockingAdaptor.GetName())
+			testEventQueue.GetAdaptorNotifier().NoticeAdaptorUnregistered(mockingAdaptor.GetName())
 
 			// confirmed
 			Eventually(func() error {
@@ -176,7 +171,7 @@ var _ = Describe("DeviceLink controller", func() {
 				if !object.IsActivating(&targetItem) {
 					return errors.Errorf("%s link isn't activated", key)
 				}
-				if status.GetAdaptorExistedStatus(&targetItem.Status) != metav1.ConditionFalse {
+				if targetItem.GetAdaptorExistedStatus() != metav1.ConditionFalse {
 					return errors.Errorf("should not find the corresponding adaptor of %s link", key)
 				}
 				return nil
@@ -192,13 +187,11 @@ var _ = Describe("DeviceLink controller", func() {
 			Expect(k8sCli.Create(testCtx, &targetItem)).Should(Succeed())
 
 			// simulated that added the corresponding adaptor
-			testAdaptors.Put(mockingDummyAdaptor)
+			testAdaptors.Put(mockingAdaptor)
 
 			// simulated that has completed the validation of node and model
-			targetItem.Status.NodeName = targetItem.Spec.Adaptor.Node
-			status.SuccessOnNodeExisted(&targetItem.Status)
-			targetItem.Status.Model = targetItem.Spec.Model
-			status.SuccessOnModelExisted(&targetItem.Status)
+			targetItem.SuccessOnNodeExisted(nil)
+			targetItem.SuccessOnModelExisted()
 			Expect(k8sCli.Status().Update(testCtx, &targetItem)).Should(Succeed())
 
 			var key = types.NamespacedName{
@@ -216,7 +209,7 @@ var _ = Describe("DeviceLink controller", func() {
 				if !object.IsActivating(&targetItem) {
 					return errors.Errorf("%s link isn't activated", key)
 				}
-				if status.GetDeviceCreatedStatus(&targetItem.Status) != metav1.ConditionTrue {
+				if targetItem.GetDeviceCreatedStatus() != metav1.ConditionTrue {
 					return errors.Errorf("could not find the corresponding adaptor of %s link", key)
 				}
 
@@ -235,46 +228,46 @@ var _ = Describe("DeviceLink controller", func() {
 
 })
 
-type fakeDummyAdaptor string
+type fakeAdaptor string
 
-func (a fakeDummyAdaptor) GetName() string {
+func (a fakeAdaptor) GetName() string {
 	return "adaptors.edge.cattle.io/dummy"
 }
 
-func (a fakeDummyAdaptor) GetEndpoint() string {
+func (a fakeAdaptor) GetEndpoint() string {
 	return "dummy.sock"
 }
 
-func (a fakeDummyAdaptor) Stop() error {
+func (a fakeAdaptor) Stop() error {
 	return nil
 }
 
-func (a fakeDummyAdaptor) CreateConnection(name types.NamespacedName) (bool, error) {
-	return false, nil
+func (a fakeAdaptor) CreateConnection(name types.NamespacedName) (overwritten bool, conn connection.Connection, err error) {
+	return false, fakeConnection(name), nil
 }
 
-func (a fakeDummyAdaptor) DeleteConnection(name types.NamespacedName) bool {
+func (a fakeAdaptor) DeleteConnection(name types.NamespacedName) bool {
 	return false
 }
 
-func (a fakeDummyAdaptor) GetConnection(name types.NamespacedName) connection.Connection {
-	return fakeDummyConnection(name)
-}
+type fakeConnection types.NamespacedName
 
-type fakeDummyConnection types.NamespacedName
-
-func (c fakeDummyConnection) GetAdaptorName() string {
+func (c fakeConnection) GetAdaptorName() string {
 	return "adaptors.edge.cattle.io/dummy"
 }
 
-func (c fakeDummyConnection) GetName() types.NamespacedName {
+func (c fakeConnection) GetName() types.NamespacedName {
 	return types.NamespacedName(c)
 }
 
-func (c fakeDummyConnection) Stop() error {
+func (c fakeConnection) Stop() error {
 	return nil
 }
 
-func (c fakeDummyConnection) Send([]byte, *metav1.TypeMeta, []byte, map[string]*api.ConnectRequestReferenceEntry) error {
+func (c fakeConnection) IsStop() bool {
+	return false
+}
+
+func (c fakeConnection) Send(*metav1.TypeMeta, []byte, map[string]*api.ConnectRequestReferenceEntry) error {
 	return nil
 }

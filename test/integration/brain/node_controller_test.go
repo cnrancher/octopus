@@ -13,7 +13,6 @@ import (
 	. "github.com/rancher/octopus/test/framework/ginkgo"
 
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
-	"github.com/rancher/octopus/pkg/status/devicelink"
 	"github.com/rancher/octopus/pkg/util/object"
 	. "github.com/rancher/octopus/test/framework"
 	"github.com/rancher/octopus/test/util/content"
@@ -105,7 +104,7 @@ var _ = Describe("Node controller", func() {
 				if !object.IsActivating(&targetItem) {
 					return errors.Errorf("%s link isn't activated", key)
 				}
-				if devicelink.GetNodeExistedStatus(&targetItem.Status) != metav1.ConditionTrue {
+				if targetItem.GetNodeExistedStatus() != metav1.ConditionTrue {
 					return errors.Errorf("could not find the corresponding node of %s link", key)
 				}
 				return nil
@@ -133,7 +132,7 @@ var _ = Describe("Node controller", func() {
 				if !object.IsActivating(&targetItem) {
 					return errors.Errorf("%s link isn't activated", key)
 				}
-				if devicelink.GetNodeExistedStatus(&targetItem.Status) != metav1.ConditionFalse {
+				if targetItem.GetNodeExistedStatus() != metav1.ConditionFalse {
 					return errors.Errorf("should not find the corresponding node of %s link", key)
 				}
 				return nil
@@ -167,7 +166,7 @@ var _ = Describe("Node controller", func() {
 				if !object.IsActivating(&targetItem) {
 					return errors.Errorf("%s link isn't activated", key)
 				}
-				if devicelink.GetNodeExistedStatus(&targetItem.Status) != metav1.ConditionFalse {
+				if targetItem.GetNodeExistedStatus() != metav1.ConditionFalse {
 					return errors.Errorf("should not find the corresponding node of %s link", key)
 				}
 				return nil
@@ -187,7 +186,7 @@ var _ = Describe("Node controller", func() {
 				if !object.IsActivating(&targetItem) {
 					return errors.Errorf("%s link isn't activated", key)
 				}
-				if devicelink.GetNodeExistedStatus(&targetItem.Status) != metav1.ConditionTrue {
+				if targetItem.GetNodeExistedStatus() != metav1.ConditionTrue {
 					return errors.Errorf("could not find the corresponding node of %s link", key)
 				}
 				return nil
