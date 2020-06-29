@@ -10,7 +10,6 @@ import (
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
 	"github.com/rancher/octopus/pkg/limb/index"
 	"github.com/rancher/octopus/pkg/metrics"
-	"github.com/rancher/octopus/pkg/status/devicelink"
 	"github.com/rancher/octopus/pkg/suctioncup"
 	"github.com/rancher/octopus/pkg/util/log/handler"
 )
@@ -44,17 +43,28 @@ func (r *DeviceLinkReconciler) ReceiveAdaptorStatus(req suctioncup.RequestAdapto
 		}
 
 		if req.Registered {
-			if devicelink.GetAdaptorExistedStatus(&link.Status) == metav1.ConditionFalse {
-				devicelink.SuccessOnAdaptorExisted(&link.Status)
+			if link.GetAdaptorExistedStatus() == metav1.ConditionFalse {
+				link.SucceedOnAdaptorExisted()
+				if err := r.Status().Update(ctx, &link); err != nil {
+					log.Error(err, "Unable to change the status of DeviceLink")
+					return suctioncup.Response{Requeue: true}, nil
+				}
+			}
+			if link.GetDeviceConnectedStatus() == metav1.ConditionFalse {
+				link.ToCheckDeviceConnected()
+				if err := r.Status().Update(ctx, &link); err != nil {
+					log.Error(err, "Unable to change the status of DeviceLink")
+					return suctioncup.Response{Requeue: true}, nil
+				}
 			}
 		} else {
-			if devicelink.GetAdaptorExistedStatus(&link.Status) != metav1.ConditionFalse {
-				devicelink.FailOnAdaptorExisted(&link.Status, "the adaptor is unregistered")
+			if link.GetAdaptorExistedStatus() != metav1.ConditionFalse {
+				link.FailOnAdaptorExisted("the adaptor is unregistered")
+				if err := r.Status().Update(ctx, &link); err != nil {
+					log.Error(err, "Unable to change the status of DeviceLink")
+					return suctioncup.Response{Requeue: true}, nil
+				}
 			}
-		}
-		if err := r.Status().Update(ctx, &link); err != nil {
-			log.Error(err, "Unable to change the status of DeviceLink")
-			return suctioncup.Response{Requeue: true}, nil
 		}
 	}
 

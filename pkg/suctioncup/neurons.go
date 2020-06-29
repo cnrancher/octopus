@@ -1,12 +1,15 @@
 package suctioncup
 
 import (
+	"time"
+
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
 	api "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
 	"github.com/rancher/octopus/pkg/metrics"
+	"github.com/rancher/octopus/pkg/suctioncup/connection"
 	"github.com/rancher/octopus/pkg/util/object"
 )
 
@@ -14,83 +17,54 @@ func (m *manager) ExistAdaptor(name string) bool {
 	return m.adaptors.Get(name) != nil
 }
 
-func (m *manager) Connect(by *edgev1alpha1.DeviceLink) (overwrite bool, berr error) {
+func (m *manager) Connect(referencesData map[string]map[string][]byte, device *unstructured.Unstructured, by *edgev1alpha1.DeviceLink) error {
 	var adaptorName = by.Status.AdaptorName
 	if adaptorName == "" {
-		return false, errors.New("adaptor name is empty")
+		return errors.New("adaptor name is empty")
+	}
+	var adaptor = m.adaptors.Get(adaptorName)
+	if adaptor == nil {
+		return errors.Errorf("cannot find adaptor %s", adaptorName)
 	}
 
 	// records metrics
+	var (
+		overwritten  bool
+		connectedErr error
+	)
 	defer func() {
-		if berr != nil {
+		if connectedErr != nil {
 			metrics.GetLimbMetricsRecorder().IncreaseConnectErrors(adaptorName)
-		} else if !overwrite {
+		} else if !overwritten {
 			metrics.GetLimbMetricsRecorder().IncreaseConnections(adaptorName)
 		}
 	}()
 
-	var adaptor = m.adaptors.Get(adaptorName)
-	if adaptor == nil {
-		return false, errors.Errorf("could not find adaptor %s", adaptorName)
-	}
-
-	var name = object.GetNamespacedName(by)
-	var ret, err = adaptor.CreateConnection(name)
-	if err != nil {
-		return false, errors.Wrapf(err, "failed to link %s", name)
-	}
-	return ret, nil
-}
-
-func (m *manager) Disconnect(by *edgev1alpha1.DeviceLink) (exist bool) {
-	var adaptorName = by.Status.AdaptorName
-	if adaptorName == "" {
-		return false
+	var deviceName = object.GetNamespacedName(by)
+	var conn connection.Connection
+	overwritten, conn, connectedErr = adaptor.CreateConnection(deviceName)
+	if connectedErr != nil {
+		return errors.Wrapf(connectedErr, "cannot to link device %s via adaptor", deviceName)
 	}
 
 	// records metrics
+	var (
+		sendStartTS = time.Now()
+		sentErr     error
+	)
 	defer func() {
-		if exist {
-			metrics.GetLimbMetricsRecorder().DecreaseConnections(adaptorName)
+		metrics.GetLimbMetricsRecorder().ObserveSendLatency(adaptorName, time.Since(sendStartTS))
+		if sentErr != nil {
+			metrics.GetLimbMetricsRecorder().IncreaseSendErrors(adaptorName)
 		}
 	}()
 
-	var adaptor = m.adaptors.Get(adaptorName)
-	if adaptor == nil {
-		return false
-	}
-
-	var name = object.GetNamespacedName(by)
-	return adaptor.DeleteConnection(name)
-}
-
-func (m *manager) Send(referencesData map[string]map[string][]byte, device *unstructured.Unstructured, by *edgev1alpha1.DeviceLink) error {
-	var adaptorName = by.Status.AdaptorName
-	if adaptorName == "" {
-		return errors.New("could not find blank name adaptor")
-	}
-
-	var adaptor = m.adaptors.Get(adaptorName)
-	if adaptor == nil {
-		return errors.Errorf("could not find adaptor %s", adaptorName)
-	}
-
-	var name = object.GetNamespacedName(by)
-	var conn = adaptor.GetConnection(name)
-	if conn == nil {
-		return errors.Errorf("could not find connection %s", name)
-	}
-
-	// NB(thxCode) the data should never be nil
-	var sendDevice, err = device.MarshalJSON()
-	if err != nil {
-		return errors.Wrapf(err, "could not marshal data as JSON")
-	}
-	var sendParameters []byte
-	if by.Spec.Adaptor.Parameters != nil {
-		sendParameters = by.Spec.Adaptor.Parameters.Raw
-	}
 	var sendModel = &by.Status.Model
+	var sendDevice []byte
+	sendDevice, sentErr = device.MarshalJSON()
+	if sentErr != nil {
+		return errors.Wrapf(sentErr, "cannot marshal device %s as JSON", deviceName)
+	}
 	var sendReferences map[string]*api.ConnectRequestReferenceEntry
 	if len(referencesData) != 0 {
 		sendReferences = make(map[string]*api.ConnectRequestReferenceEntry, len(referencesData))
@@ -104,6 +78,29 @@ func (m *manager) Send(referencesData map[string]map[string][]byte, device *unst
 			sendReferences[rpName] = reference
 		}
 	}
+	sentErr = conn.Send(sendModel, sendDevice, sendReferences)
+	if sentErr != nil {
+		return errors.Wrapf(sentErr, "cannot send data to device %s via adaptor", deviceName)
+	}
+	return nil
+}
 
-	return conn.Send(sendParameters, sendModel, sendDevice, sendReferences)
+func (m *manager) Disconnect(by *edgev1alpha1.DeviceLink) {
+	var adaptorName = by.Status.AdaptorName
+	if adaptorName == "" {
+		return
+	}
+	var adaptor = m.adaptors.Get(adaptorName)
+	if adaptor == nil {
+		return
+	}
+
+	var exist bool
+	defer func() {
+		if exist {
+			metrics.GetLimbMetricsRecorder().DecreaseConnections(adaptorName)
+		}
+	}()
+
+	exist = adaptor.DeleteConnection(object.GetNamespacedName(by))
 }

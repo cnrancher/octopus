@@ -1,6 +1,7 @@
 package predicate
 
 import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -28,9 +29,11 @@ func (p DeviceLinkChangedPredicate) Create(e event.CreateEvent) bool {
 
 	var dl = object.ToDeviceLinkObject(e.Object)
 
-	// handles if the requested node
-	if p.NodeName == dl.Spec.Adaptor.Node {
-		deviceLinkChangedPredicateLog.V(5).Info("Accept CreateEvent as requested the same node", "key", object.GetNamespacedName(e.Meta))
+	// NB(thxCode) when creating a fresh new DeviceLink, brain will confirm the Node and fill the result to `status.nodeName`,
+	// limb won't accept any create events, but the first list of `list-watch` is parsed as create event,
+	// so we need to predicate the related items.
+	if dl.Status.NodeName == p.NodeName {
+		deviceLinkChangedPredicateLog.V(5).Info("Accept CreateEvent as requested the same node", "object", object.GetNamespacedName(e.Meta))
 		return true
 	}
 
@@ -62,40 +65,35 @@ func (p DeviceLinkChangedPredicate) Update(e event.UpdateEvent) bool {
 		return true
 	}
 
-	var dlOld = object.ToDeviceLinkObject(e.ObjectOld)
-	var dlNew = object.ToDeviceLinkObject(e.ObjectNew)
-
-	// handles if the object is requesting the same node
-	if p.NodeName == dlNew.Status.NodeName {
-		deviceLinkChangedPredicateLog.V(5).Info("Accept UpdateEvent as the object is requesting the same node", "key", object.GetNamespacedName(e.MetaNew))
-		return true
-	}
-
-	// handles if the object has requested the same node previously
-	if p.NodeName == dlOld.Status.NodeName {
-		// NB(thxCode) help the reconciling logic to close the previous connection
-		deviceLinkChangedPredicateLog.V(5).Info("Accept UpdateEvent as the object has requested the same node previously", "key", object.GetNamespacedName(e.MetaOld))
-		return true
-	}
-
-	return false
-}
-
-func (p DeviceLinkChangedPredicate) Generic(e event.GenericEvent) bool {
-	if e.Meta == nil || e.Object == nil {
+	var dl = object.ToDeviceLinkObject(e.ObjectNew)
+	// rejects if not the target node
+	if dl.Spec.Adaptor.Node != p.NodeName && dl.Status.NodeName != p.NodeName {
 		return false
 	}
 
-	// doesn't handle non-DeviceLink object
-	if !object.IsDeviceLinkObject(e.Object) {
+	if e.MetaNew.GetGeneration() != e.MetaOld.GetGeneration() {
+		deviceLinkChangedPredicateLog.V(5).Info("Accept UpdateEvent as the object's generation is changed", "object", object.GetNamespacedName(e.MetaOld))
 		return true
 	}
 
-	var dl = object.ToDeviceLinkObject(e.Object)
-
-	// handles if the requested node
-	if p.NodeName == dl.Spec.Adaptor.Node {
-		deviceLinkChangedPredicateLog.V(5).Info("Accept GenericEvent as requested the same node", "key", object.GetNamespacedName(e.Meta))
+	if dl.GetNodeExistedStatus() == metav1.ConditionFalse {
+		deviceLinkChangedPredicateLog.V(5).Info("Accept UpdateEvent as the NodeExisted status is failed", "object", object.GetNamespacedName(e.MetaOld))
+		return true
+	}
+	if dl.GetModelExistedStatus() == metav1.ConditionFalse {
+		deviceLinkChangedPredicateLog.V(5).Info("Accept UpdateEvent as the ModelExisted status is failed", "object", object.GetNamespacedName(e.MetaOld))
+		return true
+	}
+	if dl.GetAdaptorExistedStatus() == metav1.ConditionUnknown {
+		deviceLinkChangedPredicateLog.V(5).Info("Accept UpdateEvent as the AdaptorExisted status is checking", "object", object.GetNamespacedName(e.MetaOld))
+		return true
+	}
+	if dl.GetDeviceCreatedStatus() == metav1.ConditionUnknown {
+		deviceLinkChangedPredicateLog.V(5).Info("Accept UpdateEvent as the DeviceCreated status is checking", "object", object.GetNamespacedName(e.MetaOld))
+		return true
+	}
+	if dl.GetDeviceConnectedStatus() == metav1.ConditionUnknown {
+		deviceLinkChangedPredicateLog.V(5).Info("Accept UpdateEvent as the DeviceConnected status is checking", "object", object.GetNamespacedName(e.MetaOld))
 		return true
 	}
 
