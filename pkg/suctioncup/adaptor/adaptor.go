@@ -27,13 +27,10 @@ type Adaptor interface {
 	Stop() error
 
 	// CreateConnection creates a connection by name
-	CreateConnection(name types.NamespacedName) (overwrite bool, err error)
+	CreateConnection(name types.NamespacedName) (overwritten bool, conn connection.Connection, err error)
 
 	// DeleteConnection deletes the connection of name
 	DeleteConnection(name types.NamespacedName) (exist bool)
-
-	// GetConnection returns the connection of name
-	GetConnection(name types.NamespacedName) connection.Connection
 }
 
 func NewAdaptor(dir, name, endpoint string, notifier event.ConnectionNotifier) (Adaptor, error) {
@@ -95,19 +92,20 @@ func (a *adaptor) Stop() error {
 	return err
 }
 
-func (a *adaptor) CreateConnection(name types.NamespacedName) (bool, error) {
-	var conn, err = connection.NewConnection(a.name, name, a.clientConn, a.notifier)
-	if err != nil {
-		return false, err
+func (a *adaptor) CreateConnection(name types.NamespacedName) (overwritten bool, conn connection.Connection, err error) {
+	conn = a.conns.Get(name)
+	if conn != nil {
+		if !conn.IsStop() {
+			return true, conn, nil
+		}
 	}
-	var overwrite = a.conns.Put(conn)
-	return overwrite, nil
+	conn, err = connection.NewConnection(a.name, name, a.clientConn, a.notifier)
+	if err != nil {
+		return false, nil, err
+	}
+	return a.conns.Put(conn), conn, nil
 }
 
 func (a *adaptor) DeleteConnection(name types.NamespacedName) bool {
 	return a.conns.Delete(name)
-}
-
-func (a *adaptor) GetConnection(name types.NamespacedName) connection.Connection {
-	return a.conns.Get(name)
 }

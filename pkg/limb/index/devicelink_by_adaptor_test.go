@@ -1,10 +1,9 @@
 package index
 
 import (
-	"reflect"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
+	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -12,21 +11,14 @@ import (
 )
 
 func TestDeviceLinkByAdaptorFunc(t *testing.T) {
+	var testNode = "edge-worker"
 	var testCases = []struct {
+		name   string
 		given  runtime.Object
 		expect []string
 	}{
 		{
-			given: &edgev1alpha1.DeviceLink{
-				Spec: edgev1alpha1.DeviceLinkSpec{
-					Adaptor: edgev1alpha1.DeviceAdaptor{
-						Name: "adaptors.test.io/dummy",
-					},
-				},
-			},
-			expect: nil,
-		},
-		{
+			name: "non-empty adaptor but requested another node",
 			given: &edgev1alpha1.DeviceLink{
 				Spec: edgev1alpha1.DeviceLinkSpec{
 					Adaptor: edgev1alpha1.DeviceAdaptor{
@@ -34,23 +26,46 @@ func TestDeviceLinkByAdaptorFunc(t *testing.T) {
 					},
 				},
 				Status: edgev1alpha1.DeviceLinkStatus{
-					AdaptorName: "adaptors.test.io/dummy",
+					NodeName: testNode + "1",
 				},
 			},
-			expect: []string{
-				"adaptors.test.io/dummy",
-			},
+			expect: nil,
 		},
-		{ // non-DeviceLink object
+		{
+			name: "non-empty adaptor",
+			given: &edgev1alpha1.DeviceLink{
+				Spec: edgev1alpha1.DeviceLinkSpec{
+					Adaptor: edgev1alpha1.DeviceAdaptor{
+						Name: "adaptors.test.io/dummy",
+					},
+				},
+				Status: edgev1alpha1.DeviceLinkStatus{
+					NodeName: testNode,
+				},
+			},
+			expect: []string{"adaptors.test.io/dummy"},
+		},
+		{
+			name: "empty adaptor",
+			given: &edgev1alpha1.DeviceLink{
+				Spec: edgev1alpha1.DeviceLinkSpec{
+					Adaptor: edgev1alpha1.DeviceAdaptor{},
+				},
+				Status: edgev1alpha1.DeviceLinkStatus{
+					NodeName: testNode,
+				},
+			},
+			expect: nil,
+		},
+		{
+			name:   "non-DeviceLink object",
 			given:  &corev1.Node{},
 			expect: nil,
 		},
 	}
 
-	for i, tc := range testCases {
-		var ret = DeviceLinkByAdaptorFunc(tc.given)
-		if !reflect.DeepEqual(ret, tc.expect) {
-			t.Errorf("case %v: expected %s, got %s", i+1, spew.Sprintf("%#v", tc.expect), spew.Sprintf("%#v", ret))
-		}
+	for _, tc := range testCases {
+		var ret = DeviceLinkByAdaptorFuncFactory(testNode)(tc.given)
+		assert.Equal(t, tc.expect, ret, "case %v", tc.name)
 	}
 }

@@ -136,7 +136,6 @@ func (d *specialDevice) off() {
 	}
 
 	d.instance.Status = v1alpha1.DummySpecialDeviceStatus{}
-	d.sync()
 }
 
 // mockPhysicalWatching is used to simulate real device state changes

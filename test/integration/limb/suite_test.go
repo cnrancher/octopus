@@ -89,7 +89,7 @@ var _ = BeforeSuite(func(done Done) {
 	err = limb.RegisterScheme(ctrlScheme)
 	Expect(err).NotTo(HaveOccurred())
 
-	controllerMgr, err := ctrl.NewManager(k8sCfg, ctrl.Options{Scheme: ctrlScheme})
+	controllerMgr, err := ctrl.NewManager(k8sCfg, ctrl.Options{Scheme: ctrlScheme, LeaderElection: false})
 	Expect(err).ToNot(HaveOccurred())
 	Expect(controllerMgr).ToNot(BeNil())
 

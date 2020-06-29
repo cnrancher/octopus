@@ -3,7 +3,7 @@ package predicate
 import (
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
+	"github.com/stretchr/testify/assert"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -12,6 +12,7 @@ import (
 )
 
 func TestDeviceLinkChangedPredicate_Update(t *testing.T) {
+	var testNode = "edge-worker"
 	var testCases = []struct {
 		name   string
 		given  event.UpdateEvent
@@ -23,50 +24,41 @@ func TestDeviceLinkChangedPredicate_Update(t *testing.T) {
 				MetaOld: nil,
 				ObjectOld: &edgev1alpha1.DeviceLink{
 					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "test",
+						Namespace:  "default",
+						Name:       "test",
+						Generation: 1,
 					},
 					Spec: edgev1alpha1.DeviceLinkSpec{
 						Adaptor: edgev1alpha1.DeviceAdaptor{
 							Name: "adaptors.test.io/dummy",
-							Node: "edge-worker",
+							Node: testNode,
 						},
-					},
-					Status: edgev1alpha1.DeviceLinkStatus{
-						AdaptorName: "adaptors.test.io/dummy",
-						NodeName:    "edge-worker",
 					},
 				},
 				MetaNew: &edgev1alpha1.DeviceLink{
 					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "test",
+						Namespace:  "default",
+						Name:       "test",
+						Generation: 1,
 					},
 					Spec: edgev1alpha1.DeviceLinkSpec{
 						Adaptor: edgev1alpha1.DeviceAdaptor{
 							Name: "adaptors.test.io/dummy",
-							Node: "edge-worker",
+							Node: testNode,
 						},
-					},
-					Status: edgev1alpha1.DeviceLinkStatus{
-						AdaptorName: "adaptors.test.io/dummy",
-						NodeName:    "edge-worker",
 					},
 				},
 				ObjectNew: &edgev1alpha1.DeviceLink{
 					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "test",
+						Namespace:  "default",
+						Name:       "test",
+						Generation: 1,
 					},
 					Spec: edgev1alpha1.DeviceLinkSpec{
 						Adaptor: edgev1alpha1.DeviceAdaptor{
 							Name: "adaptors.test.io/dummy",
-							Node: "edge-worker",
+							Node: testNode,
 						},
-					},
-					Status: edgev1alpha1.DeviceLinkStatus{
-						AdaptorName: "adaptors.test.io/dummy",
-						NodeName:    "edge-worker",
 					},
 				},
 			},
@@ -99,132 +91,214 @@ func TestDeviceLinkChangedPredicate_Update(t *testing.T) {
 			expect: true,
 		},
 		{
-			name: "request the same node",
+			name: "same generation",
 			given: event.UpdateEvent{
 				MetaOld: &edgev1alpha1.DeviceLink{
 					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "test",
+						Namespace:  "default",
+						Name:       "test",
+						Generation: 1,
 					},
 					Spec: edgev1alpha1.DeviceLinkSpec{
 						Adaptor: edgev1alpha1.DeviceAdaptor{
 							Name: "adaptors.test.io/dummy",
-							Node: "edge-worker",
+							Node: testNode,
 						},
 					},
 				},
 				ObjectOld: &edgev1alpha1.DeviceLink{
 					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "test",
+						Namespace:  "default",
+						Name:       "test",
+						Generation: 1,
 					},
 					Spec: edgev1alpha1.DeviceLinkSpec{
 						Adaptor: edgev1alpha1.DeviceAdaptor{
 							Name: "adaptors.test.io/dummy",
-							Node: "edge-worker",
+							Node: testNode,
 						},
 					},
 				},
 				MetaNew: &edgev1alpha1.DeviceLink{
 					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "test",
+						Namespace:  "default",
+						Name:       "test",
+						Generation: 1,
 					},
 					Spec: edgev1alpha1.DeviceLinkSpec{
 						Adaptor: edgev1alpha1.DeviceAdaptor{
 							Name: "adaptors.test.io/dummy",
-							Node: "edge-worker",
+							Node: testNode,
 						},
 					},
 					Status: edgev1alpha1.DeviceLinkStatus{
 						AdaptorName: "adaptors.test.io/dummy",
-						NodeName:    "edge-worker",
+						NodeName:    testNode,
 					},
 				},
 				ObjectNew: &edgev1alpha1.DeviceLink{
 					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "test",
+						Namespace:  "default",
+						Name:       "test",
+						Generation: 1,
 					},
 					Spec: edgev1alpha1.DeviceLinkSpec{
 						Adaptor: edgev1alpha1.DeviceAdaptor{
 							Name: "adaptors.test.io/dummy",
-							Node: "edge-worker",
+							Node: testNode,
 						},
 					},
 					Status: edgev1alpha1.DeviceLinkStatus{
 						AdaptorName: "adaptors.test.io/dummy",
-						NodeName:    "edge-worker",
+						NodeName:    testNode,
+					},
+				},
+			},
+			expect: false,
+		},
+		{
+			name: "different generation and requested the same node",
+			given: event.UpdateEvent{
+				MetaOld: &edgev1alpha1.DeviceLink{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace:  "default",
+						Name:       "test",
+						Generation: 1,
+					},
+					Spec: edgev1alpha1.DeviceLinkSpec{
+						Adaptor: edgev1alpha1.DeviceAdaptor{
+							Name: "adaptors.test.io/dummy",
+							Node: testNode,
+						},
+					},
+					Status: edgev1alpha1.DeviceLinkStatus{
+						AdaptorName: "adaptors.test.io/dummy",
+						NodeName:    testNode,
+					},
+				},
+				ObjectOld: &edgev1alpha1.DeviceLink{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace:  "default",
+						Name:       "test",
+						Generation: 1,
+					},
+					Spec: edgev1alpha1.DeviceLinkSpec{
+						Adaptor: edgev1alpha1.DeviceAdaptor{
+							Name: "adaptors.test.io/dummy",
+							Node: testNode,
+						},
+					},
+					Status: edgev1alpha1.DeviceLinkStatus{
+						AdaptorName: "adaptors.test.io/dummy",
+						NodeName:    testNode,
+					},
+				},
+				MetaNew: &edgev1alpha1.DeviceLink{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace:  "default",
+						Name:       "test",
+						Generation: 2,
+					},
+					Spec: edgev1alpha1.DeviceLinkSpec{
+						Adaptor: edgev1alpha1.DeviceAdaptor{
+							Name: "adaptors.test.io/dummy",
+							Node: testNode,
+						},
+					},
+					Status: edgev1alpha1.DeviceLinkStatus{
+						AdaptorName: "adaptors.test.io/dummy",
+						NodeName:    testNode,
+					},
+				},
+				ObjectNew: &edgev1alpha1.DeviceLink{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace:  "default",
+						Name:       "test",
+						Generation: 2,
+					},
+					Spec: edgev1alpha1.DeviceLinkSpec{
+						Adaptor: edgev1alpha1.DeviceAdaptor{
+							Name: "adaptors.test.io/dummy",
+							Node: testNode,
+						},
+					},
+					Status: edgev1alpha1.DeviceLinkStatus{
+						AdaptorName: "adaptors.test.io/dummy",
+						NodeName:    testNode,
 					},
 				},
 			},
 			expect: true,
 		},
-		{
-			name: "requested the same node previously",
+		{ // this case is used for cancel the previous connection.
+			name: "different generation but requested the same node previously",
 			given: event.UpdateEvent{
 				MetaOld: &edgev1alpha1.DeviceLink{
 					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "test",
+						Namespace:  "default",
+						Name:       "test",
+						Generation: 1,
 					},
 					Spec: edgev1alpha1.DeviceLinkSpec{
 						Adaptor: edgev1alpha1.DeviceAdaptor{
 							Name: "adaptors.test.io/dummy",
-							Node: "edge-worker",
+							Node: testNode,
 						},
 					},
 					Status: edgev1alpha1.DeviceLinkStatus{
 						AdaptorName: "adaptors.test.io/dummy",
-						NodeName:    "edge-worker",
+						NodeName:    testNode,
 					},
 				},
 				ObjectOld: &edgev1alpha1.DeviceLink{
 					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "test",
+						Namespace:  "default",
+						Name:       "test",
+						Generation: 1,
 					},
 					Spec: edgev1alpha1.DeviceLinkSpec{
 						Adaptor: edgev1alpha1.DeviceAdaptor{
 							Name: "adaptors.test.io/dummy",
-							Node: "edge-worker",
+							Node: testNode,
 						},
 					},
 					Status: edgev1alpha1.DeviceLinkStatus{
 						AdaptorName: "adaptors.test.io/dummy",
-						NodeName:    "edge-worker",
+						NodeName:    testNode,
 					},
 				},
 				MetaNew: &edgev1alpha1.DeviceLink{
 					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "test",
+						Namespace:  "default",
+						Name:       "test",
+						Generation: 2,
 					},
 					Spec: edgev1alpha1.DeviceLinkSpec{
 						Adaptor: edgev1alpha1.DeviceAdaptor{
 							Name: "adaptors.test.io/dummy",
-							Node: "edge-worker1",
+							Node: testNode + "1",
 						},
 					},
 					Status: edgev1alpha1.DeviceLinkStatus{
 						AdaptorName: "adaptors.test.io/dummy",
-						NodeName:    "edge-worker1",
+						NodeName:    testNode,
 					},
 				},
 				ObjectNew: &edgev1alpha1.DeviceLink{
 					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "test",
+						Namespace:  "default",
+						Name:       "test",
+						Generation: 2,
 					},
 					Spec: edgev1alpha1.DeviceLinkSpec{
 						Adaptor: edgev1alpha1.DeviceAdaptor{
 							Name: "adaptors.test.io/dummy",
-							Node: "edge-worker1",
+							Node: testNode + "1",
 						},
 					},
 					Status: edgev1alpha1.DeviceLinkStatus{
 						AdaptorName: "adaptors.test.io/dummy",
-						NodeName:    "edge-worker1",
+						NodeName:    testNode,
 					},
 				},
 			},
@@ -235,66 +309,62 @@ func TestDeviceLinkChangedPredicate_Update(t *testing.T) {
 			given: event.UpdateEvent{
 				MetaOld: &edgev1alpha1.DeviceLink{
 					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "test",
+						Namespace:  "default",
+						Name:       "test",
+						Generation: 1,
 					},
 					Spec: edgev1alpha1.DeviceLinkSpec{
 						Adaptor: edgev1alpha1.DeviceAdaptor{
 							Name: "adaptors.test.io/dummy",
-							Node: "edge-worker1",
+							Node: testNode + "1",
 						},
-					},
-					Status: edgev1alpha1.DeviceLinkStatus{
-						AdaptorName: "adaptors.test.io/dummy",
-						NodeName:    "edge-worker1",
 					},
 				},
 				ObjectOld: &edgev1alpha1.DeviceLink{
 					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "test",
+						Namespace:  "default",
+						Name:       "test",
+						Generation: 1,
 					},
 					Spec: edgev1alpha1.DeviceLinkSpec{
 						Adaptor: edgev1alpha1.DeviceAdaptor{
 							Name: "adaptors.test.io/dummy",
-							Node: "edge-worker1",
+							Node: testNode + "1",
 						},
-					},
-					Status: edgev1alpha1.DeviceLinkStatus{
-						AdaptorName: "adaptors.test.io/dummy",
-						NodeName:    "edge-worker1",
 					},
 				},
 				MetaNew: &edgev1alpha1.DeviceLink{
 					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "test",
+						Namespace:  "default",
+						Name:       "test",
+						Generation: 1,
 					},
 					Spec: edgev1alpha1.DeviceLinkSpec{
 						Adaptor: edgev1alpha1.DeviceAdaptor{
 							Name: "adaptors.test.io/dummy",
-							Node: "edge-worker1",
+							Node: testNode + "1",
 						},
 					},
 					Status: edgev1alpha1.DeviceLinkStatus{
 						AdaptorName: "adaptors.test.io/dummy",
-						NodeName:    "edge-worker1",
+						NodeName:    testNode + "1",
 					},
 				},
 				ObjectNew: &edgev1alpha1.DeviceLink{
 					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
-						Name:      "test",
+						Namespace:  "default",
+						Name:       "test",
+						Generation: 1,
 					},
 					Spec: edgev1alpha1.DeviceLinkSpec{
 						Adaptor: edgev1alpha1.DeviceAdaptor{
 							Name: "adaptors.test.io/dummy",
-							Node: "edge-worker1",
+							Node: testNode + "1",
 						},
 					},
 					Status: edgev1alpha1.DeviceLinkStatus{
 						AdaptorName: "adaptors.test.io/dummy",
-						NodeName:    "edge-worker1",
+						NodeName:    testNode + "1",
 					},
 				},
 			},
@@ -302,11 +372,9 @@ func TestDeviceLinkChangedPredicate_Update(t *testing.T) {
 		},
 	}
 
-	var predication = DeviceLinkChangedPredicate{NodeName: "edge-worker"}
+	var predication = DeviceLinkChangedPredicate{NodeName: testNode}
 	for _, tc := range testCases {
 		var ret = predication.Update(tc.given)
-		if ret != tc.expect {
-			t.Errorf("case %v: expected %s, got %s", tc.name, spew.Sprintf("%#v", tc.expect), spew.Sprintf("%#v", ret))
-		}
+		assert.Equal(t, tc.expect, ret, "case %v", tc.name)
 	}
 }

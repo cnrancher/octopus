@@ -59,6 +59,7 @@ func Run(name string, opts *options.Options) error {
 		ctrl.GetConfigOrDie(),
 		ctrl.Options{
 			Scheme:             scheme,
+			LeaderElection:     false,
 			MetricsBindAddress: fmt.Sprintf(":%d", opts.MetricsAddr),
 		},
 	)

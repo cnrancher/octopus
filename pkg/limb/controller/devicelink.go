@@ -9,7 +9,6 @@ import (
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
@@ -20,12 +19,11 @@ import (
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
 	"github.com/rancher/octopus/pkg/limb/index"
 	"github.com/rancher/octopus/pkg/limb/predicate"
-	"github.com/rancher/octopus/pkg/status/devicelink"
 	"github.com/rancher/octopus/pkg/suctioncup"
 	"github.com/rancher/octopus/pkg/util/collection"
 	"github.com/rancher/octopus/pkg/util/converter"
 	"github.com/rancher/octopus/pkg/util/fieldpath"
-	"github.com/rancher/octopus/pkg/util/model"
+	modelutil "github.com/rancher/octopus/pkg/util/model"
 	"github.com/rancher/octopus/pkg/util/object"
 )
 
@@ -84,20 +82,6 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		return ctrl.Result{}, nil
 	}
 
-	// rejects if not the requested node
-	if link.Status.NodeName != r.NodeName {
-		// NB(thxCode) disconnects the link to avoid connection leak when the requested node has been changed
-		r.SuctionCup.Disconnect(&link)
-		return ctrl.Result{}, nil
-	}
-
-	// rejects if the conditions are not met
-	if devicelink.GetModelExistedStatus(&link.Status) != metav1.ConditionTrue {
-		// NB(thxCode) disconnects the link to avoid connection leak when the model has been changed or removed
-		r.SuctionCup.Disconnect(&link)
-		return ctrl.Result{}, nil
-	}
-
 	// adds finalizer if needed
 	if !collection.StringSliceContain(link.Finalizers, ReconcilingDeviceLink) {
 		link.Finalizers = append(link.Finalizers, ReconcilingDeviceLink)
@@ -108,229 +92,129 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 		return ctrl.Result{}, nil
 	}
 
-	// validates adaptor existing or not
-	switch devicelink.GetAdaptorExistedStatus(&link.Status) {
-	case metav1.ConditionFalse:
-		if r.SuctionCup.ExistAdaptor(link.Spec.Adaptor.Name) ||
-			link.Status.AdaptorName != link.Spec.Adaptor.Name {
-			devicelink.ToCheckAdaptorExisted(&link.Status)
-			if err := r.Status().Update(ctx, &link); err != nil {
-				log.Error(err, "Unable to change the status of DeviceLink")
-				return ctrl.Result{Requeue: true}, nil
-			}
-		}
+	// NB(thxCode) we might see this as the `spec.adaptor.node` has been changed,
+	// so we need to disconnect the previous connection and
+	// wait for brain to confirm the next step.
+	if link.Status.NodeName != link.Spec.Adaptor.Node {
+		r.SuctionCup.Disconnect(&link)
 		return ctrl.Result{}, nil
-	case metav1.ConditionTrue:
-		if !r.SuctionCup.ExistAdaptor(link.Spec.Adaptor.Name) ||
-			link.Status.AdaptorName != link.Spec.Adaptor.Name {
-			// NB(thxCode) disconnects the link to avoid connection leak when the requested adaptor has been changed
-			r.SuctionCup.Disconnect(&link)
-			devicelink.ToCheckAdaptorExisted(&link.Status)
-			if err := r.Status().Update(ctx, &link); err != nil {
-				log.Error(err, "Unable to change the status of DeviceLink")
-				return ctrl.Result{Requeue: true}, nil
-			}
-			return ctrl.Result{}, nil
-		}
-	default:
-		if r.SuctionCup.ExistAdaptor(link.Spec.Adaptor.Name) {
-			devicelink.SuccessOnAdaptorExisted(&link.Status)
-		} else {
-			devicelink.FailOnAdaptorExisted(&link.Status, "the adaptor isn't existed")
-		}
+	}
 
-		link.Status.AdaptorName = link.Spec.Adaptor.Name
+	// NB(thxCode) we might see this as the `spec.model` has been changed,
+	// so we need to disconnect the previous connection and
+	// wait for brain to confirm the next step.
+	if link.Status.Model != link.Spec.Model {
+		r.SuctionCup.Disconnect(&link)
+		return ctrl.Result{}, nil
+	}
+
+	// NB(thxCode) we might see this as the `spec.adaptor.name` has been changed,
+	// so we need to disconnect the previous connection.
+	if link.Status.AdaptorName != link.Spec.Adaptor.Name {
+		r.SuctionCup.Disconnect(&link)
+	}
+
+	// validates adaptor
+	var isAdaptorExisted = r.SuctionCup.ExistAdaptor(link.Spec.Adaptor.Name)
+	if !isAdaptorExisted {
+		link.FailOnAdaptorExisted("the adaptor isn't existed")
 		if err := r.Status().Update(ctx, &link); err != nil {
 			log.Error(err, "Unable to change the status of DeviceLink")
 			return ctrl.Result{Requeue: true}, nil
 		}
 		return ctrl.Result{}, nil
 	}
+	link.SucceedOnAdaptorExisted()
 
-	// validates device created or not
-	var device unstructured.Unstructured
-	switch devicelink.GetDeviceCreatedStatus(&link.Status) {
-	case metav1.ConditionFalse:
-		if link.Status.DeviceTemplateGeneration != link.Generation {
-			devicelink.ToCheckDeviceCreated(&link.Status)
-			if err := r.Status().Update(ctx, &link); err != nil {
-				log.Error(err, "Unable to change the status of DeviceLink")
-				return ctrl.Result{Requeue: true}, nil
-			}
+	// validates device
+	var device, deviceNewErr = modelutil.NewInstanceOfTypeMeta(link.Status.Model)
+	if deviceNewErr != nil {
+		log.Error(deviceNewErr, "Unable to make device from model")
+		link.FailOnDeviceCreated("unable to make device from model")
+		if err := r.Status().Update(ctx, &link); err != nil {
+			log.Error(err, "Unable to change the status of DeviceLink")
+			return ctrl.Result{Requeue: true}, nil
 		}
 		return ctrl.Result{}, nil
-	case metav1.ConditionTrue:
-		var err error
-
-		// makes device from model
-		device, err = model.NewInstanceOfTypeMeta(link.Status.Model)
-		if err != nil {
-			// NB(thxCode) disconnects the link to avoid connection leak when the device instance has not been fetched
-			r.SuctionCup.Disconnect(&link)
-			devicelink.FailOnDeviceCreated(&link.Status, "unable to make device from typemeta")
-			link.Status.DeviceTemplateGeneration = link.Generation
-			if err := r.Status().Update(ctx, &link); err != nil {
-				log.Error(err, "Unable to change the status of DeviceLink")
-				return ctrl.Result{Requeue: true}, nil
-			}
-			r.Eventf(&link, "Warning", "FailedCreated", "cannot make device from typemeta: %v", err)
-			return ctrl.Result{}, nil
+	}
+	if err := r.Get(ctx, req.NamespacedName, &device); err != nil {
+		// requeues when occurring any errors except not-found one
+		if !apierrs.IsNotFound(err) {
+			log.Error(err, "Unable to fetch the device of DeviceLink")
+			return ctrl.Result{Requeue: true}, nil
 		}
-
-		// fetches device
-		if err := r.Get(ctx, req.NamespacedName, &device); err != nil {
-			// re-checks if the model exists
-			if meta.IsNoMatchError(err) {
-				// NB(thxCode) disconnects the link to avoid connection leak when the device instance has not been fetched
-				r.SuctionCup.Disconnect(&link)
-				devicelink.ToCheckModelExisted(&link.Status)
-				if err := r.Status().Update(ctx, &link); err != nil {
-					log.Error(err, "Unable to change the status of DeviceLink")
-					return ctrl.Result{Requeue: true}, nil
-				}
-				r.Eventf(&link, "Warning", "NotMatched", "cannot find device model")
-				return ctrl.Result{}, nil
-			}
-
-			// requeues when occurring any errors except not-found one
-			if !apierrs.IsNotFound(err) {
-				log.Error(err, "Unable to fetch the device of DeviceLink")
-				return ctrl.Result{Requeue: true}, nil
-			}
-		}
-
-		// triggers to create the device again if it's not found or deleted accidentally
-		if !object.IsActivating(&device) {
-			// NB(thxCode) disconnects the link to avoid connection leak when the device instance has not been found
-			r.SuctionCup.Disconnect(&link)
-			devicelink.ToCheckDeviceCreated(&link.Status)
-			if err := r.Status().Update(ctx, &link); err != nil {
-				log.Error(err, "Unable to change the status of DeviceLink")
-				return ctrl.Result{Requeue: true}, nil
-			}
-			r.Eventf(&link, "Warning", "Recreating", "cannot find previous device")
-			return ctrl.Result{}, nil
-		}
-
-		// updates device if needed
-		if isDeviceSpecChanged(&link, &device) {
-			if err := r.Update(ctx, &device); err != nil {
-				// fails if the device is invalid
-				if apierrs.IsInvalid(err) {
-					// NB(thxCode) disconnects the link to avoid connection leak when the device instance cannot be updated
-					r.SuctionCup.Disconnect(&link)
-					devicelink.FailOnDeviceCreated(&link.Status, "unable to update device")
-					link.Status.DeviceTemplateGeneration = link.Generation
-					if err := r.Status().Update(ctx, &link); err != nil {
-						log.Error(err, "Unable to change the status of DeviceLink")
-						return ctrl.Result{Requeue: true}, nil
-					}
-					r.Eventf(&link, "Warning", "FailedCreated", "cannot update device from template: %v", err)
-					return ctrl.Result{}, nil
-				}
-
-				log.Error(err, "Unable to update device")
-				return ctrl.Result{Requeue: true}, nil
-			}
-		}
-	default:
-		// constructs device from template
-		device = constructDevice(&link)
-
+	}
+	if !object.IsActivating(&device) {
 		// creates device
-		if err := r.Create(ctx, &device); err != nil {
-			// re-checks if the model exists
-			if meta.IsNoMatchError(err) {
-				devicelink.ToCheckModelExisted(&link.Status)
-				if err := r.Status().Update(ctx, &link); err != nil {
-					log.Error(err, "Unable to change the status of DeviceLink")
-					return ctrl.Result{Requeue: true}, nil
-				}
-				r.Eventf(&link, "Warning", "NotMatched", "cannot find device model")
-				return ctrl.Result{}, nil
-			}
-
-			// fails if the device is invalid
-			if apierrs.IsInvalid(err) {
-				devicelink.FailOnDeviceCreated(&link.Status, "unable to create device from template")
-				link.Status.DeviceTemplateGeneration = link.Generation
-				if err := r.Status().Update(ctx, &link); err != nil {
-					log.Error(err, "Unable to change the status of DeviceLink")
-					return ctrl.Result{Requeue: true}, nil
-				}
-				r.Eventf(&link, "Warning", "FailedCreated", "cannot create device from template: %v", err)
-				return ctrl.Result{}, nil
-			}
-
-			// requeues when occurring any errors except already-existed one
-			if !apierrs.IsAlreadyExists(err) {
+		var deviceNew = constructDeviceFromTemplate(&link)
+		if err := r.Create(ctx, &deviceNew); err != nil {
+			if !apierrs.IsInvalid(err) {
 				log.Error(err, "Unable to create the device of DeviceLink")
 				return ctrl.Result{Requeue: true}, nil
 			}
-		}
 
-		devicelink.SuccessOnDeviceCreated(&link.Status)
-		link.Status.DeviceTemplateGeneration = link.Generation
-		if err := r.Status().Update(ctx, &link); err != nil {
-			log.Error(err, "Unable to change the status of DeviceLink")
-			return ctrl.Result{Requeue: true}, nil
-		}
-		r.Eventf(&link, "Normal", "Created", "device is created")
-		return ctrl.Result{}, nil
-	}
-
-	// validates device connected or not
-	switch devicelink.GetDeviceConnectedStatus(&link.Status) {
-	case metav1.ConditionFalse:
-		if link.Status.DeviceTemplateGeneration != link.Generation {
-			devicelink.ToCheckDeviceConnected(&link.Status)
+			// NB(thxCode) if the device creation is invalid, we don't need to retry.
+			log.Error(err, "Unable to create device from template")
+			link.FailOnDeviceCreated("unable to create device from template")
 			if err := r.Status().Update(ctx, &link); err != nil {
 				log.Error(err, "Unable to change the status of DeviceLink")
 				return ctrl.Result{Requeue: true}, nil
 			}
-			r.Eventf(&link, "Warning", "Reconnecting", "triggered by modification")
-		}
-		return ctrl.Result{}, nil
-	case metav1.ConditionTrue:
-		// fetches the device references if needed
-		var references, err = r.fetchReferences(&link)
-		if err != nil {
-			log.Error(err, "Unable to fetch the reference parameters of DeviceLink")
-			r.Eventf(&link, "Warning", "FailedSent", "cannot send data to adaptor as failed to fetch the reference parameters: %v", err)
-			return ctrl.Result{Requeue: true, RequeueAfter: 10 * time.Second}, nil
-		}
-
-		if err := r.SuctionCup.Send(references, &device, &link); err != nil {
-			devicelink.FailOnDeviceConnected(&link.Status, "cannot send data to adaptor")
-			link.Status.DeviceTemplateGeneration = link.Generation
-			if err := r.Status().Update(ctx, &link); err != nil {
-				log.Error(err, "Unable to change the status of DeviceLink")
-				return ctrl.Result{Requeue: true}, nil
-			}
-			r.Eventf(&link, "Warning", "FailedSent", "cannot send data to adaptor: %v", err)
-		}
-		return ctrl.Result{}, nil
-	default:
-		if _, err := r.SuctionCup.Connect(&link); err != nil {
-			devicelink.FailOnDeviceConnected(&link.Status, "unable to connect to adaptor")
-			link.Status.DeviceTemplateGeneration = link.Generation
-			if err := r.Status().Update(ctx, &link); err != nil {
-				log.Error(err, "Unable to change the status of DeviceLink")
-				return ctrl.Result{Requeue: true}, nil
-			}
-			r.Eventf(&link, "Warning", "FailedConnected", "cannot connect to adaptor: %v", err)
 			return ctrl.Result{}, nil
 		}
 
-		devicelink.WaitForDeviceConnected(&link.Status)
-		link.Status.DeviceTemplateGeneration = link.Generation
+		device = deviceNew
+	}
+	link.SucceedOnDeviceCreated()
+
+	// fetches the references
+	var references, err = r.fetchReferences(&link)
+	if err != nil {
+		link.FailOnDeviceConnected("unable to fetch the reference parameters")
 		if err := r.Status().Update(ctx, &link); err != nil {
 			log.Error(err, "Unable to change the status of DeviceLink")
 			return ctrl.Result{Requeue: true}, nil
 		}
-		r.Eventf(&link, "Normal", "Connected", "connected to adaptor")
+		r.Eventf(&link, "Warning", "FailedFetched", "cannot fetch the reference parameters: %v, retry in 10 seconds", err)
+		// NB(thxCode) since we don't list-watch the ConfigMap/Secret resources, we have to give a retry mechanism to obtain these resources.
+		return ctrl.Result{Requeue: true, RequeueAfter: 10 * time.Second}, nil
+	}
+
+	// updates device if need
+	var updateDevice = isDeviceSpecChanged(&link, &device)
+	if updateDevice {
+		if err := r.Update(ctx, &device); err != nil {
+			if !apierrs.IsInvalid(err) {
+				log.Error(err, "Unable to update the device of DeviceLink")
+				return ctrl.Result{Requeue: true}, nil
+			}
+			link.FailOnDeviceConnected("unable to update the device from template")
+			if err := r.Status().Update(ctx, &link); err != nil {
+				log.Error(err, "Unable to change the status of DeviceLink")
+				return ctrl.Result{Requeue: true}, nil
+			}
+			r.Eventf(&link, "Warning", "FailedUpdated", "cannot update the device from template: %v", err)
+			return ctrl.Result{}, nil
+		}
+	}
+
+	// connects to device
+	if err := r.SuctionCup.Connect(references, &device, &link); err != nil {
+		link.FailOnDeviceConnected("unable to connect to device")
+		if err := r.Status().Update(ctx, &link); err != nil {
+			log.Error(err, "Unable to change the status of DeviceLink")
+			return ctrl.Result{Requeue: true}, nil
+		}
+		r.Eventf(&link, "Warning", "FailedConnected", "cannot connect to device: %v", err)
 		return ctrl.Result{}, nil
 	}
+	link.SucceedOnDeviceConnected()
+
+	if err := r.Status().Update(ctx, &link); err != nil {
+		log.Error(err, "Unable to change the status of DeviceLink")
+		return ctrl.Result{Requeue: true}, nil
+	}
+	return ctrl.Result{}, nil
 }
 
 func (r *DeviceLinkReconciler) SetupWithManager(ctrlMgr ctrl.Manager, suctionCupMgr suctioncup.Manager) error {
@@ -338,12 +222,11 @@ func (r *DeviceLinkReconciler) SetupWithManager(ctrlMgr ctrl.Manager, suctionCup
 	suctionCupMgr.RegisterAdaptorHandler(r)
 	suctionCupMgr.RegisterConnectionHandler(r)
 
-	// indexes DeviceLink by `status.adaptorName`
 	if err := ctrlMgr.GetFieldIndexer().IndexField(
 		r.Ctx,
 		&edgev1alpha1.DeviceLink{},
 		index.DeviceLinkByAdaptorField,
-		index.DeviceLinkByAdaptorFunc,
+		index.DeviceLinkByAdaptorFuncFactory(r.NodeName),
 	); err != nil {
 		return err
 	}
@@ -460,9 +343,12 @@ func isDeviceSpecChanged(deviceLink *edgev1alpha1.DeviceLink, device *unstructur
 	var deviceLabelsUpdated = collection.StringMapCopyInto(
 		deviceTemplate.Labels,
 		collection.StringMapCopy(device.GetLabels()))
-	// NB(thxCode) apiserver will take care the format of `template.spec.raw`, so we can consider it as a good JSON format.
-	var deviceSpecUpdated map[string]interface{}
-	converter.TryUnmarshalJSON(deviceTemplate.Spec.Raw, &deviceSpecUpdated)
+	var deviceSpecUpdated = make(map[string]interface{}, 0)
+	if deviceTemplate.Spec != nil {
+		// NB(thxCode) apiserver will take care the format of `template.spec.raw`,
+		// so we can consider it as a good JSON format.
+		converter.TryUnmarshalJSON(deviceTemplate.Spec.Raw, &deviceSpecUpdated)
+	}
 
 	var changed bool
 	if collection.DiffStringMap(device.GetAnnotations(), deviceAnnotationsUpdated) {
@@ -480,8 +366,8 @@ func isDeviceSpecChanged(deviceLink *edgev1alpha1.DeviceLink, device *unstructur
 	return changed
 }
 
-// constructDevice constructs device instance from deviceLink's template.
-func constructDevice(deviceLink *edgev1alpha1.DeviceLink) unstructured.Unstructured {
+// constructDeviceFromTemplate constructs device instance from deviceLink's template.
+func constructDeviceFromTemplate(deviceLink *edgev1alpha1.DeviceLink) unstructured.Unstructured {
 	var deviceModel = deviceLink.Spec.Model
 	var deviceTemplate = deviceLink.Spec.Template
 
@@ -490,9 +376,12 @@ func constructDevice(deviceLink *edgev1alpha1.DeviceLink) unstructured.Unstructu
 		"edge.cattle.io/adaptor-name": deviceLink.Status.AdaptorName,
 	}
 	var deviceLabels = collection.StringMapCopy(deviceTemplate.Labels)
-	// NB(thxCode) apiserver will take care the format of `template.spec.raw`, so we can consider it as a good JSON format.
-	var deviceSpec map[string]interface{}
-	converter.TryUnmarshalJSON(deviceTemplate.Spec.Raw, &deviceSpec)
+	var deviceSpec = make(map[string]interface{}, 0)
+	if deviceTemplate.Spec != nil {
+		// NB(thxCode) apiserver will take care the format of `template.spec.raw`,
+		// so we can consider it as a good JSON format.
+		converter.TryUnmarshalJSON(deviceTemplate.Spec.Raw, &deviceSpec)
+	}
 
 	var device = unstructured.Unstructured{
 		Object: map[string]interface{}{
