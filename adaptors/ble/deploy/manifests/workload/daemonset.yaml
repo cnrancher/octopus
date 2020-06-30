@@ -19,6 +19,7 @@ spec:
       containers:
         - name: octopus
           image: cnrancher/octopus-adaptor-ble:master
+          imagePullPolicy: Always
           securityContext:
             privileged: true
           volumeMounts:

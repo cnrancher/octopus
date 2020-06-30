@@ -788,6 +788,7 @@ spec:
     spec:
       containers:
       - image: cnrancher/octopus-adaptor-modbus:master
+        imagePullPolicy: Always
         name: octopus
         securityContext:
           privileged: true
