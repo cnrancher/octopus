@@ -3,6 +3,7 @@ package mqtt
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"testing"
 	"time"
 
@@ -19,7 +20,7 @@ import (
 	"github.com/rancher/octopus/test/util/testdata"
 )
 
-type testMetaObj struct {
+type typeMetaObject struct {
 	metav1.ObjectMeta
 	metav1.TypeMeta
 }
@@ -27,26 +28,27 @@ type testMetaObj struct {
 func Test_getTopic(t *testing.T) {
 	type given struct {
 		topic  v1alpha1.MQTTMessageTopic
-		object testMetaObj
+		object typeMetaObject
 	}
-
-	type expect struct {
-		topic string
-		err   error
+	type expected struct {
+		ret string
+		err error
 	}
 
 	var testCases = []struct {
-		given  given
-		expect expect
+		name     string
+		given    given
+		expected expected
 	}{
-		{ // static
+		{
+			name: "static name",
 			given: given{
 				topic: v1alpha1.MQTTMessageTopic{
 					MQTTMessageTopicStatic: v1alpha1.MQTTMessageTopicStatic{
 						Name: "static/topic",
 					},
 				},
-				object: testMetaObj{
+				object: typeMetaObject{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "default",
 						Name:      "test",
@@ -54,18 +56,19 @@ func Test_getTopic(t *testing.T) {
 					},
 				},
 			},
-			expect: expect{
-				topic: "static/topic",
+			expected: expected{
+				ret: "static/topic",
 			},
 		},
-		{ // dynamic with default mode
+		{
+			name: "dynamic name with default mode",
 			given: given{
 				topic: v1alpha1.MQTTMessageTopic{
 					MQTTMessageTopicDynamic: v1alpha1.MQTTMessageTopicDynamic{
 						Prefix: "dynamic/topic",
 					},
 				},
-				object: testMetaObj{
+				object: typeMetaObject{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "default",
 						Name:      "test",
@@ -73,11 +76,12 @@ func Test_getTopic(t *testing.T) {
 					},
 				},
 			},
-			expect: expect{
-				topic: "dynamic/topic/default/test",
+			expected: expected{
+				ret: "dynamic/topic/default/test",
 			},
 		},
-		{ // dynamic with uid mode
+		{
+			name: "dynamic name with uid mode",
 			given: given{
 				topic: v1alpha1.MQTTMessageTopic{
 					MQTTMessageTopicDynamic: v1alpha1.MQTTMessageTopicDynamic{
@@ -85,7 +89,7 @@ func Test_getTopic(t *testing.T) {
 						With:   "uid",
 					},
 				},
-				object: testMetaObj{
+				object: typeMetaObject{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "default",
 						Name:      "test",
@@ -93,11 +97,12 @@ func Test_getTopic(t *testing.T) {
 					},
 				},
 			},
-			expect: expect{
-				topic: "dynamic/topic/056a40a2-7cac-477e-99b1-8f06ecdce12a",
+			expected: expected{
+				ret: "dynamic/topic/056a40a2-7cac-477e-99b1-8f06ecdce12a",
 			},
 		},
-		{ // static first
+		{
+			name: "both static and dynamic, but static first",
 			given: given{
 				topic: v1alpha1.MQTTMessageTopic{
 					MQTTMessageTopicStatic: v1alpha1.MQTTMessageTopicStatic{
@@ -107,7 +112,7 @@ func Test_getTopic(t *testing.T) {
 						Prefix: "dynamic/topic",
 					},
 				},
-				object: testMetaObj{
+				object: typeMetaObject{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "default",
 						Name:      "test",
@@ -115,18 +120,19 @@ func Test_getTopic(t *testing.T) {
 					},
 				},
 			},
-			expect: expect{
-				topic: "static/topic",
+			expected: expected{
+				ret: "static/topic",
 			},
 		},
-		{ // error if prefix is blank in dynamic mode
+		{
+			name: "error if prefix is blank in dynamic mode",
 			given: given{
 				topic: v1alpha1.MQTTMessageTopic{
 					MQTTMessageTopicDynamic: v1alpha1.MQTTMessageTopicDynamic{
 						Prefix: "",
 					},
 				},
-				object: testMetaObj{
+				object: typeMetaObject{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "default",
 						Name:      "test",
@@ -134,11 +140,12 @@ func Test_getTopic(t *testing.T) {
 					},
 				},
 			},
-			expect: expect{
+			expected: expected{
 				err: errors.New("topic prefix is required in dynamic mode"),
 			},
 		},
-		{ // error invalidate dynamic mode
+		{
+			name: "error invalidate dynamic mode",
 			given: given{
 				topic: v1alpha1.MQTTMessageTopic{
 					MQTTMessageTopicDynamic: v1alpha1.MQTTMessageTopicDynamic{
@@ -146,7 +153,7 @@ func Test_getTopic(t *testing.T) {
 						With:   "unknown",
 					},
 				},
-				object: testMetaObj{
+				object: typeMetaObject{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "default",
 						Name:      "test",
@@ -154,19 +161,16 @@ func Test_getTopic(t *testing.T) {
 					},
 				},
 			},
-			expect: expect{
+			expected: expected{
 				err: errors.New("invalidate dynamic mode: unknown"),
 			},
 		},
 	}
 
-	for i, tc := range testCases {
-		var actualTopic, actualErr = getTopic(&tc.given.object, tc.given.topic)
-		if tc.expect.err != nil || actualErr != nil {
-			assert.EqualError(t, actualErr, tc.expect.err.Error(), "case %v, failed to get topic", i+1)
-			continue
-		}
-		assert.Equal(t, tc.expect.topic, actualTopic, "case %v, failed to compare with two topics", i+1)
+	for _, tc := range testCases {
+		var actual, actualErr = getTopic(&tc.given.object, tc.given.topic)
+		assert.Equal(t, tc.expected.ret, actual, "case %q", tc.name)
+		assert.Equal(t, fmt.Sprint(tc.expected.err), fmt.Sprint(actualErr), "case %q", tc.name)
 	}
 }
 
@@ -177,17 +181,18 @@ func Test_getClientOptions(t *testing.T) {
 		options    v1alpha1.MQTTClientOptions
 		references map[string]map[string][]byte
 	}
-
-	type expect struct {
-		options *mqtt.ClientOptions
-		err     error
+	type expected struct {
+		ret *mqtt.ClientOptions
+		err error
 	}
 
 	var testCases = []struct {
-		given  given
-		expect expect
+		name     string
+		given    given
+		expected expected
 	}{
-		{ // will with topic
+		{
+			name: "will message with static topic name",
 			given: given{
 				options: v1alpha1.MQTTClientOptions{
 					Will: &v1alpha1.MQTTClientWillMessage{
@@ -203,13 +208,14 @@ func Test_getClientOptions(t *testing.T) {
 				uid:   "835aea2e-5f80-4d14-88f5-40c4bda41aa3",
 				topic: "static/topic",
 			},
-			expect: expect{
-				options: mqtt.NewClientOptions().
+			expected: expected{
+				ret: mqtt.NewClientOptions().
 					SetClientID("octopus-835aea2e5f804d1488f540c4bda41aa3").
 					SetBinaryWill("static/topic-will", []byte("closed"), 1, true),
 			},
 		},
-		{ // will without topic
+		{
+			name: "will message without static topic name",
 			given: given{
 				options: v1alpha1.MQTTClientOptions{
 					Will: &v1alpha1.MQTTClientWillMessage{
@@ -220,13 +226,14 @@ func Test_getClientOptions(t *testing.T) {
 				uid:   "014997f5-1f12-498b-8631-d2f22920e20a",
 				topic: "static/topic",
 			},
-			expect: expect{
-				options: mqtt.NewClientOptions().
+			expected: expected{
+				ret: mqtt.NewClientOptions().
 					SetClientID("octopus-014997f51f12498b8631d2f22920e20a").
 					SetBinaryWill("static/topic/$will", []byte("closed"), 1, false),
 			},
 		},
-		{ // header
+		{
+			name: "configures HTTP header",
 			given: given{
 				options: v1alpha1.MQTTClientOptions{
 					HTTPHeaders: map[string][]string{
@@ -236,15 +243,16 @@ func Test_getClientOptions(t *testing.T) {
 				uid:   "bb23d3dd-c36c-4b13-af8c-9ce8fb78dbb4",
 				topic: "static/topic",
 			},
-			expect: expect{
-				options: mqtt.NewClientOptions().
+			expected: expected{
+				ret: mqtt.NewClientOptions().
 					SetClientID("octopus-bb23d3ddc36c4b13af8c9ce8fb78dbb4").
 					SetHTTPHeaders(map[string][]string{
 						"header1": {"value1"},
 					}),
 			},
 		},
-		{ // TLS
+		{
+			name: "configures TLS",
 			given: given{
 				options: v1alpha1.MQTTClientOptions{
 					TLSConfig: &v1alpha1.MQTTClientTLS{
@@ -256,8 +264,8 @@ func Test_getClientOptions(t *testing.T) {
 				uid:   "41478d1e-c3f8-46e3-a3b5-ba251f285277",
 				topic: "static/topic",
 			},
-			expect: expect{
-				options: mqtt.NewClientOptions().
+			expected: expected{
+				ret: mqtt.NewClientOptions().
 					SetClientID("octopus-41478d1ec3f846e3a3b5ba251f285277").
 					SetTLSConfig(func() *tls.Config {
 						var caPool = x509.NewCertPool()
@@ -275,7 +283,8 @@ func Test_getClientOptions(t *testing.T) {
 					}()),
 			},
 		},
-		{ // TLS in references
+		{
+			name: "configures TLS via references",
 			given: given{
 				options: v1alpha1.MQTTClientOptions{
 					TLSConfig: &v1alpha1.MQTTClientTLS{
@@ -305,8 +314,8 @@ func Test_getClientOptions(t *testing.T) {
 					},
 				},
 			},
-			expect: expect{
-				options: mqtt.NewClientOptions().
+			expected: expected{
+				ret: mqtt.NewClientOptions().
 					SetClientID("octopus-41478d1ec3f846e3a3b5ba251f285277").
 					SetTLSConfig(func() *tls.Config {
 						var caPool = x509.NewCertPool()
@@ -324,7 +333,8 @@ func Test_getClientOptions(t *testing.T) {
 					}()),
 			},
 		},
-		{ // storage
+		{
+			name: "configures storage type as file",
 			given: given{
 				options: v1alpha1.MQTTClientOptions{
 					Store: &v1alpha1.MQTTClientStore{
@@ -335,13 +345,14 @@ func Test_getClientOptions(t *testing.T) {
 				uid:   "056a40a2-7cac-477e-99b1-8f06ecdce12a",
 				topic: "static/topic",
 			},
-			expect: expect{
-				options: mqtt.NewClientOptions().
+			expected: expected{
+				ret: mqtt.NewClientOptions().
 					SetClientID("octopus-056a40a27cac477e99b18f06ecdce12a").
 					SetStore(mqtt.NewFileStore("/tmp/test/056a40a2-7cac-477e-99b1-8f06ecdce12a")),
 			},
 		},
-		{ // clientID
+		{
+			name: "configures forced client ID",
 			given: given{
 				options: v1alpha1.MQTTClientOptions{
 					ClientID: "octopus-fake-clientid",
@@ -349,12 +360,13 @@ func Test_getClientOptions(t *testing.T) {
 				uid:   "2fd0fbd5-ba11-4f6c-aea8-b5c2c03b05c1",
 				topic: "static/topic",
 			},
-			expect: expect{
-				options: mqtt.NewClientOptions().
+			expected: expected{
+				ret: mqtt.NewClientOptions().
 					SetClientID("octopus-fake-clientid"),
 			},
 		},
-		{ // clientID in MQTT v3.1
+		{
+			name: "configures protocol version as 3",
 			given: given{
 				options: v1alpha1.MQTTClientOptions{
 					ProtocolVersion: func() *uint { var i uint = 3; return &i }(),
@@ -362,61 +374,56 @@ func Test_getClientOptions(t *testing.T) {
 				uid:   "9e8efcb0-4b79-45e7-a4c4-3349562292e3",
 				topic: "static/topic",
 			},
-			expect: expect{
-				options: mqtt.NewClientOptions().
+			expected: expected{
+				ret: mqtt.NewClientOptions().
 					SetProtocolVersion(3).
 					SetClientID("octopus-efcb04957c34593"),
 			},
 		},
 	}
 
-	for i, tc := range testCases {
-		var _, actualOptions, actualErr = getClientOptionsOutline(tc.given.uid, tc.given.topic, tc.given.options, tc.given.references)
-		if actualErr != nil {
-			if tc.expect.err == nil {
-				assert.NoError(t, actualErr, "case %v, failed to get client options", i+1)
-			} else {
-				assert.EqualError(t, actualErr, tc.expect.err.Error(), "case %v", i+1)
-			}
-			continue
+	// NB(thxCode) according to https://golang.org/src/reflect/deepequal.go, the Func values are equal only if both are nil.
+	// We only focus on attribute comparison, so we can set the Func values as nil.
+	var cleanFuncs = func(options *mqtt.ClientOptions) *mqtt.ClientOptions {
+		if options != nil {
+			options.SetCredentialsProvider(nil)
+			options.SetDefaultPublishHandler(nil)
+			options.SetOnConnectHandler(nil)
+			options.SetConnectionLostHandler(nil)
 		}
+		return options
+	}
 
-		// NB(thxCode) according to https://golang.org/src/reflect/deepequal.go, the Func values are equal only if both are nil.
-		// We only focus on attribute comparison, so we can set the Func values as nil.
-		var expectedOptions = tc.expect.options
-		expectedOptions.SetCredentialsProvider(nil)
-		actualOptions.SetCredentialsProvider(nil)
-		expectedOptions.SetDefaultPublishHandler(nil)
-		actualOptions.SetDefaultPublishHandler(nil)
-		expectedOptions.SetOnConnectHandler(nil)
-		actualOptions.SetOnConnectHandler(nil)
-		expectedOptions.SetConnectionLostHandler(nil)
-		actualOptions.SetConnectionLostHandler(nil)
-		assert.Equal(t, expectedOptions, actualOptions, "case %v, failed to compare with two options", i+1)
+	for _, tc := range testCases {
+		var _, actual, actualErr = getClientOptionsOutline(tc.given.uid, tc.given.topic, tc.given.options, tc.given.references)
+		assert.Equal(t, cleanFuncs(tc.expected.ret), cleanFuncs(actual), "case %q", tc.name)
+		assert.Equal(t, fmt.Sprint(tc.expected.err), fmt.Sprint(actualErr), "case %q", tc.name)
 	}
 }
 
 func TestNewClient(t *testing.T) {
 	type given struct {
-		object  testMetaObj
+		object  typeMetaObject
 		payload interface{}
 		options v1alpha1.MQTTOptionsSpec
 	}
-
-	type expect struct {
+	type expected struct {
 		topic   string
 		qos     byte
 		payload []byte
 	}
 
-	var testBrokerAddress = "tcp://127.0.0.1:8883"
+	var targetBrokerAddress = "tcp://127.0.0.1:8883"
+
 	var testCases = []struct {
-		given  given
-		expect expect
+		name     string
+		given    given
+		expected expected
 	}{
-		{ // json payload
+		{
+			name: "payload is in form of JSON",
 			given: given{
-				object: testMetaObj{
+				object: typeMetaObject{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "default",
 						Name:      "test",
@@ -431,7 +438,7 @@ func TestNewClient(t *testing.T) {
 				},
 				options: v1alpha1.MQTTOptionsSpec{
 					Client: v1alpha1.MQTTClientOptions{
-						Server: testBrokerAddress,
+						Server: targetBrokerAddress,
 					},
 					Message: v1alpha1.MQTTMessageOptions{
 						Topic: v1alpha1.MQTTMessageTopic{
@@ -442,15 +449,16 @@ func TestNewClient(t *testing.T) {
 					},
 				},
 			},
-			expect: expect{
+			expected: expected{
 				topic:   "static/topic",
 				qos:     1,
 				payload: []byte(`{"a":"a","e":"e","i":"i","u":"u"}`),
 			},
 		},
-		{ // payload encoded by base64
+		{
+			name: "payload is encoded by Base64",
 			given: given{
-				object: testMetaObj{
+				object: typeMetaObject{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "default",
 						Name:      "test",
@@ -460,7 +468,7 @@ func TestNewClient(t *testing.T) {
 				payload: "tested",
 				options: v1alpha1.MQTTOptionsSpec{
 					Client: v1alpha1.MQTTClientOptions{
-						Server: testBrokerAddress,
+						Server: targetBrokerAddress,
 					},
 					Message: v1alpha1.MQTTMessageOptions{
 						Topic: v1alpha1.MQTTMessageTopic{
@@ -475,7 +483,7 @@ func TestNewClient(t *testing.T) {
 					},
 				},
 			},
-			expect: expect{
+			expected: expected{
 				topic:   "dynamic/topic/41478d1e-c3f8-46e3-a3b5-ba251f285277",
 				qos:     1,
 				payload: []byte("dGVzdGVk"),
@@ -483,37 +491,37 @@ func TestNewClient(t *testing.T) {
 		},
 	}
 
-	var testBroker, err = NewTestMemoryBroker(testBrokerAddress, zap.WrapAsLogr(zap.NewDevelopmentLogger()))
+	var testBroker, err = NewTestMemoryBroker(targetBrokerAddress, zap.WrapAsLogr(zap.NewDevelopmentLogger()))
 	assert.NoError(t, err)
 
 	testBroker.Start()
 	defer testBroker.Close()
 
-	for i, tc := range testCases {
-		var expectTopic = tc.expect.topic
-		var expectQoS = tc.expect.qos
-		var expectPayload = tc.expect.payload
+	for _, tc := range testCases {
+		var expectTopic = tc.expected.topic
+		var expectQoS = tc.expected.qos
+		var expectPayload = tc.expected.payload
 
-		subscriptionStream, err := NewTestSubscriptionStream(testBrokerAddress, expectTopic, expectQoS)
-		assert.NoError(t, err, "case %v", i+1)
+		subscriptionStream, err := NewTestSubscriptionStream(targetBrokerAddress, expectTopic, expectQoS)
+		assert.NoError(t, err, "case %q", tc.name)
 
 		givenClient, _, err := NewClient(&tc.given.object, tc.given.options, nil)
-		assert.NoError(t, err, "case %v", i+1)
+		assert.NoError(t, err, "case %q", tc.name)
 
 		err = givenClient.Connect()
-		assert.NoError(t, err, "case %v", i+1)
+		assert.NoError(t, err, "case %q", tc.name)
 
 		if tc.given.payload != nil {
 			err = givenClient.Publish(tc.given.payload)
-			assert.NoError(t, err, "case %v, failed to publish payload", i+1)
+			assert.NoError(t, err, "case %q, failed to publish payload", tc.name)
 		} else {
 			givenClient.Disconnect(1 * time.Second)
 		}
 
 		err = subscriptionStream.Intercept(10*time.Second, func(actual *packet.Message) bool {
-			return assert.Equal(t, expectPayload, actual.Payload, "case %v")
+			return assert.Equal(t, expectPayload, actual.Payload, "case %q", tc.name)
 		})
 		subscriptionStream.Close()
-		assert.NoError(t, err, "case %v", i+1)
+		assert.NoError(t, err, "case %q", tc.name)
 	}
 }

@@ -1,6 +1,7 @@
 package fieldpath
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/pkg/errors"
@@ -15,7 +16,7 @@ func TestExtractDeviceLinkFieldPathAsBytes(t *testing.T) {
 		link      *edgev1alpha1.DeviceLink
 		fieldPath string
 	}
-	type expect struct {
+	type expected struct {
 		ret []byte
 		err error
 	}
@@ -42,80 +43,75 @@ func TestExtractDeviceLinkFieldPathAsBytes(t *testing.T) {
 	}
 
 	var testCases = []struct {
-		given  given
-		expect expect
+		name     string
+		given    given
+		expected expected
 	}{
 		{
+			name: "metadata.annotations",
 			given: given{
 				link:      targetObject.DeepCopy(),
 				fieldPath: "metadata.annotations",
 			},
-			expect: expect{
+			expected: expected{
 				ret: []byte(`annotation-key-1="v1";annotation-key-2="v2"`),
-				err: nil,
 			},
 		},
 		{
+			name: "metadata.name",
 			given: given{
 				link:      targetObject.DeepCopy(),
 				fieldPath: "metadata.name",
 			},
-			expect: expect{
+			expected: expected{
 				ret: []byte(`test`),
-				err: nil,
 			},
 		},
 		{
+			name: "metadata.name['lb3']",
 			given: given{
 				link:      targetObject.DeepCopy(),
 				fieldPath: "metadata.labels['lb3']",
 			},
-			expect: expect{
+			expected: expected{
 				ret: nil,
-				err: nil,
 			},
 		},
 		{
+			name: "status.nodeName",
 			given: given{
 				link:      targetObject.DeepCopy(),
-				fieldPath: `status.nodeName`,
+				fieldPath: "status.nodeName",
 			},
-			expect: expect{
-				ret: nil,
+			expected: expected{
 				err: errors.Errorf("unsupported fieldPath: status.nodeName"),
 			},
 		},
 		{
+			name: "status.nodeHostName",
 			given: given{
 				link:      targetObject.DeepCopy(),
-				fieldPath: `status.nodeHostName`,
+				fieldPath: "status.nodeHostName",
 			},
-			expect: expect{
+			expected: expected{
 				ret: []byte(`test-node-1`),
-				err: nil,
 			},
 		},
 		{
+			name: "status.xxxx",
 			given: given{
 				link:      targetObject.DeepCopy(),
 				fieldPath: `status.xxxx`,
 			},
-			expect: expect{
-				ret: nil,
+			expected: expected{
 				err: errors.Errorf("unsupported fieldPath: status.xxxx"),
 			},
 		},
 	}
 
-	for i, tc := range testCases {
-		var actualBytes, actualErr = ExtractDeviceLinkFieldPathAsBytes(tc.given.link, tc.given.fieldPath)
-		if actualErr != nil {
-			if tc.expect.err != nil {
-				assert.EqualError(t, actualErr, tc.expect.err.Error(), "case %v", i+1)
-			} else {
-				assert.NoError(t, actualErr, "case %v ", i+1)
-			}
-		}
-		assert.Equal(t, actualBytes, tc.expect.ret, "case %v", i+1)
+	for _, tc := range testCases {
+		var actual, actualErr = ExtractDeviceLinkFieldPathAsBytes(tc.given.link, tc.given.fieldPath)
+		assert.Equal(t, tc.expected.ret, actual, "case %q", tc.name)
+		assert.Equal(t, fmt.Sprint(tc.expected.err), fmt.Sprint(actualErr), "case %q", tc.name)
 	}
 }

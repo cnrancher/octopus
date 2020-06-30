@@ -8,34 +8,38 @@ import (
 
 func TestUnsafeStringToBytes(t *testing.T) {
 	var testCases = []struct {
-		given  string
-		expect []byte
+		name     string
+		given    string
+		expected []byte
 	}{
 		{
-			given:  "octopus",
-			expect: []byte("octopus"),
+			name:     "std",
+			given:    "octopus",
+			expected: []byte("octopus"),
 		},
 	}
 
-	for i, tc := range testCases {
-		var ret = UnsafeStringToBytes(tc.given)
-		assert.Equal(t, tc.expect, ret, "case %v", i+1)
+	for _, tc := range testCases {
+		var actual = UnsafeStringToBytes(tc.given)
+		assert.Equal(t, tc.expected, actual, "case %q", tc.name)
 	}
 }
 
 func TestUnsafeBytesToString(t *testing.T) {
 	var testCases = []struct {
-		given  []byte
-		expect string
+		name     string
+		given    []byte
+		expected string
 	}{
 		{
-			given:  []byte("octopus"),
-			expect: "octopus",
+			name:     "std",
+			given:    []byte("octopus"),
+			expected: "octopus",
 		},
 	}
 
-	for i, tc := range testCases {
+	for _, tc := range testCases {
 		var ret = UnsafeBytesToString(tc.given)
-		assert.Equal(t, tc.expect, ret, "case %v", i+1)
+		assert.Equal(t, tc.expected, ret, "case %q", tc.name)
 	}
 }

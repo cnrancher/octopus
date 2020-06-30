@@ -2,62 +2,81 @@ package converter
 
 import (
 	"encoding/base64"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestDecodeBase64String(t *testing.T) {
+	type expected struct {
+		ret []byte
+		err error
+	}
+
 	var testCases = []struct {
-		given  string
-		expect interface{}
+		name     string
+		given    string
+		expected expected
 	}{
-		{ // std
-			given:  "Z29sYW5nICt+CiA=",
-			expect: []byte("golang +~\n "),
-		},
-		{ // none padded
-			given:  "Z29sYW5nICt+CiA",
-			expect: []byte("golang +~\n "),
-		},
-		{ // uri
-			given:  "Z29sYW5nICt-CiA=",
-			expect: []byte("golang +~\n "),
+		{
+			name:  "std (with padded)",
+			given: "Z29sYW5nICt+CiA=",
+			expected: expected{
+				ret: []byte("golang +~\n "),
+			},
 		},
 		{
-			given:  "%%%",
-			expect: base64.CorruptInputError(0),
+			name:  "none padded",
+			given: "Z29sYW5nICt+CiA",
+			expected: expected{
+				ret: []byte("golang +~\n "),
+			},
+		},
+		{
+			name:  "uri friendly",
+			given: "Z29sYW5nICt-CiA=",
+			expected: expected{
+				ret: []byte("golang +~\n "),
+			},
+		},
+		{
+			name:  "error string",
+			given: "%%%",
+			expected: expected{
+				ret: []byte{},
+				err: base64.CorruptInputError(0),
+			},
 		},
 	}
 
-	for i, tc := range testCases {
-		var ret, err = DecodeBase64String(tc.given)
-		switch e := tc.expect.(type) {
-		case []byte:
-			assert.Equal(t, e, ret, "case %v", i+1)
-		case error:
-			assert.EqualError(t, err, e.Error(), "case %v", i+1)
-		}
+	for _, tc := range testCases {
+		var actual, actualErr = DecodeBase64String(tc.given)
+		assert.Equal(t, tc.expected.ret, actual, "case %q", tc.name)
+		assert.Equal(t, fmt.Sprint(tc.expected.err), fmt.Sprint(actualErr), "case %q", tc.name)
 	}
 }
 
 func TestEncodeBase64(t *testing.T) {
 	var testCases = []struct {
-		given  []byte
-		expect []byte
+		name     string
+		given    []byte
+		expected []byte
 	}{
 		{
-			given:  []byte("golang +~\n "),
-			expect: []byte("Z29sYW5nICt+CiA="),
+			name:     "std (with padded)",
+			given:    []byte("golang +~\n "),
+			expected: []byte("Z29sYW5nICt+CiA="),
 		},
 		{
-			given:  []byte("octopus"),
-			expect: []byte("b2N0b3B1cw=="),
+			name:     "padded",
+			given:    []byte("octopus"),
+			expected: []byte("b2N0b3B1cw=="),
 		},
 	}
 
-	for i, tc := range testCases {
-		var ret = EncodeBase64(tc.given)
-		assert.Equal(t, tc.expect, ret, "case %v", i+1)
+	for _, tc := range testCases {
+		var actual = EncodeBase64(tc.given)
+		assert.Equal(t, tc.expected, actual, "case %q", tc.name)
 	}
 }

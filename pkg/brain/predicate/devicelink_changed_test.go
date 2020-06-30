@@ -12,69 +12,48 @@ import (
 )
 
 func TestDeviceLinkChangedPredicate_Update(t *testing.T) {
+	var targetNode = "edge-worker"
+	var nonTargetNode = "edge-worker1"
+
 	var testCases = []struct {
-		name   string
-		given  event.UpdateEvent
-		expect bool
+		name     string
+		given    event.UpdateEvent
+		expected bool
 	}{
 		{
-			name: "without MetaOld",
-			given: event.UpdateEvent{
-				MetaOld: nil,
-				ObjectOld: &edgev1alpha1.DeviceLink{
+			name: "without old object",
+			given: generateUpdateEvent(
+				nil,
+				&edgev1alpha1.DeviceLink{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace:  "default",
 						Name:       "test",
 						Generation: 1,
 					},
 				},
-				MetaNew: &edgev1alpha1.DeviceLink{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:  "default",
-						Name:       "test",
-						Generation: 1,
-					},
-				},
-				ObjectNew: &edgev1alpha1.DeviceLink{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:  "default",
-						Name:       "test",
-						Generation: 1,
-					},
-				},
-			},
-			expect: false,
+			),
+			expected: false,
 		},
 		{
 			name: "non-DeviceLink instance",
-			given: event.UpdateEvent{
-				MetaOld: &apiextensionsv1.CustomResourceDefinition{
+			given: generateUpdateEvent(
+				&apiextensionsv1.CustomResourceDefinition{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "dummyspecialdevices.edge.cattle.io",
 					},
 				},
-				ObjectOld: &apiextensionsv1.CustomResourceDefinition{
+				&apiextensionsv1.CustomResourceDefinition{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "dummyspecialdevices.edge.cattle.io",
 					},
 				},
-				MetaNew: &apiextensionsv1.CustomResourceDefinition{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "dummyspecialdevices.edge.cattle.io",
-					},
-				},
-				ObjectNew: &apiextensionsv1.CustomResourceDefinition{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "dummyspecialdevices.edge.cattle.io",
-					},
-				},
-			},
-			expect: true,
+			),
+			expected: true,
 		},
 		{
 			name: "different generation",
-			given: event.UpdateEvent{
-				MetaOld: &edgev1alpha1.DeviceLink{
+			given: generateUpdateEvent(
+				&edgev1alpha1.DeviceLink{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace:  "default",
 						Name:       "test",
@@ -82,7 +61,7 @@ func TestDeviceLinkChangedPredicate_Update(t *testing.T) {
 					},
 					Spec: edgev1alpha1.DeviceLinkSpec{
 						Adaptor: edgev1alpha1.DeviceAdaptor{
-							Node: "test-worker",
+							Node: targetNode,
 							Name: "adaptors.edge.cattle.io/dummy",
 						},
 						Model: metav1.TypeMeta{
@@ -91,38 +70,14 @@ func TestDeviceLinkChangedPredicate_Update(t *testing.T) {
 						},
 					},
 					Status: edgev1alpha1.DeviceLinkStatus{
-						NodeName: "test-worker",
+						NodeName: targetNode,
 						Model: &metav1.TypeMeta{
 							Kind:       "DummySpecialDevice",
 							APIVersion: "devices.edge.cattle.io/v1alpha1",
 						},
 					},
 				},
-				ObjectOld: &edgev1alpha1.DeviceLink{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:  "default",
-						Name:       "test",
-						Generation: 1,
-					},
-					Spec: edgev1alpha1.DeviceLinkSpec{
-						Adaptor: edgev1alpha1.DeviceAdaptor{
-							Node: "test-worker",
-							Name: "adaptors.edge.cattle.io/dummy",
-						},
-						Model: metav1.TypeMeta{
-							Kind:       "DummySpecialDevice",
-							APIVersion: "devices.edge.cattle.io/v1alpha1",
-						},
-					},
-					Status: edgev1alpha1.DeviceLinkStatus{
-						NodeName: "test-worker",
-						Model: &metav1.TypeMeta{
-							Kind:       "DummySpecialDevice",
-							APIVersion: "devices.edge.cattle.io/v1alpha1",
-						},
-					},
-				},
-				MetaNew: &edgev1alpha1.DeviceLink{
+				&edgev1alpha1.DeviceLink{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace:  "default",
 						Name:       "test",
@@ -130,7 +85,7 @@ func TestDeviceLinkChangedPredicate_Update(t *testing.T) {
 					},
 					Spec: edgev1alpha1.DeviceLinkSpec{
 						Adaptor: edgev1alpha1.DeviceAdaptor{
-							Node: "test-worker",
+							Node: targetNode,
 							Name: "adaptors.edge.cattle.io/dummy1",
 						},
 						Model: metav1.TypeMeta{
@@ -139,44 +94,20 @@ func TestDeviceLinkChangedPredicate_Update(t *testing.T) {
 						},
 					},
 					Status: edgev1alpha1.DeviceLinkStatus{
-						NodeName: "test-worker",
+						NodeName: targetNode,
 						Model: &metav1.TypeMeta{
 							Kind:       "DummySpecialDevice",
 							APIVersion: "devices.edge.cattle.io/v1alpha1",
 						},
 					},
 				},
-				ObjectNew: &edgev1alpha1.DeviceLink{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:  "default",
-						Name:       "test",
-						Generation: 2,
-					},
-					Spec: edgev1alpha1.DeviceLinkSpec{
-						Adaptor: edgev1alpha1.DeviceAdaptor{
-							Node: "test-worker",
-							Name: "adaptors.edge.cattle.io/dummy1",
-						},
-						Model: metav1.TypeMeta{
-							Kind:       "DummySpecialDevice",
-							APIVersion: "devices.edge.cattle.io/v1alpha1",
-						},
-					},
-					Status: edgev1alpha1.DeviceLinkStatus{
-						NodeName: "test-worker",
-						Model: &metav1.TypeMeta{
-							Kind:       "DummySpecialDevice",
-							APIVersion: "devices.edge.cattle.io/v1alpha1",
-						},
-					},
-				},
-			},
-			expect: false,
+			),
+			expected: false,
 		},
 		{
 			name: "different generation and node name",
-			given: event.UpdateEvent{
-				MetaOld: &edgev1alpha1.DeviceLink{
+			given: generateUpdateEvent(
+				&edgev1alpha1.DeviceLink{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace:  "default",
 						Name:       "test",
@@ -184,29 +115,14 @@ func TestDeviceLinkChangedPredicate_Update(t *testing.T) {
 					},
 					Spec: edgev1alpha1.DeviceLinkSpec{
 						Adaptor: edgev1alpha1.DeviceAdaptor{
-							Node: "test-worker",
+							Node: targetNode,
 						},
 					},
 					Status: edgev1alpha1.DeviceLinkStatus{
-						NodeName: "test-worker",
+						NodeName: targetNode,
 					},
 				},
-				ObjectOld: &edgev1alpha1.DeviceLink{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:  "default",
-						Name:       "test",
-						Generation: 1,
-					},
-					Spec: edgev1alpha1.DeviceLinkSpec{
-						Adaptor: edgev1alpha1.DeviceAdaptor{
-							Node: "test-worker",
-						},
-					},
-					Status: edgev1alpha1.DeviceLinkStatus{
-						NodeName: "test-worker",
-					},
-				},
-				MetaNew: &edgev1alpha1.DeviceLink{
+				&edgev1alpha1.DeviceLink{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace:  "default",
 						Name:       "test",
@@ -214,69 +130,40 @@ func TestDeviceLinkChangedPredicate_Update(t *testing.T) {
 					},
 					Spec: edgev1alpha1.DeviceLinkSpec{
 						Adaptor: edgev1alpha1.DeviceAdaptor{
-							Node: "test-worker1",
+							Node: nonTargetNode,
 						},
 					},
 					Status: edgev1alpha1.DeviceLinkStatus{
-						NodeName: "test-worker",
+						NodeName: targetNode,
 					},
 				},
-				ObjectNew: &edgev1alpha1.DeviceLink{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:  "default",
-						Name:       "test",
-						Generation: 2,
-					},
-					Spec: edgev1alpha1.DeviceLinkSpec{
-						Adaptor: edgev1alpha1.DeviceAdaptor{
-							Node: "test-worker1",
-						},
-					},
-					Status: edgev1alpha1.DeviceLinkStatus{
-						NodeName: "test-worker",
-					},
-				},
-			},
-			expect: true,
+			),
+			expected: true,
 		},
 		{
 			name: "same generation",
-			given: event.UpdateEvent{
-				MetaOld: &edgev1alpha1.DeviceLink{
+			given: generateUpdateEvent(
+				&edgev1alpha1.DeviceLink{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace:  "default",
 						Name:       "test",
 						Generation: 1,
 					},
 				},
-				ObjectOld: &edgev1alpha1.DeviceLink{
+				&edgev1alpha1.DeviceLink{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace:  "default",
 						Name:       "test",
 						Generation: 1,
 					},
 				},
-				MetaNew: &edgev1alpha1.DeviceLink{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:  "default",
-						Name:       "test",
-						Generation: 1,
-					},
-				},
-				ObjectNew: &edgev1alpha1.DeviceLink{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:  "default",
-						Name:       "test",
-						Generation: 1,
-					},
-				},
-			},
-			expect: false,
+			),
+			expected: false,
 		},
 		{
-			name: "same generation and different conditions",
-			given: event.UpdateEvent{
-				MetaOld: &edgev1alpha1.DeviceLink{
+			name: "same generation but different conditions",
+			given: generateUpdateEvent(
+				&edgev1alpha1.DeviceLink{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace:  "default",
 						Name:       "test",
@@ -291,22 +178,7 @@ func TestDeviceLinkChangedPredicate_Update(t *testing.T) {
 						},
 					},
 				},
-				ObjectOld: &edgev1alpha1.DeviceLink{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:  "default",
-						Name:       "test",
-						Generation: 1,
-					},
-					Status: edgev1alpha1.DeviceLinkStatus{
-						Conditions: []edgev1alpha1.DeviceLinkCondition{
-							{
-								Type:   edgev1alpha1.DeviceLinkNodeExisted,
-								Status: metav1.ConditionTrue,
-							},
-						},
-					},
-				},
-				MetaNew: &edgev1alpha1.DeviceLink{
+				&edgev1alpha1.DeviceLink{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace:  "default",
 						Name:       "test",
@@ -325,33 +197,14 @@ func TestDeviceLinkChangedPredicate_Update(t *testing.T) {
 						},
 					},
 				},
-				ObjectNew: &edgev1alpha1.DeviceLink{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace:  "default",
-						Name:       "test",
-						Generation: 1,
-					},
-					Status: edgev1alpha1.DeviceLinkStatus{
-						Conditions: []edgev1alpha1.DeviceLinkCondition{
-							{
-								Type:   edgev1alpha1.DeviceLinkNodeExisted,
-								Status: metav1.ConditionTrue,
-							},
-							{
-								Type:   edgev1alpha1.DeviceLinkModelExisted,
-								Status: metav1.ConditionUnknown,
-							},
-						},
-					},
-				},
-			},
-			expect: true,
+			),
+			expected: true,
 		},
 	}
 
 	var predication = DeviceLinkChangedPredicate{}
 	for _, tc := range testCases {
-		var ret = predication.Update(tc.given)
-		assert.Equal(t, tc.expect, ret, "case %v", tc.name)
+		var actual = predication.Update(tc.given)
+		assert.Equal(t, tc.expected, actual, "case %q", tc.name)
 	}
 }

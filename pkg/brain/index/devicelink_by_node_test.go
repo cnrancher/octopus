@@ -12,9 +12,9 @@ import (
 
 func TestDeviceLinkByNodeFunc(t *testing.T) {
 	var testCases = []struct {
-		name   string
-		given  runtime.Object
-		expect []string
+		name     string
+		given    runtime.Object
+		expected []string
 	}{
 		{
 			name: "non-blank node name",
@@ -25,7 +25,7 @@ func TestDeviceLinkByNodeFunc(t *testing.T) {
 					},
 				},
 			},
-			expect: []string{"edge-worker"},
+			expected: []string{"edge-worker"},
 		},
 		{
 			name: "blank node name",
@@ -34,17 +34,17 @@ func TestDeviceLinkByNodeFunc(t *testing.T) {
 					Adaptor: edgev1alpha1.DeviceAdaptor{},
 				},
 			},
-			expect: nil,
+			expected: nil,
 		},
 		{
-			name:   "non-DeviceLink object",
-			given:  &corev1.Node{},
-			expect: nil,
+			name:     "non-DeviceLink object",
+			given:    &corev1.Node{},
+			expected: nil,
 		},
 	}
 
 	for _, tc := range testCases {
-		var ret = DeviceLinkByNodeFunc(tc.given)
-		assert.Equal(t, tc.expect, ret, "case %v", tc.name)
+		var actual = DeviceLinkByNodeFunc(tc.given)
+		assert.Equal(t, tc.expected, actual, "case %q", tc.name)
 	}
 }

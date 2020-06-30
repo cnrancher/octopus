@@ -1,63 +1,79 @@
 package collection
 
 import (
-	"reflect"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestStringSliceContain(t *testing.T) {
+	type given struct {
+		slice  []string
+		target string
+	}
+
 	var testCases = []struct {
-		givenSlice []string
-		given      string
-		expect     bool
+		name     string
+		given    given
+		expected bool
 	}{
 		{
-			givenSlice: []string{
-				"Jimmy",
-				"Gucci",
-				"Kobe",
-				"Jack",
+			name: "not-in slice",
+			given: given{
+				slice: []string{
+					"Jimmy",
+					"Gucci",
+					"Kobe",
+					"Jack",
+				},
+				target: "Frank",
 			},
-			given:  "Frank",
-			expect: false,
+			expected: false,
 		},
 		{
-			givenSlice: []string{
-				"Jimmy",
-				"Gucci",
-				"Kobe",
-				"Jack",
+			name: "in slice",
+			given: given{
+				slice: []string{
+					"Jimmy",
+					"Gucci",
+					"Kobe",
+					"Jack",
+				},
+				target: "Kobe",
 			},
-			given:  "Kobe",
-			expect: true,
+			expected: true,
 		},
 	}
 
-	for i, tc := range testCases {
-		var ret = StringSliceContain(tc.givenSlice, tc.given)
-		if ret != tc.expect {
-			t.Errorf("case %v: expected %s, got %s", i+1, spew.Sprintf("%#v", tc.expect), spew.Sprintf("%#v", ret))
-		}
+	for _, tc := range testCases {
+		var actual = StringSliceContain(tc.given.slice, tc.given.target)
+		assert.Equal(t, tc.expected, actual, "case %q", tc.name)
 	}
 }
 
 func TestStringSliceRemove(t *testing.T) {
+	type given struct {
+		slice  []string
+		target string
+	}
+
 	var testCases = []struct {
-		givenSlice []string
-		given      string
-		expect     []string
+		name     string
+		given    given
+		expected []string
 	}{
 		{
-			givenSlice: []string{
-				"Jimmy",
-				"Gucci",
-				"Kobe",
-				"Jack",
+			name: "not-in slice",
+			given: given{
+				slice: []string{
+					"Jimmy",
+					"Gucci",
+					"Kobe",
+					"Jack",
+				},
+				target: "Frank",
 			},
-			given: "Frank",
-			expect: []string{
+			expected: []string{
 				"Jimmy",
 				"Gucci",
 				"Kobe",
@@ -65,14 +81,17 @@ func TestStringSliceRemove(t *testing.T) {
 			},
 		},
 		{
-			givenSlice: []string{
-				"Jimmy",
-				"Gucci",
-				"Kobe",
-				"Jack",
+			name: "in slice",
+			given: given{
+				slice: []string{
+					"Jimmy",
+					"Gucci",
+					"Kobe",
+					"Jack",
+				},
+				target: "Kobe",
 			},
-			given: "Kobe",
-			expect: []string{
+			expected: []string{
 				"Jimmy",
 				"Gucci",
 				"Jack",
@@ -80,10 +99,8 @@ func TestStringSliceRemove(t *testing.T) {
 		},
 	}
 
-	for i, tc := range testCases {
-		var ret = StringSliceRemove(tc.givenSlice, tc.given)
-		if !reflect.DeepEqual(ret, tc.expect) {
-			t.Errorf("case %v: expected %s, got %s", i+1, spew.Sprintf("%#v", tc.expect), spew.Sprintf("%#v", ret))
-		}
+	for _, tc := range testCases {
+		var actual = StringSliceRemove(tc.given.slice, tc.given.target)
+		assert.Equal(t, tc.expected, actual, "case %q", tc.name)
 	}
 }

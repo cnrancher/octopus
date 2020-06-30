@@ -1,102 +1,105 @@
 package collection
 
 import (
-	"reflect"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestStringMapCopy(t *testing.T) {
 	var testCases = []struct {
-		given  map[string]string
-		expect map[string]string
+		name     string
+		given    map[string]string
+		expected map[string]string
 	}{
 		{
+			name: "single key-pair",
 			given: map[string]string{
 				"k1": "v1",
 			},
-			expect: map[string]string{
+			expected: map[string]string{
 				"k1": "v1",
 			},
 		},
 		{
+			name: "multiple key-pairs",
 			given: map[string]string{
 				"k2": "v2",
 				"k3": "v3",
 			},
-			expect: map[string]string{
-				"k2": "v2",
+			expected: map[string]string{
 				"k3": "v3",
+				"k2": "v2",
 			},
 		},
 	}
 
-	for i, tc := range testCases {
-		var ret = StringMapCopy(tc.given)
-		if !reflect.DeepEqual(ret, tc.expect) {
-			t.Errorf("case %v: expected %s, got %s", i+1, spew.Sprintf("%#v", tc.expect), spew.Sprintf("%#v", ret))
-		}
+	for _, tc := range testCases {
+		var actual = StringMapCopy(tc.given)
+		assert.Equal(t, tc.expected, actual, "case %q", tc.name)
 
-		ret["xyz"] = "zyx"
-		if reflect.DeepEqual(ret, tc.given) {
-			t.Errorf("case %v: expected is pointing to the same map with given", i+1)
-		}
+		t.Log("if adds a new key-pair to destination map")
+		actual["xyz"] = "zyx"
+
+		t.Log("should not effect the copied map")
+		assert.NotEqual(t, tc.expected, actual, "case %q", tc.name)
 	}
 }
 
 func TestStringMapCopyInto(t *testing.T) {
 	type given struct {
-		source map[string]string
-		target map[string]string
+		source      map[string]string
+		destination map[string]string
 	}
+
 	var testCases = []struct {
-		given  given
-		expect map[string]string
+		name     string
+		given    given
+		expected map[string]string
 	}{
 		{
+			name: "same maps",
 			given: given{
 				source: map[string]string{
 					"s1": "s1",
 				},
-				target: map[string]string{
-					"d1": "d1",
+				destination: map[string]string{
+					"s1": "s1",
 				},
 			},
-			expect: map[string]string{
+			expected: map[string]string{
 				"s1": "s1",
-				"d1": "d1",
 			},
 		},
 		{
+			name: "different maps",
 			given: given{
 				source: map[string]string{
 					"s2": "s2",
 				},
-				target: map[string]string{
+				destination: map[string]string{
 					"d2": "d2",
 				},
 			},
-			expect: map[string]string{
+			expected: map[string]string{
 				"s2": "s2",
 				"d2": "d2",
 			},
 		},
 	}
 
-	for i, tc := range testCases {
-		var ret = StringMapCopyInto(tc.given.source, tc.given.target)
-		if !reflect.DeepEqual(ret, tc.expect) {
-			t.Errorf("case %v: expected %s, got %s", i+1, spew.Sprintf("%#v", tc.expect), spew.Sprintf("%#v", ret))
-		}
+	for _, tc := range testCases {
+		var actual = StringMapCopyInto(tc.given.source, tc.given.destination)
+		assert.Equal(t, tc.expected, actual, "case %q", tc.name)
 
-		ret["xyz"] = "zyx"
-		if reflect.DeepEqual(ret, tc.given.source) {
-			t.Errorf("case %v: expected is pointing to the same map with given source", i+1)
-		}
-		if !reflect.DeepEqual(ret, tc.given.target) {
-			t.Errorf("case %v: expected is not pointing to the same map with given target", i+1)
-		}
+		t.Log("if adds a new key-pair to destination map")
+		actual["xyz"] = "zyx"
+
+		t.Log("should change the destination map")
+		assert.Equal(t, actual, tc.given.destination, "case %q", tc.name)
+
+		t.Log("should not change the source map")
+		assert.NotEqual(t, actual, tc.given.source, "case %q", tc.name)
 	}
 }
 
@@ -107,10 +110,12 @@ func TestDiffStringMap(t *testing.T) {
 	}
 
 	var testCases = []struct {
-		given  given
-		expect bool
+		name     string
+		given    given
+		expected bool
 	}{
 		{
+			name: "disordered but same key-pairs maps",
 			given: given{
 				left: map[string]string{
 					"a": "b",
@@ -121,9 +126,10 @@ func TestDiffStringMap(t *testing.T) {
 					"a": "b",
 				},
 			},
-			expect: false,
+			expected: false,
 		},
 		{
+			name: "different key-pairs maps",
 			given: given{
 				left: map[string]string{
 					"a": "b",
@@ -133,15 +139,13 @@ func TestDiffStringMap(t *testing.T) {
 					"c": "d",
 				},
 			},
-			expect: true,
+			expected: true,
 		},
 	}
 
-	for i, tc := range testCases {
-		var ret = DiffStringMap(tc.given.left, tc.given.right)
-		if ret != tc.expect {
-			t.Errorf("case %v: expected %v, got %v", i+1, tc.expect, ret)
-		}
+	for _, tc := range testCases {
+		var actual = DiffStringMap(tc.given.left, tc.given.right)
+		assert.Equal(t, tc.expected, actual, "case %q", tc.name)
 	}
 }
 
@@ -150,11 +154,14 @@ func TestFormatStringMap(t *testing.T) {
 		m        map[string]string
 		splitter string
 	}
+
 	var testCases = []struct {
-		given  given
-		expect string
+		name     string
+		given    given
+		expected string
 	}{
 		{
+			name: "default splitter",
 			given: given{
 				m: map[string]string{
 					"c": "d",
@@ -163,9 +170,10 @@ func TestFormatStringMap(t *testing.T) {
 				},
 				splitter: "",
 			},
-			expect: `a="b",c="d",x="z"`,
+			expected: `a="b",c="d",x="z"`,
 		},
 		{
+			name: "specify splitter to ';'",
 			given: given{
 				m: map[string]string{
 					"c": "d",
@@ -174,14 +182,12 @@ func TestFormatStringMap(t *testing.T) {
 				},
 				splitter: ";",
 			},
-			expect: `a="b";c="d";x="z"`,
+			expected: `a="b";c="d";x="z"`,
 		},
 	}
 
-	for i, tc := range testCases {
-		var ret = FormatStringMap(tc.given.m, tc.given.splitter)
-		if ret != tc.expect {
-			t.Errorf("case %v: expected %v, got %v", i+1, tc.expect, ret)
-		}
+	for _, tc := range testCases {
+		var actual = FormatStringMap(tc.given.m, tc.given.splitter)
+		assert.Equal(t, tc.expected, actual, "case %q", tc.name)
 	}
 }
