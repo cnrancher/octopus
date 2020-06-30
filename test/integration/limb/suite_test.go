@@ -7,6 +7,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientsetscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -25,6 +26,7 @@ import (
 	"github.com/rancher/octopus/pkg/suctioncup/event"
 	"github.com/rancher/octopus/pkg/util/log/zap"
 	"github.com/rancher/octopus/test/framework"
+	"github.com/rancher/octopus/test/util/crd"
 	"github.com/rancher/octopus/test/util/node"
 )
 
@@ -38,7 +40,8 @@ var (
 	k8sCfg *rest.Config
 	k8sCli client.Client
 
-	targetNode     string
+	testNodeName   string
+	testModel      metav1.TypeMeta
 	testAdaptors   adaptor.Adaptors
 	testEventQueue event.Queue
 )
@@ -66,7 +69,6 @@ var _ = BeforeSuite(func(done Done) {
 		UseExistingCluster: pointer.BoolPtr(true),
 		CRDDirectoryPaths: []string{
 			filepath.Join(testRootDir, "deploy", "manifests", "crd", "base"),
-			filepath.Join(testRootDir, "adaptors", "dummy", "deploy", "manifests", "crd", "base"),
 		},
 	}
 
@@ -94,7 +96,7 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(controllerMgr).ToNot(BeNil())
 
 	By("getting a valid node")
-	targetNode, err = node.GetValidWorker(testCtx, k8sCli)
+	testNodeName, err = node.GetValidWorker(testCtx, k8sCli)
 	Expect(err).ToNot(HaveOccurred())
 
 	By("starting suctioncup manager")
@@ -109,7 +111,7 @@ var _ = BeforeSuite(func(done Done) {
 		EventRecorder: controllerMgr.GetEventRecorderFor("limb"),
 		Ctx:           testCtx,
 		Log:           ctrl.Log.WithName("controller").WithName("deviceLink"),
-		NodeName:      targetNode,
+		NodeName:      testNodeName,
 		SuctionCup:    suctionCupMgr.GetNeurons(),
 	}).SetupWithManager(controllerMgr, suctionCupMgr)
 	Expect(err).ToNot(HaveOccurred())
@@ -124,10 +126,20 @@ var _ = BeforeSuite(func(done Done) {
 		Expect(err).ToNot(HaveOccurred())
 	}()
 
+	By("creating global testing resources")
+	testModel = metav1.TypeMeta{
+		Kind:       "IntegrationLimbDLValidateDevice",
+		APIVersion: "devices.edge.cattle.io/v1alpha1",
+	}
+	_ = k8sCli.Create(testCtx, crd.MakeOfTypeMeta(testModel))
+
 	close(done)
 }, 600)
 
 var _ = AfterSuite(func() {
+	By("deleting global testing resources")
+	_ = k8sCli.Delete(testCtx, crd.MakeOfTypeMeta(testModel))
+
 	By("tearing down test environment")
 	var err = framework.StopEnv(testRootDir, testEnv, GinkgoWriter)
 	Expect(err).ToNot(HaveOccurred())
