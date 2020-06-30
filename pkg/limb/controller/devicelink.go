@@ -103,7 +103,7 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	// NB(thxCode) we might see this as the `spec.model` has been changed,
 	// so we need to disconnect the previous connection and
 	// wait for brain to confirm the next step.
-	if link.Status.Model != link.Spec.Model {
+	if link.Status.Model == nil || *link.Status.Model != link.Spec.Model {
 		r.SuctionCup.Disconnect(&link)
 		return ctrl.Result{}, nil
 	}
@@ -127,7 +127,7 @@ func (r *DeviceLinkReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) 
 	link.SucceedOnAdaptorExisted()
 
 	// validates device
-	var device, deviceNewErr = modelutil.NewInstanceOfTypeMeta(link.Status.Model)
+	var device, deviceNewErr = modelutil.NewInstanceOfTypeMeta(*link.Status.Model)
 	if deviceNewErr != nil {
 		log.Error(deviceNewErr, "Unable to make device from model")
 		link.FailOnDeviceCreated("unable to make device from model")

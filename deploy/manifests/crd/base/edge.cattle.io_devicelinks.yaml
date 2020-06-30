@@ -244,10 +244,6 @@ spec:
                   - type
                   type: object
                 type: array
-              deviceTemplateGeneration:
-                description: Represents the observed template generation of the device.
-                format: int64
-                type: integer
               model:
                 description: Represents the observed model of the device.
                 properties:

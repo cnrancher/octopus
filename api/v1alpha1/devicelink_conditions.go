@@ -62,8 +62,8 @@ func (in *DeviceLink) FailOnModelExisted(message string) {
 		return
 	}
 	in.Status.Conditions = deviceLinkConditions(in.Status.Conditions).
-		did(DeviceLinkModelExisted, metav1.ConditionFalse, "NotFound", message, in.Status.Model != in.Spec.Model)
-	in.Status.Model = metav1.TypeMeta{}
+		did(DeviceLinkModelExisted, metav1.ConditionFalse, "NotFound", message, in.Status.Model == nil || *in.Status.Model != in.Spec.Model)
+	in.Status.Model = nil
 }
 
 func (in *DeviceLink) SucceedOnModelExisted() {
@@ -71,9 +71,9 @@ func (in *DeviceLink) SucceedOnModelExisted() {
 		return
 	}
 	in.Status.Conditions = deviceLinkConditions(in.Status.Conditions).
-		did(DeviceLinkModelExisted, metav1.ConditionTrue, "Found", "", in.Status.Model != in.Spec.Model).
+		did(DeviceLinkModelExisted, metav1.ConditionTrue, "Found", "", in.Status.Model == nil || *in.Status.Model != in.Spec.Model).
 		next(DeviceLinkAdaptorExisted, "Confirming", "verify if there is a suitable adaptor to access")
-	in.Status.Model = in.Spec.Model
+	in.Status.Model = &in.Spec.Model
 }
 
 func (in *DeviceLink) ToCheckModelExisted() {

@@ -59,7 +59,7 @@ func (m *manager) Connect(referencesData map[string]map[string][]byte, device *u
 		}
 	}()
 
-	var sendModel = &by.Status.Model
+	var sendModel = by.Status.Model
 	var sendDevice []byte
 	sendDevice, sentErr = device.MarshalJSON()
 	if sentErr != nil {
