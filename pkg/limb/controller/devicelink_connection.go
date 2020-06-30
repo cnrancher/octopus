@@ -82,7 +82,7 @@ func (r *DeviceLinkReconciler) ReceiveConnectionStatus(req suctioncup.RequestCon
 	}
 
 	// validates device
-	var device, err = modelutil.NewInstanceOfTypeMeta(link.Status.Model)
+	var device, err = modelutil.NewInstanceOfTypeMeta(*link.Status.Model)
 	if err != nil {
 		// NB(thxCode) we don't need to deal with this case as it can be traced by the main logic of limb.
 		return suctioncup.Response{}, nil

@@ -32,7 +32,7 @@ func (p DeviceLinkChangedPredicate) Update(e event.UpdateEvent) bool {
 			deviceLinkChangedPredicateLog.V(5).Info("Accept UpdateEvent as the node is changed", "object", object.GetNamespacedName(e.MetaOld))
 			return true
 		}
-		if dl.Status.Model != dl.Spec.Model {
+		if dl.Status.Model == nil || *dl.Status.Model != dl.Spec.Model {
 			deviceLinkChangedPredicateLog.V(5).Info("Accept UpdateEvent as the model is changed", "object", object.GetNamespacedName(e.MetaOld))
 			return true
 		}
