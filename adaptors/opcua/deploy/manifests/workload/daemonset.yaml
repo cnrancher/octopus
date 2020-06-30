@@ -21,6 +21,7 @@ spec:
       containers:
         - name: octopus
           image: cnrancher/octopus-adaptor-opcua:master
+          imagePullPolicy: Always
           volumeMounts:
             - mountPath: /var/lib/octopus/adaptors/
               name: sockets

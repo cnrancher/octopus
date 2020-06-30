@@ -760,6 +760,7 @@ spec:
     spec:
       containers:
       - image: cnrancher/octopus-adaptor-opcua:master
+        imagePullPolicy: Always
         name: octopus
         volumeMounts:
         - mountPath: /var/lib/octopus/adaptors/

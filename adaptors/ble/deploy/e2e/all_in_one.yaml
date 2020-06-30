@@ -727,6 +727,7 @@ spec:
     spec:
       containers:
       - image: cnrancher/octopus-adaptor-ble:master
+        imagePullPolicy: Always
         name: octopus
         securityContext:
           privileged: true
