@@ -1,10 +1,12 @@
 package limb
 
 import (
+	"fmt"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
-	apierrs "k8s.io/apimachinery/pkg/api/errors"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -12,216 +14,312 @@ import (
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
 	api "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
 	"github.com/rancher/octopus/pkg/suctioncup/connection"
-	"github.com/rancher/octopus/pkg/util/model"
+	modelutil "github.com/rancher/octopus/pkg/util/model"
 	"github.com/rancher/octopus/pkg/util/object"
-	"github.com/rancher/octopus/test/util/content"
 )
 
-// testing scenarios:
-//	+ Corresponding adaptor
-//		- validate if target link available when adding the corresponding adaptor
-//		- validate if target link unavailable when deleting the corresponding adaptor
-//	+ Corresponding device
-//     	- validate if the device of target link create when adding the corresponding adaptor
-var _ = Describe("DeviceLink controller", func() {
+var _ = Describe("verify DeviceLink controller", func() {
 	var (
-		mockingAdaptor fakeAdaptor
+		testNamespace   corev1.Namespace
+		testAdaptor     fakeAdaptor
+		testAdaptorName string
 
-		targetModel     metav1.TypeMeta
-		targetNamespace string
-		targetItem      edgev1alpha1.DeviceLink
+		targetItem edgev1alpha1.DeviceLink
 	)
 
-	AfterEach(func() {
-		_ = k8sCli.DeleteAllOf(testCtx, &edgev1alpha1.DeviceLink{}, client.InNamespace(targetNamespace))
+	BeforeEach(func() {
+		testNamespace = corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				GenerateName: "test-",
+			},
+		}
+		_ = k8sCli.Create(testCtx, &testNamespace)
+
+		testAdaptorName = testAdaptor.GetName()
 	})
 
-	BeforeEach(func() {
-		targetModel = metav1.TypeMeta{
-			Kind:       "DummySpecialDevice",
-			APIVersion: "devices.edge.cattle.io/v1alpha1",
-		}
-		targetNamespace = "default"
+	AfterEach(func() {
+		_ = k8sCli.DeleteAllOf(testCtx, &edgev1alpha1.DeviceLink{}, client.InNamespace(testNamespace.Name))
+		_ = k8sCli.Delete(testCtx, &testNamespace)
+	})
 
+	JustBeforeEach(func() {
 		targetItem = edgev1alpha1.DeviceLink{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace:    targetNamespace,
+				Namespace:    testNamespace.Name,
 				GenerateName: "test-",
 			},
 			Spec: edgev1alpha1.DeviceLinkSpec{
 				Adaptor: edgev1alpha1.DeviceAdaptor{
-					Node: targetNode,
-					Name: mockingAdaptor.GetName(),
+					Node: testNodeName,
+					Name: testAdaptorName,
 				},
-				Model: targetModel,
-				Template: edgev1alpha1.DeviceTemplateSpec{
-					DeviceMeta: edgev1alpha1.DeviceMeta{
-						Labels: map[string]string{
-							"l1": "v1",
-						},
-					},
-					Spec: content.ToRawExtension(
-						map[string]interface{}{
-							"protocol": map[string]interface{}{
-								"location": "living-room-fan",
-							},
-							"gear": "slow",
-							"on":   true,
-						},
-					),
-				},
+				Model: testModel,
 			},
 		}
 	})
 
-	Context("Corresponding adaptor", func() {
+	Context("when the adaptor is unregistered", func() {
 
-		It("should be validated if add the adaptor", func() {
-			// created
-			Expect(k8sCli.Create(testCtx, &targetItem)).Should(Succeed())
-
-			// simulated that has completed the validation of node and model
-			targetItem.SuccessOnNodeExisted(nil)
-			targetItem.SuccessOnModelExisted()
-			Expect(k8sCli.Status().Update(testCtx, &targetItem)).Should(Succeed())
-
-			var key = types.NamespacedName{
-				Namespace: targetItem.Namespace,
-				Name:      targetItem.Name,
-			}
-
-			// confirmed
-			Eventually(func() error {
-				if err := k8sCli.Get(testCtx, key, &targetItem); err != nil {
-					if !apierrs.IsNotFound(err) {
-						return err
-					}
-				}
-				if !object.IsActivating(&targetItem) {
-					return errors.Errorf("%s link isn't activated", key)
-				}
-				if targetItem.GetAdaptorExistedStatus() != metav1.ConditionFalse {
-					return errors.Errorf("should not find the corresponding adaptor of %s link", key)
-				}
-				return nil
-			}, 30, 1).Should(Succeed())
-
-			// simulated that added the corresponding adaptor
-			testAdaptors.Put(mockingAdaptor)
-			testEventQueue.GetAdaptorNotifier().NoticeAdaptorRegistered(mockingAdaptor.GetName())
-
-			// confirmed
-			Eventually(func() error {
-				if err := k8sCli.Get(testCtx, key, &targetItem); err != nil {
-					if !apierrs.IsNotFound(err) {
-						return err
-					}
-				}
-				if !object.IsActivating(&targetItem) {
-					return errors.Errorf("%s link isn't activated", key)
-				}
-				if targetItem.GetAdaptorExistedStatus() != metav1.ConditionTrue {
-					return errors.Errorf("could not find the corresponding adaptor of %s link", key)
-				}
-				return nil
-			}, 30, 1).Should(Succeed())
+		BeforeEach(func() {
+			testAdaptors.Delete(testAdaptor.GetName())
 		})
 
-		It("should be invalidated if delete the adaptor", func() {
-			// created
-			Expect(k8sCli.Create(testCtx, &targetItem)).Should(Succeed())
+		It("should succeed after registered the adaptor", func() {
 
-			// simulated that has completed the validation of node and model
-			targetItem.SuccessOnNodeExisted(nil)
-			targetItem.SuccessOnModelExisted()
-			Expect(k8sCli.Status().Update(testCtx, &targetItem)).Should(Succeed())
+			By("given a new link which failed on adaptor verification", func() {
+				// creates
+				Expect(k8sCli.Create(testCtx, &targetItem)).Should(Succeed())
 
-			var key = types.NamespacedName{
-				Namespace: targetItem.Namespace,
-				Name:      targetItem.Name,
-			}
+				// simulates that reconciled by brain
+				targetItem.SucceedOnNodeExisted(nil)
+				targetItem.SucceedOnModelExisted()
+				Expect(k8sCli.Status().Update(testCtx, &targetItem)).Should(Succeed())
 
-			// confirmed
-			Eventually(func() error {
-				if err := k8sCli.Get(testCtx, key, &targetItem); err != nil {
-					if !apierrs.IsNotFound(err) {
+				// confirms
+				var key = object.GetNamespacedName(&targetItem)
+				Eventually(func() error {
+					if err := k8sCli.Get(testCtx, key, &targetItem); err != nil {
 						return err
 					}
-				}
-				if !object.IsActivating(&targetItem) {
-					return errors.Errorf("%s link isn't activated", key)
-				}
-				if targetItem.GetAdaptorExistedStatus() != metav1.ConditionTrue {
-					return errors.Errorf("could not find the corresponding adaptor of %s link", key)
-				}
-				return nil
-			}, 30, 1).Should(Succeed())
+					if targetItem.GetAdaptorExistedStatus() != metav1.ConditionFalse {
+						return errors.New("should not find the corresponding adaptor of link")
+					}
+					return nil
+				}, 30, 1).Should(Succeed())
+			})
 
-			// simulated that added the corresponding adaptor
-			testAdaptors.Delete(mockingAdaptor.GetName())
-			testEventQueue.GetAdaptorNotifier().NoticeAdaptorUnregistered(mockingAdaptor.GetName())
+			By("when register the adaptor", func() {
+				testAdaptors.Put(testAdaptor)
+				testEventQueue.GetAdaptorNotifier().NoticeAdaptorRegistered(testAdaptor.GetName())
+			})
 
-			// confirmed
-			Eventually(func() error {
-				if err := k8sCli.Get(testCtx, key, &targetItem); err != nil {
-					if !apierrs.IsNotFound(err) {
+			By("then it succeed on adaptor verification", func() {
+				var key = object.GetNamespacedName(&targetItem)
+				Eventually(func() error {
+					if err := k8sCli.Get(testCtx, key, &targetItem); err != nil {
 						return err
 					}
-				}
-				if !object.IsActivating(&targetItem) {
-					return errors.Errorf("%s link isn't activated", key)
-				}
-				if targetItem.GetAdaptorExistedStatus() != metav1.ConditionFalse {
-					return errors.Errorf("should not find the corresponding adaptor of %s link", key)
-				}
-				return nil
-			}, 30, 1).Should(Succeed())
+					if targetItem.GetAdaptorExistedStatus() != metav1.ConditionTrue {
+						return errors.New("could not find the corresponding adaptor of link")
+					}
+					return nil
+				}, 30, 1).Should(Succeed())
+			})
+
 		})
 
 	})
 
-	Context("Corresponding device", func() {
+	Context("when the adaptor is registered", func() {
 
-		It("should be created if add the adaptor", func() {
-			// created
-			Expect(k8sCli.Create(testCtx, &targetItem)).Should(Succeed())
+		BeforeEach(func() {
+			testAdaptors.Put(testAdaptor)
+		})
 
-			// simulated that added the corresponding adaptor
-			testAdaptors.Put(mockingAdaptor)
+		Context("and the adaptor spec is invalid", func() {
 
-			// simulated that has completed the validation of node and model
-			targetItem.SuccessOnNodeExisted(nil)
-			targetItem.SuccessOnModelExisted()
-			Expect(k8sCli.Status().Update(testCtx, &targetItem)).Should(Succeed())
+			BeforeEach(func() {
+				testAdaptorName = fmt.Sprintf("x%s", testAdaptor.GetName())
+			})
 
-			var key = types.NamespacedName{
-				Namespace: targetItem.Namespace,
-				Name:      targetItem.Name,
-			}
+			It("should succeed if modified to valid adaptor", func() {
 
-			// confirmed
-			Eventually(func() error {
-				if err := k8sCli.Get(testCtx, key, &targetItem); err != nil {
-					if !apierrs.IsNotFound(err) {
-						return err
-					}
-				}
-				if !object.IsActivating(&targetItem) {
-					return errors.Errorf("%s link isn't activated", key)
-				}
-				if targetItem.GetDeviceCreatedStatus() != metav1.ConditionTrue {
-					return errors.Errorf("could not find the corresponding adaptor of %s link", key)
-				}
+				By("given a new link which failed on adaptor verification", func() {
+					// creates
+					Expect(k8sCli.Create(testCtx, &targetItem)).Should(Succeed())
 
-				var targetDevice, _ = model.NewInstanceOfTypeMeta(targetModel)
-				if err := k8sCli.Get(testCtx, key, &targetDevice); err != nil {
-					return err
-				}
-				if !object.IsActivating(&targetDevice) {
-					return errors.Errorf("%s %s device isn't activated", key, targetModel)
-				}
-				return nil
-			}, 30, 1).Should(Succeed())
+					// simulates that reconciled by brain
+					targetItem.SucceedOnNodeExisted(nil)
+					targetItem.SucceedOnModelExisted()
+					Expect(k8sCli.Status().Update(testCtx, &targetItem)).Should(Succeed())
+
+					// confirms
+					var key = object.GetNamespacedName(&targetItem)
+					Eventually(func() error {
+						if err := k8sCli.Get(testCtx, key, &targetItem); err != nil {
+							return err
+						}
+						if targetItem.GetAdaptorExistedStatus() != metav1.ConditionFalse {
+							return errors.New("should not find the corresponding adaptor of link")
+						}
+						return nil
+					}, 30, 1).Should(Succeed())
+				})
+
+				By("when modify to valid adaptor", func() {
+					Expect(k8sCli.Get(testCtx, object.GetNamespacedName(&targetItem), &targetItem)).Should(Succeed())
+
+					targetItem.Spec.Adaptor.Name = testAdaptor.GetName()
+					Expect(k8sCli.Update(testCtx, &targetItem)).Should(Succeed())
+				})
+
+				By("then it succeeded on adaptor verification", func() {
+					var key = object.GetNamespacedName(&targetItem)
+					Eventually(func() error {
+						if err := k8sCli.Get(testCtx, key, &targetItem); err != nil {
+							return err
+						}
+						if targetItem.GetAdaptorExistedStatus() != metav1.ConditionTrue {
+							return errors.New("could not find the corresponding adaptor of link")
+						}
+						return nil
+					}, 30, 1).Should(Succeed())
+				})
+
+			})
+
+		})
+
+		Context("and the adaptor spec is valid", func() {
+
+			It("should fail if unregistered adaptor", func() {
+
+				By("given a new link which succeeded on adaptor verification", func() {
+					// creates
+					Expect(k8sCli.Create(testCtx, &targetItem)).Should(Succeed())
+
+					// simulates that reconciled by brain
+					targetItem.SucceedOnNodeExisted(nil)
+					targetItem.SucceedOnModelExisted()
+					Expect(k8sCli.Status().Update(testCtx, &targetItem)).Should(Succeed())
+
+					// confirms
+					var key = object.GetNamespacedName(&targetItem)
+					Eventually(func() error {
+						if err := k8sCli.Get(testCtx, key, &targetItem); err != nil {
+							return err
+						}
+						if targetItem.GetAdaptorExistedStatus() != metav1.ConditionTrue {
+							return errors.New("could not find the corresponding adaptor of link")
+						}
+						return nil
+					}, 30, 1).Should(Succeed())
+				})
+
+				By("when unregister the adaptor", func() {
+					testAdaptors.Delete(targetItem.Status.AdaptorName)
+					testEventQueue.GetAdaptorNotifier().NoticeAdaptorUnregistered(testAdaptor.GetName())
+				})
+
+				By("then it failed on adaptor verification", func() {
+					var key = object.GetNamespacedName(&targetItem)
+					Eventually(func() error {
+						if err := k8sCli.Get(testCtx, key, &targetItem); err != nil {
+							return err
+						}
+						if targetItem.GetAdaptorExistedStatus() != metav1.ConditionFalse {
+							return errors.New("should not find the corresponding adaptor of link")
+						}
+						return nil
+					}, 30, 1).Should(Succeed())
+				})
+
+			})
+
+			It("should fail if modified to invalid adaptor", func() {
+
+				By("given a new link which succeeded on adaptor verification", func() {
+					// creates
+					Expect(k8sCli.Create(testCtx, &targetItem)).Should(Succeed())
+
+					// simulates that reconciled by brain
+					targetItem.SucceedOnNodeExisted(nil)
+					targetItem.SucceedOnModelExisted()
+					Expect(k8sCli.Status().Update(testCtx, &targetItem)).Should(Succeed())
+
+					// confirms
+					var key = object.GetNamespacedName(&targetItem)
+					Eventually(func() error {
+						if err := k8sCli.Get(testCtx, key, &targetItem); err != nil {
+							return err
+						}
+						if targetItem.GetAdaptorExistedStatus() != metav1.ConditionTrue {
+							return errors.New("could not find the corresponding adaptor of link")
+						}
+						return nil
+					}, 30, 1).Should(Succeed())
+				})
+
+				By("when modify to invalid adaptor", func() {
+					Expect(k8sCli.Get(testCtx, object.GetNamespacedName(&targetItem), &targetItem)).Should(Succeed())
+
+					targetItem.Spec.Adaptor.Name = fmt.Sprintf("x%s", targetItem.Status.AdaptorName)
+					Expect(k8sCli.Update(testCtx, &targetItem)).Should(Succeed())
+				})
+
+				By("then it failed on adaptor verification", func() {
+					var key = object.GetNamespacedName(&targetItem)
+					Eventually(func() error {
+						if err := k8sCli.Get(testCtx, key, &targetItem); err != nil {
+							return err
+						}
+						if targetItem.GetAdaptorExistedStatus() != metav1.ConditionFalse {
+							return errors.New("should not find the corresponding adaptor of link")
+						}
+						return nil
+					}, 30, 1).Should(Succeed())
+				})
+
+			})
+
+			It("should create the corresponding device", func() {
+
+				By("given a new link", func() {
+					// creates
+					Expect(k8sCli.Create(testCtx, &targetItem)).Should(Succeed())
+
+					// simulates that reconciled by brain
+					targetItem.SucceedOnNodeExisted(nil)
+					targetItem.SucceedOnModelExisted()
+					Expect(k8sCli.Status().Update(testCtx, &targetItem)).Should(Succeed())
+				})
+
+				By("then it succeeded on adaptor verification", func() {
+					var key = object.GetNamespacedName(&targetItem)
+					Eventually(func() error {
+						if err := k8sCli.Get(testCtx, key, &targetItem); err != nil {
+							return err
+						}
+						if targetItem.GetAdaptorExistedStatus() != metav1.ConditionTrue {
+							return errors.New("could not find the corresponding adaptor of link")
+						}
+						return nil
+					}, 30, 1).Should(Succeed())
+				})
+
+				By("and it succeeded on device creation", func() {
+					var key = object.GetNamespacedName(&targetItem)
+					Eventually(func() error {
+						if err := k8sCli.Get(testCtx, key, &targetItem); err != nil {
+							return err
+						}
+						if targetItem.GetDeviceCreatedStatus() != metav1.ConditionTrue {
+							return errors.New("could not find the corresponding device of link")
+						}
+						return nil
+					}, 30, 1).Should(Succeed())
+
+					var device, err = modelutil.NewInstanceOfTypeMeta(*targetItem.Status.Model)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(k8sCli.Get(testCtx, key, &device)).Should(Succeed())
+				})
+
+				By("and it succeeded on device connection", func() {
+					var key = object.GetNamespacedName(&targetItem)
+					Eventually(func() error {
+						if err := k8sCli.Get(testCtx, key, &targetItem); err != nil {
+							return err
+						}
+						if targetItem.GetDeviceConnectedStatus() != metav1.ConditionTrue {
+							return errors.New("could not find the corresponding connection of link")
+						}
+						return nil
+					}, 30, 1).Should(Succeed())
+				})
+
+			})
+
 		})
 
 	})
@@ -231,11 +329,11 @@ var _ = Describe("DeviceLink controller", func() {
 type fakeAdaptor string
 
 func (a fakeAdaptor) GetName() string {
-	return "adaptors.edge.cattle.io/dummy"
+	return "adaptors.edge.cattle.io/fake"
 }
 
 func (a fakeAdaptor) GetEndpoint() string {
-	return "dummy.sock"
+	return "fake.sock"
 }
 
 func (a fakeAdaptor) Stop() error {
@@ -253,7 +351,7 @@ func (a fakeAdaptor) DeleteConnection(name types.NamespacedName) bool {
 type fakeConnection types.NamespacedName
 
 func (c fakeConnection) GetAdaptorName() string {
-	return "adaptors.edge.cattle.io/dummy"
+	return "adaptors.edge.cattle.io/fake"
 }
 
 func (c fakeConnection) GetName() types.NamespacedName {

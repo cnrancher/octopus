@@ -57,7 +57,6 @@ var _ = BeforeSuite(func(done Done) {
 		UseExistingCluster: pointer.BoolPtr(true),
 		CRDDirectoryPaths: []string{
 			filepath.Join(testRootDir, "deploy", "manifests", "crd", "base"),
-			filepath.Join(testRootDir, "adaptors", "dummy", "deploy", "manifests", "crd", "base"),
 		},
 	}
 

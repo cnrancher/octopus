@@ -163,11 +163,9 @@ function octopus::cluster_k3d::add_worker() {
     octopus::log::error "node name is required"
   fi
 
-  # NB(thxCode) The container will not exit automatically when `kubectl delete node ...`
-  idx=${node_name//edge-worker/}
-  ((idx += 1))
-  if docker inspect "k3d-edge-worker-${idx}" >/dev/null 2>&1; then
-    docker rm -f "k3d-edge-worker-${idx}" >/dev/null 2>&1
+  octopus::log::info "validating node ${node_name} is not existed"
+  if kubectl get node "${node_name}" >/dev/null 2>&1; then
+    octopus::log::fatal "${node_name} node is existed"
   fi
 
   octopus::log::info "adding new node to ${CLUSTER_NAME} cluster"
