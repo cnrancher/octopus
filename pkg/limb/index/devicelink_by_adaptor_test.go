@@ -10,15 +10,17 @@ import (
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
 )
 
-func TestDeviceLinkByAdaptorFunc(t *testing.T) {
-	var testNode = "edge-worker"
+func TestDeviceLinkByAdaptorFuncFactory(t *testing.T) {
+	var targetNode = "edge-worker"
+	var nonTargetNode = "edge-worker1"
+
 	var testCases = []struct {
-		name   string
-		given  runtime.Object
-		expect []string
+		name     string
+		given    runtime.Object
+		expected []string
 	}{
 		{
-			name: "non-empty adaptor but requested another node",
+			name: "non-empty adaptor but non-target node",
 			given: &edgev1alpha1.DeviceLink{
 				Spec: edgev1alpha1.DeviceLinkSpec{
 					Adaptor: edgev1alpha1.DeviceAdaptor{
@@ -26,10 +28,10 @@ func TestDeviceLinkByAdaptorFunc(t *testing.T) {
 					},
 				},
 				Status: edgev1alpha1.DeviceLinkStatus{
-					NodeName: testNode + "1",
+					NodeName: nonTargetNode,
 				},
 			},
-			expect: nil,
+			expected: nil,
 		},
 		{
 			name: "non-empty adaptor",
@@ -40,10 +42,10 @@ func TestDeviceLinkByAdaptorFunc(t *testing.T) {
 					},
 				},
 				Status: edgev1alpha1.DeviceLinkStatus{
-					NodeName: testNode,
+					NodeName: targetNode,
 				},
 			},
-			expect: []string{"adaptors.test.io/dummy"},
+			expected: []string{"adaptors.test.io/dummy"},
 		},
 		{
 			name: "empty adaptor",
@@ -52,20 +54,20 @@ func TestDeviceLinkByAdaptorFunc(t *testing.T) {
 					Adaptor: edgev1alpha1.DeviceAdaptor{},
 				},
 				Status: edgev1alpha1.DeviceLinkStatus{
-					NodeName: testNode,
+					NodeName: targetNode,
 				},
 			},
-			expect: nil,
+			expected: nil,
 		},
 		{
-			name:   "non-DeviceLink object",
-			given:  &corev1.Node{},
-			expect: nil,
+			name:     "non-DeviceLink object",
+			given:    &corev1.Node{},
+			expected: nil,
 		},
 	}
 
 	for _, tc := range testCases {
-		var ret = DeviceLinkByAdaptorFuncFactory(testNode)(tc.given)
-		assert.Equal(t, tc.expect, ret, "case %v", tc.name)
+		var actual = DeviceLinkByAdaptorFuncFactory(targetNode)(tc.given)
+		assert.Equal(t, tc.expected, actual, "case %q", tc.name)
 	}
 }

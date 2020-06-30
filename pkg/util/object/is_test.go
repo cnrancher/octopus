@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
+	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
@@ -12,9 +12,9 @@ import (
 
 func TestIsDeleted(t *testing.T) {
 	var testCases = []struct {
-		name   string
-		given  metav1.Object
-		expect bool
+		name     string
+		given    metav1.Object
+		expected bool
 	}{
 		{
 			name: "alive instance",
@@ -24,7 +24,7 @@ func TestIsDeleted(t *testing.T) {
 					Name:      "test1",
 				},
 			},
-			expect: false,
+			expected: false,
 		},
 		{
 			name: "deleted instance",
@@ -35,23 +35,21 @@ func TestIsDeleted(t *testing.T) {
 					DeletionTimestamp: &metav1.Time{Time: time.Now()},
 				},
 			},
-			expect: true,
+			expected: true,
 		},
 	}
 
 	for _, tc := range testCases {
-		var ret = IsDeleted(tc.given)
-		if ret != tc.expect {
-			t.Errorf("case %v: expected %s, got %s", tc.name, spew.Sprintf("%#v", tc.expect), spew.Sprintf("%#v", ret))
-		}
+		var actual = IsDeleted(tc.given)
+		assert.Equal(t, tc.expected, actual, "case %q", tc.name)
 	}
 }
 
 func TestIsZero(t *testing.T) {
 	var testCases = []struct {
-		name   string
-		given  metav1.Object
-		expect bool
+		name     string
+		given    metav1.Object
+		expected bool
 	}{
 		{
 			name: "existing instance",
@@ -61,28 +59,26 @@ func TestIsZero(t *testing.T) {
 					Name:      "test1",
 				},
 			},
-			expect: false,
+			expected: false,
 		},
 		{
-			name:   "zero instance",
-			given:  &edgev1alpha1.DeviceLink{},
-			expect: true,
+			name:     "zero instance",
+			given:    &edgev1alpha1.DeviceLink{},
+			expected: true,
 		},
 	}
 
 	for _, tc := range testCases {
-		var ret = IsZero(tc.given)
-		if ret != tc.expect {
-			t.Errorf("case %v: expected %s, got %s", tc.name, spew.Sprintf("%#v", tc.expect), spew.Sprintf("%#v", ret))
-		}
+		var actual = IsZero(tc.given)
+		assert.Equal(t, tc.expected, actual, "case %q", tc.name)
 	}
 }
 
 func TestIsActivating(t *testing.T) {
 	var testCases = []struct {
-		name   string
-		given  metav1.Object
-		expect bool
+		name     string
+		given    metav1.Object
+		expected bool
 	}{
 		{
 			name: "existing instance",
@@ -92,12 +88,12 @@ func TestIsActivating(t *testing.T) {
 					Name:      "test1",
 				},
 			},
-			expect: true,
+			expected: true,
 		},
 		{
-			name:   "zero instance",
-			given:  &edgev1alpha1.DeviceLink{},
-			expect: false,
+			name:     "zero instance",
+			given:    &edgev1alpha1.DeviceLink{},
+			expected: false,
 		},
 		{
 			name: "deleted instance",
@@ -108,14 +104,12 @@ func TestIsActivating(t *testing.T) {
 					DeletionTimestamp: &metav1.Time{Time: time.Now()},
 				},
 			},
-			expect: false,
+			expected: false,
 		},
 	}
 
 	for _, tc := range testCases {
-		var ret = IsActivating(tc.given)
-		if ret != tc.expect {
-			t.Errorf("case %v: expected %s, got %s", tc.name, spew.Sprintf("%#v", tc.expect), spew.Sprintf("%#v", ret))
-		}
+		var actual = IsActivating(tc.given)
+		assert.Equal(t, tc.expected, actual, "case %q", tc.name)
 	}
 }

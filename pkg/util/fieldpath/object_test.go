@@ -1,6 +1,7 @@
 package fieldpath
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/pkg/errors"
@@ -16,7 +17,7 @@ func TestExtractObjectFieldPathAsBytes(t *testing.T) {
 		obj       runtime.Object
 		fieldPath string
 	}
-	type expect struct {
+	type expected struct {
 		ret []byte
 		err error
 	}
@@ -43,70 +44,65 @@ func TestExtractObjectFieldPathAsBytes(t *testing.T) {
 	}
 
 	var testCases = []struct {
-		given  given
-		expect expect
+		name     string
+		given    given
+		expected expected
 	}{
 		{
+			name: "metadata.labels",
 			given: given{
 				obj:       targetObject.DeepCopy(),
 				fieldPath: "metadata.labels",
 			},
-			expect: expect{
+			expected: expected{
 				ret: []byte(`lb1="v1";lb2="v2"`),
-				err: nil,
 			},
 		},
 		{
+			name: "metadata.annotations['annotation-key-1']",
 			given: given{
 				obj:       targetObject.DeepCopy(),
-				fieldPath: `metadata.annotations['annotation-key-1']`,
+				fieldPath: "metadata.annotations['annotation-key-1']",
 			},
-			expect: expect{
+			expected: expected{
 				ret: []byte(`v1`),
-				err: nil,
 			},
 		},
 		{
+			name: "metadata.namespace",
 			given: given{
 				obj:       targetObject.DeepCopy(),
-				fieldPath: `metadata.namespace`,
+				fieldPath: "metadata.namespace",
 			},
-			expect: expect{
+			expected: expected{
 				ret: []byte(`default`),
-				err: nil,
 			},
 		},
 		{
+			name: "metadata.annotations['annotation-key-3']",
 			given: given{
 				obj:       targetObject.DeepCopy(),
-				fieldPath: `metadata.annotations['annotation-key-3']`,
+				fieldPath: "metadata.annotations['annotation-key-3']",
 			},
-			expect: expect{
+			expected: expected{
 				ret: nil,
-				err: nil,
 			},
 		},
 		{
+			name: "status.nodeName",
 			given: given{
 				obj:       targetObject.DeepCopy(),
-				fieldPath: `status.nodeName`,
+				fieldPath: "status.nodeName",
 			},
-			expect: expect{
-				ret: nil,
+			expected: expected{
 				err: errors.Errorf("unsupported fieldPath: status.nodeName"),
 			},
 		},
 	}
 
-	for i, tc := range testCases {
-		var actualBytes, actualErr = ExtractObjectFieldPathAsBytes(tc.given.obj, tc.given.fieldPath)
-		if actualErr != nil {
-			if tc.expect.err != nil {
-				assert.EqualError(t, actualErr, tc.expect.err.Error(), "case %v", i+1)
-			} else {
-				assert.NoError(t, actualErr, "case %v ", i+1)
-			}
-		}
-		assert.Equal(t, actualBytes, tc.expect.ret, "case %v", i+1)
+	for _, tc := range testCases {
+		var actual, actualErr = ExtractObjectFieldPathAsBytes(tc.given.obj, tc.given.fieldPath)
+		assert.Equal(t, tc.expected.ret, actual, "case %q", tc.name)
+		assert.Equal(t, fmt.Sprint(tc.expected.err), fmt.Sprint(actualErr), "case %q", tc.name)
 	}
 }

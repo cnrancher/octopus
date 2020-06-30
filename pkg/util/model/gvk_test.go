@@ -1,40 +1,40 @@
 package model
 
 import (
-	"reflect"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
+	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 func TestGetCRDNameOfGroupVersionKind(t *testing.T) {
 	var testCases = []struct {
-		given  schema.GroupVersionKind
-		expect string
+		name     string
+		given    schema.GroupVersionKind
+		expected string
 	}{
 		{
+			name: "k1s.test.io/v1",
 			given: schema.GroupVersionKind{
 				Group:   "test.io",
 				Kind:    "K1",
 				Version: "v1",
 			},
-			expect: "k1s.test.io",
+			expected: "k1s.test.io",
 		},
 		{
+			name: "k2s.test.io/v1",
 			given: schema.GroupVersionKind{
 				Group:   "test.io",
 				Kind:    "K2",
 				Version: "v1",
 			},
-			expect: "k2s.test.io",
+			expected: "k2s.test.io",
 		},
 	}
 
-	for i, tc := range testCases {
-		var ret = GetCRDNameOfGroupVersionKind(tc.given)
-		if !reflect.DeepEqual(ret, tc.expect) {
-			t.Errorf("case %d: expected %s, got %s", i, spew.Sprintf("%#v", tc.expect), spew.Sprintf("%#v", ret))
-		}
+	for _, tc := range testCases {
+		var actual = GetCRDNameOfGroupVersionKind(tc.given)
+		assert.Equal(t, tc.expected, actual, "case %q", tc.name)
 	}
 }

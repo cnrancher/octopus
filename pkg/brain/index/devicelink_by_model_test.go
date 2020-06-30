@@ -13,9 +13,9 @@ import (
 
 func TestDeviceLinkByModelFunc(t *testing.T) {
 	var testCases = []struct {
-		name   string
-		given  runtime.Object
-		expect []string
+		name     string
+		given    runtime.Object
+		expected []string
 	}{
 		{
 			name: "non-empty model",
@@ -27,7 +27,7 @@ func TestDeviceLinkByModelFunc(t *testing.T) {
 					},
 				},
 			},
-			expect: []string{"k1s.test.io"},
+			expected: []string{"k1s.test.io"},
 		},
 		{
 			name: "empty model",
@@ -36,17 +36,17 @@ func TestDeviceLinkByModelFunc(t *testing.T) {
 					Model: metav1.TypeMeta{},
 				},
 			},
-			expect: nil,
+			expected: nil,
 		},
 		{
-			name:   "non-DeviceLink object",
-			given:  &corev1.Node{},
-			expect: nil,
+			name:     "non-DeviceLink object",
+			given:    &corev1.Node{},
+			expected: nil,
 		},
 	}
 
 	for _, tc := range testCases {
-		var ret = DeviceLinkByModelFunc(tc.given)
-		assert.Equal(t, tc.expect, ret, "case %v", tc.name)
+		var actual = DeviceLinkByModelFunc(tc.given)
+		assert.Equal(t, tc.expected, actual, "case %q", tc.name)
 	}
 }

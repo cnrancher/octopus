@@ -1,10 +1,9 @@
 package object
 
 import (
-	"reflect"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
+	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -12,14 +11,14 @@ import (
 
 func TestGetNamespacedName(t *testing.T) {
 	var testCases = []struct {
-		name   string
-		given  metav1.Object
-		expect types.NamespacedName
+		name     string
+		given    metav1.Object
+		expected types.NamespacedName
 	}{
 		{
-			name:   "nil instance",
-			given:  nil,
-			expect: types.NamespacedName{},
+			name:     "nil instance",
+			given:    nil,
+			expected: types.NamespacedName{},
 		},
 		{
 			name: "none namespaced instance",
@@ -28,7 +27,7 @@ func TestGetNamespacedName(t *testing.T) {
 					Name: "test",
 				},
 			},
-			expect: types.NamespacedName{
+			expected: types.NamespacedName{
 				Name: "test",
 			},
 		},
@@ -40,7 +39,7 @@ func TestGetNamespacedName(t *testing.T) {
 					Name:      "test",
 				},
 			},
-			expect: types.NamespacedName{
+			expected: types.NamespacedName{
 				Namespace: "default",
 				Name:      "test",
 			},
@@ -48,9 +47,7 @@ func TestGetNamespacedName(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		var ret = GetNamespacedName(tc.given)
-		if !reflect.DeepEqual(ret, tc.expect) {
-			t.Errorf("case %v: expected %s, got %s", tc.name, spew.Sprintf("%#v", tc.expect), spew.Sprintf("%#v", ret))
-		}
+		var actual = GetNamespacedName(tc.given)
+		assert.Equal(t, tc.expected, actual, "case %q", tc.name)
 	}
 }

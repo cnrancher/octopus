@@ -1,10 +1,9 @@
 package object
 
 import (
-	"reflect"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
+	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,9 +14,9 @@ import (
 
 func TestToDeviceLinkObject(t *testing.T) {
 	var testCases = []struct {
-		name   string
-		given  runtime.Object
-		expect *edgev1alpha1.DeviceLink
+		name     string
+		given    runtime.Object
+		expected *edgev1alpha1.DeviceLink
 	}{
 		{
 			name: "DeviceLink instance",
@@ -27,7 +26,7 @@ func TestToDeviceLinkObject(t *testing.T) {
 					Name:      "test",
 				},
 			},
-			expect: &edgev1alpha1.DeviceLink{
+			expected: &edgev1alpha1.DeviceLink{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "default",
 					Name:      "test",
@@ -41,23 +40,21 @@ func TestToDeviceLinkObject(t *testing.T) {
 					Name: "test",
 				},
 			},
-			expect: nil,
+			expected: nil,
 		},
 	}
 
 	for _, tc := range testCases {
-		var ret = ToDeviceLinkObject(tc.given)
-		if !reflect.DeepEqual(ret, tc.expect) {
-			t.Errorf("case %v: expected %s, got %s", tc.name, spew.Sprintf("%#v", tc.expect), spew.Sprintf("%#v", ret))
-		}
+		var actual = ToDeviceLinkObject(tc.given)
+		assert.Equal(t, tc.expected, actual, "case %q", tc.name)
 	}
 }
 
 func TestToNodeObject(t *testing.T) {
 	var testCases = []struct {
-		name   string
-		given  runtime.Object
-		expect *corev1.Node
+		name     string
+		given    runtime.Object
+		expected *corev1.Node
 	}{
 		{
 			name: "Node instance",
@@ -66,7 +63,7 @@ func TestToNodeObject(t *testing.T) {
 					Name: "test",
 				},
 			},
-			expect: &corev1.Node{
+			expected: &corev1.Node{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test",
 				},
@@ -80,23 +77,21 @@ func TestToNodeObject(t *testing.T) {
 					Namespace: "default",
 				},
 			},
-			expect: nil,
+			expected: nil,
 		},
 	}
 
 	for _, tc := range testCases {
-		var ret = ToNodeObject(tc.given)
-		if !reflect.DeepEqual(ret, tc.expect) {
-			t.Errorf("case %v: expected %s, got %s", tc.name, spew.Sprintf("%#v", tc.expect), spew.Sprintf("%#v", ret))
-		}
+		var actual = ToNodeObject(tc.given)
+		assert.Equal(t, tc.expected, actual, "case %q", tc.name)
 	}
 }
 
 func TestToCustomResourceDefinitionObject(t *testing.T) {
 	var testCases = []struct {
-		name   string
-		given  runtime.Object
-		expect *apiextensionsv1.CustomResourceDefinition
+		name     string
+		given    runtime.Object
+		expected *apiextensionsv1.CustomResourceDefinition
 	}{
 		{
 			name: "CRD instance",
@@ -105,7 +100,7 @@ func TestToCustomResourceDefinitionObject(t *testing.T) {
 					Name: "dummyspecialdevices.edge.cattle.io",
 				},
 			},
-			expect: &apiextensionsv1.CustomResourceDefinition{
+			expected: &apiextensionsv1.CustomResourceDefinition{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "dummyspecialdevices.edge.cattle.io",
 				},
@@ -119,14 +114,12 @@ func TestToCustomResourceDefinitionObject(t *testing.T) {
 					Namespace: "default",
 				},
 			},
-			expect: nil,
+			expected: nil,
 		},
 	}
 
 	for _, tc := range testCases {
-		var ret = ToCustomResourceDefinitionObject(tc.given)
-		if !reflect.DeepEqual(ret, tc.expect) {
-			t.Errorf("case %v: expected %s, got %s", tc.name, spew.Sprintf("%#v", tc.expect), spew.Sprintf("%#v", ret))
-		}
+		var actual = ToCustomResourceDefinitionObject(tc.given)
+		assert.Equal(t, tc.expected, actual, "case %q", tc.name)
 	}
 }
