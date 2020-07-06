@@ -177,3 +177,6 @@ When running integration tests, the [framework](./test/framework) will launch a 
 
 TODO
 
+### Documentation
+
+Currently, Octopus hosted its documentation on the [cnrancher/docs-octopus](https://github.com/cnrancher/docs-octopus) repo, please submit your PR against this repo for documentation changes.
