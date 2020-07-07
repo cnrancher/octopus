@@ -58,6 +58,9 @@ function octopus::cluster_k3d::startup() {
     octopus::log::fatal "k3d hasn't been installed"
   fi
 
+  octopus::log::info "unset proxy config"
+  octopus::util::unsetproxy
+
   octopus::log::info "creating ${CLUSTER_NAME} cluster with ${K8S_VERSION}"
   local k3s_image="rancher/k3s:${K8S_VERSION}-${IMAGE_SUFFIX}"
   # setup control-planes
@@ -144,7 +147,7 @@ function octopus::cluster_k3d::spinup() {
   octopus::cluster_k3d::startup
 
   octopus::log::warn "please input CTRL+C to stop the local cluster"
-  read -r /dev/null
+  read -r -d '' _ </dev/tty
 }
 
 function octopus::cluster_k3d::add_worker() {
