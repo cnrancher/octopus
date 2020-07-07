@@ -28,7 +28,7 @@ github.com/davecgh/go-spew/spew
 # github.com/docker/docker v0.7.3-0.20190327010347-be7ac8be2ae0
 github.com/docker/docker/pkg/term
 github.com/docker/docker/pkg/term/windows
-# github.com/eclipse/paho.mqtt.golang v1.2.0
+# github.com/eclipse/paho.mqtt.golang v1.2.1-0.20200609161119-ca94c5368c77
 github.com/eclipse/paho.mqtt.golang
 github.com/eclipse/paho.mqtt.golang/packets
 # github.com/evanphx/json-patch v4.5.0+incompatible
@@ -79,7 +79,7 @@ github.com/gopcua/opcua/ua
 github.com/gopcua/opcua/uacp
 github.com/gopcua/opcua/uapolicy
 github.com/gopcua/opcua/uasc
-# github.com/gorilla/websocket v1.4.1
+# github.com/gorilla/websocket v1.4.2
 github.com/gorilla/websocket
 # github.com/hashicorp/golang-lru v0.5.1
 github.com/hashicorp/golang-lru
@@ -209,7 +209,6 @@ golang.org/x/net/internal/socks
 golang.org/x/net/internal/timeseries
 golang.org/x/net/proxy
 golang.org/x/net/trace
-golang.org/x/net/websocket
 # golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
 golang.org/x/oauth2
 golang.org/x/oauth2/internal

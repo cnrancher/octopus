@@ -6,7 +6,7 @@ require (
 	github.com/256dpi/gomqtt v0.14.2
 	github.com/bettercap/gatt v0.0.0-20191018133023-569d3d9372bb
 	github.com/davecgh/go-spew v1.1.1
-	github.com/eclipse/paho.mqtt.golang v1.2.0
+	github.com/eclipse/paho.mqtt.golang v1.2.1-0.20200609161119-ca94c5368c77
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/go-logr/logr v0.1.0
 	github.com/goburrow/modbus v0.1.0
