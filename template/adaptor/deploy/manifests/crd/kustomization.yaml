@@ -1,6 +1,6 @@
 commonAnnotations:
   devices.edge.cattle.io/enable: "true" # this is required
-  devices.edge.cattle.io/device-property: '{"name":"string","dataType":"string","value":"string","updatedAt":"date"}' # specify device property to be displayed in the UI
+  devices.edge.cattle.io/device-property: "" # specify device property to be displayed in the UI
   devices.edge.cattle.io/icon: "" # define the icon for the Edge UI
   devices.edge.cattle.io/description: "" # add your custom device adaptor description
 

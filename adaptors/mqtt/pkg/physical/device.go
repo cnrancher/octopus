@@ -1,305 +1,307 @@
 package physical
 
 import (
-	"errors"
+	"reflect"
 	"sync"
-	"time"
 
-	MQTT "github.com/eclipse/paho.mqtt.golang"
 	"github.com/go-logr/logr"
+	"github.com/pkg/errors"
+	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/rancher/octopus/adaptors/mqtt/api/v1alpha1"
+	api "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
+	"github.com/rancher/octopus/pkg/mqtt"
+	"github.com/rancher/octopus/pkg/util/converter"
 	"github.com/rancher/octopus/pkg/util/object"
-	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-const (
-	disconnectQuiesce = 1000
-	waitTimeout       = time.Second * 10
-)
-
-var (
-	errorBrokerConnectTimeout = errors.New("Broker Connect Timeout")
-	errorSubscribeTimeout     = errors.New("Subscribe Timeout")
-	errorUnsubscribeTimeout   = errors.New("Unsubscribe Timeout")
-	errorPublishTimeout       = errors.New("Publish Timeout")
-)
-
+// Device is an interface for device operations set.
 type Device interface {
-	Configure(spec *v1alpha1.MqttDeviceSpec)
-	On()
+	// Shutdown uses to close the connection between adaptor and real(physical) device.
 	Shutdown()
+	// Configure uses to set up the device.
+	Configure(references api.ReferencesHandler, configuration interface{}) error
 }
 
-func NewDevice(log logr.Logger, obj *v1alpha1.MqttDevice, handler DataHandler, client MQTT.Client) Device {
-	d := device{
-		client:  client,
-		handler: handler,
-		stop:    make(chan struct{}),
-		log:     log,
+// NewDevice creates a Device.
+func NewDevice(log logr.Logger, meta metav1.ObjectMeta, toLimb MQTTDeviceLimbSyncer) Device {
+	log.Info("Created")
+	return &mqttDevice{
+		log: log,
+		instance: &v1alpha1.MQTTDevice{
+			ObjectMeta: meta,
+		},
+		toLimb: toLimb,
 	}
-	obj.DeepCopyInto(&d.obj)
-
-	return &d
 }
 
-type device struct {
+type mqttDevice struct {
 	sync.Mutex
-	log        logr.Logger
-	client     MQTT.Client
-	handler    DataHandler
-	obj        v1alpha1.MqttDevice
-	stop       chan struct{}
-	payloadMap sync.Map
-	o          sync.Once
+
+	log logr.Logger
+
+	instance   *v1alpha1.MQTTDevice
+	toLimb     MQTTDeviceLimbSyncer
+	mqttClient mqtt.Client
 }
 
-func (dev *device) On() {
-	if err := dev.subscribe(); err != nil {
-		dev.log.Error(err, "device subscribe error")
-		close(dev.stop)
-		return
-	}
-
-	select {
-	case <-dev.stop:
-		dev.log.Info("device is stop")
-		return
+func (d *mqttDevice) Shutdown() {
+	d.log.Info("Shutdown")
+	if d.mqttClient != nil {
+		d.mqttClient.Disconnect()
+		d.mqttClient = nil
+		d.log.V(1).Info("Disconnected connection")
 	}
 }
 
-func (dev *device) Configure(spec *v1alpha1.MqttDeviceSpec) {
-	dev.Lock()
-	defer dev.Unlock()
-	if err := dev.updateSubscription(spec); err != nil {
-		dev.log.Error(err, "device Configure updateSubscription error")
-		return
+func (d *mqttDevice) Configure(references api.ReferencesHandler, configuration interface{}) error {
+	var device, ok = configuration.(*v1alpha1.MQTTDevice)
+	if !ok {
+		d.log.Error(errors.New("invalidate configuration type"), "Failed to configure")
+		return nil
 	}
-	if err := dev.publishProperties(spec.Properties); err != nil {
-		dev.log.Error(err, "device Configure publish error")
-		return
-	}
-	dev.removeRedundantStatus(spec)
-	dev.updateDeviceSpec(spec)
-}
+	var newSpec = device.Spec
 
-func (dev *device) Shutdown() {
-	dev.o.Do(func() {
-		close(dev.stop)
-		dev.unsubscribeAll()
-		dev.client.Disconnect(disconnectQuiesce)
-	})
-}
+	d.Lock()
+	defer d.Unlock()
 
-func (dev *device) publishProperties(properties []v1alpha1.Property) error {
-	for _, property := range properties {
-		if property.SubInfo.PayloadType != v1alpha1.PayloadTypeJSON {
-			continue
-		}
-		var statusProperty v1alpha1.StatusProperty
-		for _, sp := range dev.obj.Status.Properties {
-			if sp.Name == property.Name {
-				statusProperty = sp
-				break
-			}
-		}
-		if ComparativeValueProps(property.Value, statusProperty.Value) {
-			continue
+	if !reflect.DeepEqual(d.instance.Spec.Protocol, newSpec.Protocol) {
+		if d.mqttClient != nil {
+			d.mqttClient.Disconnect()
+			d.mqttClient = nil
+			d.log.V(1).Info("Disconnected stale connection")
 		}
 
-		ivalue, ok := dev.payloadMap.Load(property.SubInfo.Topic)
-		if !ok {
-			continue
-		}
-		payload := ivalue.([]byte)
-		newValuePayload, err := ConvertValueToJSONPayload(payload, &property)
+		var cli, err = mqtt.NewClient(newSpec.Protocol.MQTTOptions, object.GetControlledOwnerObjectReference(device), references)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "failed to create MQTT client")
 		}
 
-		var pubTopic string
-		var qos byte
-		if property.PubInfo.Topic == "" {
-			pubTopic = property.SubInfo.Topic
-			qos = byte(property.SubInfo.Qos)
-		} else {
-			pubTopic = property.PubInfo.Topic
-			qos = byte(property.PubInfo.Qos)
+		err = cli.Connect()
+		if err != nil {
+			return errors.Wrap(err, "failed to connect MQTT broker")
 		}
-
-		dev.log.Info("device publish cmd", "payload", string(newValuePayload), "propertyName", property.Name, "pubTopic", pubTopic)
-
-		token := dev.client.Publish(pubTopic, qos, true, newValuePayload)
-		// TODO  change to WaitTimeout , but func have bug in lib
-		if token.Wait() && token.Error() != nil {
-			return err
-		}
-
-		dev.payloadMap.Store(property.SubInfo.Topic, newValuePayload)
+		d.mqttClient = cli
+		d.log.V(1).Info("Connected to MQTT broker")
 	}
-	return nil
+
+	return d.refresh(newSpec)
 }
 
-func (dev *device) subscribe() error {
-	filters := make(map[string]byte, len(dev.obj.Spec.Properties))
-	for _, property := range dev.obj.Spec.Properties {
-		filters[property.SubInfo.Topic] = byte(property.SubInfo.Qos)
+func (d *mqttDevice) refresh(newSpec v1alpha1.MQTTDeviceSpec) error {
+	// indexes stale status properties
+	var staleStatusPropsIndex = make(map[string]v1alpha1.MQTTDeviceStatusProperty, len(d.instance.Status.Properties))
+	for _, prop := range d.instance.Status.Properties {
+		staleStatusPropsIndex[prop.Name] = prop
 	}
 
-	token := dev.client.SubscribeMultiple(filters, dev.callback)
-	// TODO  change to WaitTimeout , but func have bug in lib
-	if token.Wait() && token.Error() != nil {
-		return token.Error()
-	}
-
-	return nil
-}
-
-func (dev *device) callback(client MQTT.Client, msg MQTT.Message) {
-	dev.Lock()
-	defer dev.Unlock()
-	dev.log.Info("device subscribe callback", "msg", string(msg.Payload()), "topic", msg.Topic())
-	dev.log.Info("device current object", "object", dev.obj)
-	dev.payloadMap.Store(msg.Topic(), msg.Payload())
-	for _, property := range dev.obj.Spec.Properties {
-		if property.SubInfo.Topic == msg.Topic() {
-			statusProperty, err := ConvertToStatusProperty(msg.Payload(), &property)
-			if err != nil {
-				dev.log.Error(err, "device subscribe callback ConvertToStatusProperty error", "property", property)
-				continue
-			}
-
-			dev.log.Info("device subscribe callback ConvertToStatusProperty", "statusProperty", statusProperty)
-
-			var found bool
-			for j, curStatusProperty := range dev.obj.Status.Properties {
-				if curStatusProperty.Name == property.Name {
-					statusProperty.DeepCopyInto(&dev.obj.Status.Properties[j])
-					found = true
+	// constructs status properties
+	var newStatusProps = make([]v1alpha1.MQTTDeviceStatusProperty, 0, len(newSpec.Properties))
+	for _, newSpecProp := range newSpec.Properties {
+		switch newSpec.Protocol.Pattern {
+		case v1alpha1.MQTTDevicePatternAttributedMessage:
+			if newSpecProp.ReadOnly != nil && !*newSpecProp.ReadOnly {
+				if err := verifyWritableJSONPath(getPath(newSpecProp.Name, newSpecProp.Path)); err != nil {
+					return errors.Wrapf(err, "illegal path %s", getPath(newSpecProp.Name, newSpecProp.Path))
 				}
 			}
-			if !found {
-				dev.obj.Status.Properties = append(dev.obj.Status.Properties, statusProperty)
+		}
+
+		var newStatusProp = v1alpha1.MQTTDeviceStatusProperty{
+			MQTTDeviceProperty: newSpecProp,
+		}
+		var staleStatusProp, exist = staleStatusPropsIndex[newSpecProp.Name]
+		if !exist {
+			newStatusProp.Value = nil
+		} else {
+			newStatusProp.Value = staleStatusProp.Value
+			newStatusProp.UpdatedAt = staleStatusProp.UpdatedAt
+		}
+		newStatusProps = append(newStatusProps, newStatusProp)
+	}
+
+	// indexes stale spec properties
+	var staleSpecPropsIndex = make(map[string]v1alpha1.MQTTDeviceProperty, len(d.instance.Spec.Properties))
+	for _, prop := range d.instance.Spec.Properties {
+		staleSpecPropsIndex[prop.Name] = prop
+	}
+
+	// refreshes
+	switch newSpec.Protocol.Pattern {
+	case v1alpha1.MQTTDevicePatternAttributedMessage:
+		if err := d.refreshAsAttributedMessage(staleSpecPropsIndex, newSpec.Properties); err != nil {
+			return err
+		}
+	case v1alpha1.MQTTDevicePatternAttributeTopic:
+		if err := d.refreshAsAttributedTopic(staleSpecPropsIndex, newSpec.Properties); err != nil {
+			return err
+		}
+	default:
+		return errors.Errorf("failed to recognize protocol pattern %s", newSpec.Protocol.Pattern)
+	}
+
+	// records
+	d.instance.Spec = newSpec
+	d.instance.Status = v1alpha1.MQTTDeviceStatus{Properties: newStatusProps}
+	d.toLimb(d.instance)
+	return nil
+}
+
+func (d *mqttDevice) refreshAsAttributedMessage(staleSpecPropsIndex map[string]v1alpha1.MQTTDeviceProperty, newSpecProps []v1alpha1.MQTTDeviceProperty) error {
+	// subscribes
+	var subscribeTopics = []mqtt.SubscribeTopic{{}}
+	var subscribeHandler = func(msg mqtt.SubscribeMessage) {
+		// receives and updates status properties
+		d.Lock()
+		defer d.Unlock()
+
+		var payload = msg.Payload
+		for idx, prop := range d.instance.Status.Properties {
+			var propValue = &v1alpha1.MQTTDevicePropertyValue{}
+			var result = gjson.GetBytes(payload, getPath(prop.Name, prop.Path))
+			if result.Index > 0 {
+				propValue.Raw = payload[result.Index : result.Index+len(result.Raw)]
+			} else {
+				propValue.Raw = []byte(result.Raw)
+			}
+			prop.Value = propValue
+			prop.UpdatedAt = now()
+			d.instance.Status.Properties[idx] = prop
+		}
+		d.toLimb(d.instance)
+	}
+	if err := d.mqttClient.Subscribe(subscribeTopics, subscribeHandler); err != nil {
+		return errors.Wrap(err, "failed to subscribe")
+	}
+
+	// publishes
+	var stalePayload []byte
+	var payload []byte
+	for _, newSpecProp := range newSpecProps {
+		if newSpecProp.ReadOnly != nil && !*newSpecProp.ReadOnly {
+			// constructs stale payload
+			if staleSpecProp, exist := staleSpecPropsIndex[newSpecProp.Name]; exist {
+				if staleSpecProp.Value != nil {
+					var stalePropPath = getPath(staleSpecProp.Name, staleSpecProp.Path)
+					stalePayload, _ = sjson.SetBytes(payload, stalePropPath, staleSpecProp.Value)
+				}
+			}
+
+			// constructs new payload
+			if newSpecProp.Value != nil {
+				var newPropPath = getPath(newSpecProp.Name, newSpecProp.Path)
+				var err error
+				payload, err = sjson.SetBytes(payload, newPropPath, newSpecProp.Value)
+				if err != nil {
+					return errors.Wrapf(err, "failed to set property value on path: %s", newPropPath)
+				}
+			}
+		}
+	}
+	if !reflect.DeepEqual(stalePayload, payload) {
+		if err := d.mqttClient.Publish(mqtt.PublishMessage{Payload: payload}); err != nil {
+			return errors.Wrap(err, "failed to publish")
+		}
+	}
+
+	return nil
+}
+
+func (d *mqttDevice) refreshAsAttributedTopic(staleSpecPropsIndex map[string]v1alpha1.MQTTDeviceProperty, newSpecProps []v1alpha1.MQTTDeviceProperty) error {
+	// subscribes spec properties
+	var subscribeTopics = make([]mqtt.SubscribeTopic, 0, len(newSpecProps))
+	for idx, newSpecProp := range newSpecProps {
+		// appends subscribe topic
+		subscribeTopics = append(subscribeTopics, mqtt.SubscribeTopic{
+			Index:      idx,
+			Render:     getSubscribeRender(&newSpecProp),
+			QoSPointer: (*byte)(newSpecProp.QoS),
+		})
+	}
+	var subscribeHandler = func(msg mqtt.SubscribeMessage) {
+		// receives and updates status properties
+		d.Lock()
+		defer d.Unlock()
+
+		if msg.Index > len(d.instance.Status.Properties) {
+			return
+		}
+
+		var propValue v1alpha1.MQTTDevicePropertyValue
+		if err := converter.UnmarshalJSON(msg.Payload, &propValue); err != nil {
+			d.log.Error(err, "Failed to unmarshal subscribed payload", "topic", msg.Topic)
+			return
+		}
+		var prop = &d.instance.Status.Properties[msg.Index]
+		prop.Value = &propValue
+		prop.UpdatedAt = now()
+		// TODO should we debounce here?
+		d.toLimb(d.instance)
+	}
+	if err := d.mqttClient.Subscribe(subscribeTopics, subscribeHandler); err != nil {
+		return errors.Wrap(err, "failed to subscribe")
+	}
+
+	// publishes writable spec properties
+	for _, newSpecProp := range newSpecProps {
+		if newSpecProp.ReadOnly != nil && !*newSpecProp.ReadOnly {
+			var staleSpecProp = staleSpecPropsIndex[newSpecProp.Name]
+			// publishes again if changed
+			if !reflect.DeepEqual(staleSpecProp, newSpecProp) {
+				var err = d.mqttClient.Publish(mqtt.PublishMessage{
+					Render:          getPublishRender(&newSpecProp),
+					QoSPointer:      (*byte)(newSpecProp.QoS),
+					RetainedPointer: newSpecProp.Retained,
+					Payload:         newSpecProp.Value,
+				})
+				if err != nil {
+					return errors.Wrapf(err, "failed to publish property %s", newSpecProp.Name)
+				}
 			}
 		}
 	}
 
-	dev.handler(object.GetNamespacedName(&dev.obj), dev.obj.Status)
-}
-
-func (dev *device) updateSubscription(spec *v1alpha1.MqttDeviceSpec) error {
-	if err := dev.unsubscribeOld(spec); err != nil {
-		return err
-	}
-	if err := dev.reSubscribeAll(spec); err != nil {
-		return err
-	}
-
 	return nil
 }
 
-func (dev *device) unsubscribeOld(spec *v1alpha1.MqttDeviceSpec) error {
-	oldTopicSet := sets.NewString()
-	for _, property := range dev.obj.Spec.Properties {
-		oldTopicSet.Insert(property.SubInfo.Topic)
+func getPath(name, path string) string {
+	if path != "" {
+		return path
 	}
-
-	newTopicSet := sets.NewString()
-	for _, property := range spec.Properties {
-		newTopicSet.Insert(property.SubInfo.Topic)
-	}
-
-	allTopicSet := oldTopicSet.Union(newTopicSet)
-	mustDelTopicSet := allTopicSet.Difference(newTopicSet)
-
-	var unSubTopic []string
-	for _, topic := range mustDelTopicSet.List() {
-		unSubTopic = append(unSubTopic, topic)
-	}
-
-	if len(unSubTopic) > 1 {
-		token := dev.client.Unsubscribe(unSubTopic...)
-		// TODO  change to WaitTimeout , but func have bug in lib
-		if token.Wait() && token.Error() != nil {
-			return token.Error()
-		}
-	}
-
-	return nil
+	return name
 }
 
-func (dev *device) reSubscribeAll(spec *v1alpha1.MqttDeviceSpec) error {
-	dev.client.Disconnect(disconnectQuiesce)
+func getPublishRender(prop *v1alpha1.MQTTDeviceProperty) map[string]string {
+	var render = make(map[string]string, 2)
 
-	var err error
-	if dev.client, err = NewMqttClient(dev.obj.Name, spec.Config); err != nil {
-		return err
+	// gets path rendering value
+	render["path"] = getPath(prop.Name, prop.Path)
+
+	// gets operator rendering value
+	if prop.Operator != nil {
+		render["operator"] = prop.Operator.Write
 	}
 
-	filters := make(map[string]byte, len(spec.Properties))
-	for _, property := range spec.Properties {
-		filters[property.SubInfo.Topic] = byte(property.SubInfo.Qos)
-	}
-
-	token := dev.client.SubscribeMultiple(filters, dev.callback)
-	// TODO  change to WaitTimeout , but func have bug in lib
-	if token.Wait() && token.Error() != nil {
-		return token.Error()
-	}
-
-	return nil
+	return render
 }
 
-func (dev *device) removeRedundantStatus(spec *v1alpha1.MqttDeviceSpec) {
-	for i := 0; i < len(dev.obj.Status.Properties); i++ {
-		statusProperty := dev.obj.Status.Properties[i]
-		var found bool
-		for _, property := range spec.Properties {
-			if property.Name == statusProperty.Name {
-				found = true
-				break
-			}
-		}
-		if !found {
-			dev.obj.Status.Properties = append(dev.obj.Status.Properties[:i], dev.obj.Status.Properties[i+1:]...)
-		}
+func getSubscribeRender(prop *v1alpha1.MQTTDeviceProperty) map[string]string {
+	var render = make(map[string]string, 2)
+
+	// gets path rendering value
+	render["path"] = getPath(prop.Name, prop.Path)
+
+	// gets operator rendering value
+	if prop.Operator != nil {
+		render["operator"] = prop.Operator.Read
 	}
+
+	return render
 }
 
-func (dev *device) unsubscribeAll() {
-	subSet := sets.NewString()
-	for _, property := range dev.obj.Spec.Properties {
-		if subSet.HasAny(property.SubInfo.Topic) {
-			continue
-		}
-		subSet.Insert(property.SubInfo.Topic)
-	}
-	token := dev.client.Unsubscribe(subSet.List()...)
-	// TODO  change to WaitTimeout , but func have bug in lib
-	if token.Wait() && token.Error() != nil {
-		dev.log.Error(token.Error(), "device unsubscribeAll error")
-	}
-	return
-}
-
-func (dev *device) updateDeviceSpec(spec *v1alpha1.MqttDeviceSpec) {
-	spec.DeepCopyInto(&dev.obj.Spec)
-}
-
-func NewMqttClient(clientID string, config v1alpha1.MqttConfig) (MQTT.Client, error) {
-	opts := MQTT.NewClientOptions()
-	opts.AddBroker(config.Broker)
-	opts.SetClientID(clientID)
-	opts.SetUsername(config.Username)
-	opts.SetPassword(config.Password)
-	opts.SetOrderMatters(true)
-	opts.SetAutoReconnect(true)
-	opts.SetCleanSession(false)
-
-	client := MQTT.NewClient(opts)
-	token := client.Connect()
-	if token.Wait() && token.Error() != nil {
-		return nil, token.Error()
-	}
-
-	return client, nil
+func now() *metav1.Time {
+	var ret = metav1.Now()
+	return &ret
 }

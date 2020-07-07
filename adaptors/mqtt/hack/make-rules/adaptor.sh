@@ -18,6 +18,8 @@ function generate() {
 
   octopus::log::info "generating adaptor ${adaptor}..."
 
+  # TODO adjust the generation logic if needed
+
   octopus::log::info "generating objects"
   rm -f "${CURR_DIR}/api/*/zz_generated*"
   octopus::controller_gen::generate \
@@ -82,6 +84,7 @@ function build() {
 
   octopus::log::info "building adaptor ${adaptor}(${GIT_VERSION},${GIT_COMMIT},${GIT_TREE_STATE},${BUILD_DATE})..."
 
+  # TODO adjust the ldflags if needed
   local version_flags="
     -X k8s.io/client-go/pkg/version.gitVersion=${GIT_VERSION}
     -X k8s.io/client-go/pkg/version.gitCommit=${GIT_COMMIT}
@@ -232,6 +235,7 @@ function test() {
 
   octopus::log::info "running unit tests for adaptor ${adaptor}..."
 
+  # TODO adjust the test targets if needed
   local unit_test_targets=(
     "${CURR_DIR}/api/..."
     "${CURR_DIR}/cmd/..."
@@ -266,7 +270,16 @@ function verify() {
 
   octopus::log::info "running integration tests for adaptor ${adaptor}..."
 
+  # TODO to implement the logic if needed, and place all integration tests to test/integration directory
+  # you can use the ginkgo cli:
   octopus::ginkgo::test "${CURR_DIR}/test/integration"
+  # or overwrite the preconfigure arguments:
+  #   octopus::ginkgo::test -tags="test kubernetes-test" "${CURR_DIR}/test/integration"
+  # or use the raw `go test` with ginkgo:
+  #   CGO_ENABLED=0 go test \
+  #     -tags=test \
+  #     "${CURR_DIR}/test/integration/..." -v -timeout=5m -tags=test -ginkgo.failFast -ginkgo.slowSpecThreshold=60
+  # or use without ginkgo.
 
   octopus::log::info "...done"
 }
@@ -277,7 +290,16 @@ function e2e() {
 
   octopus::log::info "running E2E tests for adaptor ${adaptor}..."
 
+  # TODO to implement the logic if needed, and place all E2E tests to test/e2e directory
+  # you can use the ginkgo cli:
   octopus::ginkgo::test "${CURR_DIR}/test/e2e"
+  # or overwrite the preconfigure arguments:
+  #   octopus::ginkgo::test -tags="test kubernetes-test" "${CURR_DIR}/test/e2e"
+  # or use the raw `go test` with ginkgo:
+  #   CGO_ENABLED=0 go test \
+  #     -tags=test \
+  #     "${CURR_DIR}/test/e2e/..." -v -timeout=5m -tags=test -ginkgo.failFast -ginkgo.slowSpecThreshold=60
+  # or use without ginkgo.
 
   octopus::log::info "...done"
 }

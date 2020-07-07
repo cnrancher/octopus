@@ -1,8 +1,8 @@
 commonAnnotations:
-  devices.edge.cattle.io/enable: "true" # this is required
-  devices.edge.cattle.io/device-property: '{"name":"string","dataType":"string","value":"string","updatedAt":"date"}' # specify device property to be displayed in the UI
-  devices.edge.cattle.io/icon: "" # define the icon for the Edge UI
-  devices.edge.cattle.io/description: "" # add your custom device adaptor description
+  devices.edge.cattle.io/enable: "true"
+  devices.edge.cattle.io/device-property: '{"name":"string","type":"string","value":"string","updatedAt":"date"}'
+  devices.edge.cattle.io/icon: "http://mqtt.org/new/wp-content/uploads/2011/08/mqttorg-glow.png"
+  devices.edge.cattle.io/description: 'MQTT is a machine-to-machine (M2M)/"Internet of Things" connectivity protocol, which was designed as an extremely lightweight publish/subscribe messaging transport. The MQTT adaptor can assess and manage the data stored in MQTT broker.'
 
 resources:
   - base/devices.edge.cattle.io_mqttdevices.yaml

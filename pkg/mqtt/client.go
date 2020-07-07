@@ -93,8 +93,9 @@ type Client interface {
 	// Publish publishes the message to corresponding topic.
 	Publish(message PublishMessage) error
 
-	// Subscribe subscribes the corresponding topic.
-	Subscribe(handler SubscribeHandler, topics ...SubscribeTopic) error
+	// Subscribe subscribes the corresponding topic and handle in the same handler,
+	// and deals with the unsubscribe actions automatically.
+	Subscribe(topics []SubscribeTopic, handler SubscribeHandler) error
 }
 
 type client struct {
@@ -136,7 +137,7 @@ func (c *client) RawClient() mqtt.Client {
 	return c.raw
 }
 
-func (c *client) Subscribe(handler SubscribeHandler, topics ...SubscribeTopic) error {
+func (c *client) Subscribe(topics []SubscribeTopic, handler SubscribeHandler) error {
 	if len(topics) == 0 {
 		return nil
 	}
