@@ -1,7 +1,7 @@
 apiVersion: edge.cattle.io/v1alpha1
 kind: DeviceLink
 metadata:
-  name: xiaomi-temp-rs2200
+  name: xiaomi-temp-rs2201
 spec:
   adaptor:
     node: edge-worker
@@ -12,11 +12,18 @@ spec:
   template:
     metadata:
       labels:
-        device: xiaomi-temp-rs2200
+        device: xiaomi-temp-rs2201
     spec:
       parameters:
         syncInterval: 15s
         timeout: 10s
+      extension:
+        mqtt:
+          client:
+            server: tcp://test.mosquitto.org:1883
+          message:
+            # uses dynamic topic with namespaced name
+            topic: "cattle.io/octopus/:namespace/:name"
       protocol:
         name: "MJ_HT_V1"
         macAddress: ""

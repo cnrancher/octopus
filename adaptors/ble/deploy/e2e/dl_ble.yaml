@@ -1,0 +1,59 @@
+apiVersion: edge.cattle.io/v1alpha1
+kind: DeviceLink
+metadata:
+  name: xiaomi-temp-rs2200
+spec:
+  adaptor:
+    node: edge-worker
+    name: adaptors.edge.cattle.io/ble
+  model:
+    apiVersion: "devices.edge.cattle.io/v1alpha1"
+    kind: "BluetoothDevice"
+  template:
+    metadata:
+      labels:
+        device: xiaomi-temp-rs2200
+    spec:
+      parameters:
+        syncInterval: 15s
+        timeout: 10s
+      protocol:
+        name: "MJ_HT_V1"
+        macAddress: ""
+      properties:
+        - name: data
+          description: XiaoMi temp sensor with temperature and humidity data
+          accessMode: NotifyOnly
+          visitor:
+            characteristicUUID: 226c000064764566756266734470666d
+        - name: humidity
+          description: Humidity in percent
+          accessMode: ReadOnly
+          visitor:
+            characteristicUUID: f000aa0304514000b000000000000000
+            # dataConverter is optional
+            dataConverter:
+              startIndex: 1
+              endIndex: 0
+              shiftRight: 2
+              orderOfOperations:
+                - operationType: Multiply # options are Add/Subtract/Multiply/Divide
+                  operationValue: "0.03125"
+        - name: power-enabled
+          description: turn the device power on or off
+          accessMode: ReadWrite
+          visitor:
+            # characteristicUUID, dataWrite and defaultValue is required when accessMode is ReadWrite
+            characteristicUUID: f000aa0104514000b000000000000001
+            defaultValue: OFF # set the defaultValue by chosen one of option in the dataWrite
+            dataWrite:
+              ON: [1]
+              OFF: [0]
+            # dataConverter is optional
+            dataConverter:
+              startIndex: 1
+              endIndex: 0
+              shiftRight: 3
+              orderOfOperations:
+                - operationType: Multiply
+                  operationValue: "0.03125"

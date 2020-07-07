@@ -104,10 +104,6 @@ type DummyProtocolDeviceStatusProps struct {
 
 // DummyProtocolDeviceStatus defines the observed state of DummyProtocolDevice.
 type DummyProtocolDeviceStatus struct {
-	// Reports the extension of device.
-	// +optional
-	Extension *DeviceExtensionStatus `json:"extension,omitempty"`
-
 	// Reports the observed value of the desired properties.
 	// +optional
 	Props map[string]DummyProtocolDeviceStatusProps `json:"props,omitempty"`

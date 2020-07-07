@@ -9,6 +9,8 @@ import (
 	"github.com/rancher/octopus/pkg/util/log/zap"
 )
 
+var log mqtt.Logger = mqtt.NOOPLogger{}
+
 type printer struct {
 	logger logr.InfoLogger
 }
@@ -23,8 +25,9 @@ func (l printer) Printf(format string, v ...interface{}) {
 
 // SetLogger sets a concrete logging implementation for all deferred Loggers.
 func SetLogger(logger logr.Logger) {
-	logger = logger.WithName("paho.mqtt.golang")
+	log = printer{logger: logger.WithName("mqtt.client").V(5)}
 
+	logger = logger.WithName("paho.mqtt.golang")
 	mqtt.DEBUG = printer{logger: logger.V(6)}
 	mqtt.WARN = printer{logger: logger}
 	mqtt.ERROR = printer{logger: logger}

@@ -38,9 +38,8 @@ spec:
               serverName: test.mosquitto.org
               insecureSkipVerify: true
           message:
-            topic:
-              prefix: cattle.io/octopus
-            qos: 1
+            # uses dynamic topic with namespaced name
+            topic: "cattle.io/octopus/:namespace/:name"
       protocol:
         location: "living_room"
       gear: slow

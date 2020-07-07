@@ -9,9 +9,12 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/goburrow/modbus"
 	"github.com/pkg/errors"
+
 	"github.com/rancher/octopus/adaptors/modbus/api/v1alpha1"
 	api "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
 	"github.com/rancher/octopus/pkg/mqtt"
+	"github.com/rancher/octopus/pkg/util/object"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -30,8 +33,7 @@ func NewDevice(log logr.Logger, name types.NamespacedName, handler DataHandler) 
 }
 
 const (
-	mqttTimeout = 5 * time.Second
-	bits        = 8
+	bits = 8
 )
 
 type device struct {
@@ -68,15 +70,12 @@ func (d *device) Configure(references api.ReferencesHandler, obj v1alpha1.Modbus
 
 	if !reflect.DeepEqual(d.spec.Extension, spec.Extension) {
 		if d.mqttClient != nil {
-			d.mqttClient.Disconnect(mqttTimeout)
+			d.mqttClient.Disconnect()
 			d.mqttClient = nil
-
-			// since there is only a MQTT inside extension field, here can set to nil directly.
-			d.status.Extension = nil
 		}
 
 		if d.spec.Extension.MQTT != nil {
-			var cli, outline, err = mqtt.NewClient(&obj, *d.spec.Extension.MQTT, references.ToDataMap())
+			var cli, err = mqtt.NewClient(*d.spec.Extension.MQTT, object.GetControlledOwnerObjectReference(&obj), references)
 			if err != nil {
 				return errors.Wrap(err, "failed to create MQTT client")
 			}
@@ -86,11 +85,6 @@ func (d *device) Configure(references api.ReferencesHandler, obj v1alpha1.Modbus
 				return errors.Wrap(err, "failed to connect MQTT broker")
 			}
 			d.mqttClient = cli
-
-			if d.status.Extension == nil {
-				d.status.Extension = &v1alpha1.DeviceExtensionStatus{}
-			}
-			d.status.Extension.MQTT = outline
 		}
 	}
 
@@ -141,7 +135,7 @@ func (d *device) Shutdown() {
 	}
 
 	if d.mqttClient != nil {
-		d.mqttClient.Disconnect(mqttTimeout)
+		d.mqttClient.Disconnect()
 		d.mqttClient = nil
 	}
 
@@ -250,8 +244,7 @@ func (d *device) updateStatus(properties []v1alpha1.DeviceProperty) {
 
 	if d.mqttClient != nil {
 		var status = d.status.DeepCopy()
-		status.Extension = nil
-		if err := d.mqttClient.Publish(status); err != nil {
+		if err := d.mqttClient.Publish(mqtt.PublishMessage{Payload: status}); err != nil {
 			d.log.Error(err, "Failed to publish MQTT message")
 		}
 	}

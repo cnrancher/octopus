@@ -105,10 +105,6 @@ type PropertyVisitor struct {
 
 // OPCUADeviceStatus defines the observed state of OPCUADevice
 type OPCUADeviceStatus struct {
-	// Reports the extension of device.
-	// +optional
-	Extension *DeviceExtensionStatus `json:"extension,omitempty"`
-
 	// Reports the status of the OPC-UA device.
 	// +optional
 	Properties []StatusProperties `json:"properties,omitempty"`

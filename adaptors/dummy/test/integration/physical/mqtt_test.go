@@ -10,25 +10,19 @@ import (
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/pointer"
 
 	"github.com/rancher/octopus/adaptors/dummy/api/v1alpha1"
 	"github.com/rancher/octopus/adaptors/dummy/pkg/physical"
-	"github.com/rancher/octopus/pkg/mqtt"
-	mqttapi "github.com/rancher/octopus/pkg/mqtt/api/v1alpha1"
+	mqttapi "github.com/rancher/octopus/pkg/mqtt/api"
+	mqtttest "github.com/rancher/octopus/pkg/mqtt/test"
 	"github.com/rancher/octopus/pkg/util/converter"
 	"github.com/rancher/octopus/pkg/util/log/zap"
 	"github.com/rancher/octopus/pkg/util/object"
 	"github.com/rancher/octopus/test/util/testdata"
 )
 
-// testing scenarios:
-// + Special Device
-// 		- validate if status changes can be subscribed
-//      - validate if TLS configuration works
-//      - validate if MQTT works when the configuration changes
-// + Protocol Device
-//		- validate if status changes can be subscribed
-var _ = Describe("MQTT", func() {
+var _ = Describe("verify MQTT extension", func() {
 	var (
 		testUnencryptedBrokerAddress              = "tcp://test.mosquitto.org:1883"
 		testEncryptedAndClientAuthedBrokerAddress = "tcps://test.mosquitto.org:8884"
@@ -43,7 +37,7 @@ var _ = Describe("MQTT", func() {
 		log = zap.WrapAsLogr(zap.NewDevelopmentLogger())
 	})
 
-	Context("Special Device", func() {
+	Context("on DummySpecialDevice", func() {
 		var (
 			testInstance               *v1alpha1.DummySpecialDevice
 			testInstanceNamespacedName types.NamespacedName
@@ -56,20 +50,27 @@ var _ = Describe("MQTT", func() {
 					Namespace: testNamespace,
 					Name:      fmt.Sprintf("s-%d", timestamp),
 					UID:       types.UID(fmt.Sprintf("uid-%d", timestamp)),
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							Name:       fmt.Sprintf("s-%d", timestamp),
+							UID:        types.UID(fmt.Sprintf("dl-uid-%d", timestamp)),
+							Controller: pointer.BoolPtr(true),
+						},
+					},
 				},
 			}
 			testInstanceNamespacedName = object.GetNamespacedName(testInstance)
 		})
 
-		It("should subscribe the status changes", func() {
+		It("should publish the status changes", func() {
 
 			/*
 				since the dummy special device can mocking the device' status change,
 				we can just create an instance and keep watching if there is any subscribed message incomes.
 			*/
 
-			var testSubscriptionStream *mqtt.TestSubscriptionStream
-			testSubscriptionStream, err = mqtt.NewTestSubscriptionStream(testUnencryptedBrokerAddress, fmt.Sprintf("cattle.io/octopus/%s", testInstanceNamespacedName), 0)
+			var testSubscriptionStream *mqtttest.SubscriptionStream
+			testSubscriptionStream, err = mqtttest.NewSubscriptionStream(testUnencryptedBrokerAddress, fmt.Sprintf("cattle.io/octopus/%s", testInstanceNamespacedName), 0)
 			Expect(err).ToNot(HaveOccurred())
 			defer testSubscriptionStream.Close()
 
@@ -80,22 +81,15 @@ var _ = Describe("MQTT", func() {
 			)
 			defer testDevice.Shutdown()
 
-			var testSpec = v1alpha1.DummySpecialDeviceSpec{
+			testInstance.Spec = v1alpha1.DummySpecialDeviceSpec{
 				Extension: v1alpha1.DeviceExtensionSpec{
-					MQTT: &mqttapi.MQTTOptionsSpec{
+					MQTT: &mqttapi.MQTTOptions{
 						Client: mqttapi.MQTTClientOptions{
 							Server: testUnencryptedBrokerAddress,
 						},
 						Message: mqttapi.MQTTMessageOptions{
-							// dynamic topic
-							Topic: mqttapi.MQTTMessageTopic{
-								MQTTMessageTopicDynamic: mqttapi.MQTTMessageTopicDynamic{
-									Prefix: "cattle.io/octopus",
-								},
-							},
-							MQTTMessagePayloadOptions: mqttapi.MQTTMessagePayloadOptions{
-								QoS: 1,
-							},
+							// dynamic topic with namespaced name
+							Topic: "cattle.io/octopus/:namespace/:name",
 						},
 					},
 				},
@@ -105,7 +99,7 @@ var _ = Describe("MQTT", func() {
 				On:   true,
 				Gear: v1alpha1.DummySpecialDeviceGearFast,
 			}
-			err = testDevice.Configure(nil, testSpec)
+			err = testDevice.Configure(nil, testInstance)
 			Expect(err).ToNot(HaveOccurred())
 
 			var receivedCount = 2
@@ -121,16 +115,16 @@ var _ = Describe("MQTT", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("should connect via SSL/TLS", func() {
+		It("should publish the status changes via SSL/TLS", func() {
 
 			/*
 				since test.mosquitto.org provides a public CA, we can download it and generate the client cert key pair
 				via https://test.mosquitto.org/ssl/index.php.
 			*/
 
-			var testSubscriptionStream *mqtt.TestSubscriptionStream
+			var testSubscriptionStream *mqtttest.SubscriptionStream
 			// subscribe via unencrypted endpoint
-			testSubscriptionStream, err = mqtt.NewTestSubscriptionStream(testUnencryptedBrokerAddress, fmt.Sprintf("cattle.io/octopus/%s", testInstance.GetUID()), 0)
+			testSubscriptionStream, err = mqtttest.NewSubscriptionStream(testUnencryptedBrokerAddress, fmt.Sprintf("cattle.io/octopus/%s", testInstance.OwnerReferences[0].UID), 0)
 			Expect(err).ToNot(HaveOccurred())
 			defer testSubscriptionStream.Close()
 
@@ -141,9 +135,9 @@ var _ = Describe("MQTT", func() {
 			)
 			defer testDevice.Shutdown()
 
-			var testSpec = v1alpha1.DummySpecialDeviceSpec{
+			testInstance.Spec = v1alpha1.DummySpecialDeviceSpec{
 				Extension: v1alpha1.DeviceExtensionSpec{
-					MQTT: &mqttapi.MQTTOptionsSpec{
+					MQTT: &mqttapi.MQTTOptions{
 						Client: mqttapi.MQTTClientOptions{
 							// publish via encrypted endpoint
 							Server: testEncryptedAndClientAuthedBrokerAddress,
@@ -156,12 +150,7 @@ var _ = Describe("MQTT", func() {
 						},
 						Message: mqttapi.MQTTMessageOptions{
 							// dynamic topic with uid
-							Topic: mqttapi.MQTTMessageTopic{
-								MQTTMessageTopicDynamic: mqttapi.MQTTMessageTopicDynamic{
-									Prefix: "cattle.io/octopus",
-									With:   "uid",
-								},
-							},
+							Topic: "cattle.io/octopus/:uid",
 						},
 					},
 				},
@@ -171,7 +160,7 @@ var _ = Describe("MQTT", func() {
 				On:   true,
 				Gear: v1alpha1.DummySpecialDeviceGearFast,
 			}
-			err = testDevice.Configure(nil, testSpec)
+			err = testDevice.Configure(nil, testInstance)
 			Expect(err).ToNot(HaveOccurred())
 
 			err = testSubscriptionStream.Intercept(15*time.Second, func(actual *packet.Message) bool {
@@ -181,7 +170,7 @@ var _ = Describe("MQTT", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("should work after changing settings", func() {
+		It("should work if modified extension settings", func() {
 
 			/*
 				we will use dynamic topic at first, and then change to static topic.
@@ -191,8 +180,8 @@ var _ = Describe("MQTT", func() {
 				dynamic topic with nn at first
 			*/
 
-			var testSubscriptionStream *mqtt.TestSubscriptionStream
-			testSubscriptionStream, err = mqtt.NewTestSubscriptionStream(testUnencryptedBrokerAddress, fmt.Sprintf("cattle.io/octopus/%s", testInstanceNamespacedName), 0)
+			var testSubscriptionStream *mqtttest.SubscriptionStream
+			testSubscriptionStream, err = mqtttest.NewSubscriptionStream(testUnencryptedBrokerAddress, fmt.Sprintf("cattle.io/octopus/%s", testInstanceNamespacedName), 0)
 			Expect(err).ToNot(HaveOccurred())
 
 			var testDevice = physical.NewSpecialDevice(
@@ -202,18 +191,14 @@ var _ = Describe("MQTT", func() {
 			)
 			defer testDevice.Shutdown()
 
-			var testSpec = v1alpha1.DummySpecialDeviceSpec{
+			testInstance.Spec = v1alpha1.DummySpecialDeviceSpec{
 				Extension: v1alpha1.DeviceExtensionSpec{
-					MQTT: &mqttapi.MQTTOptionsSpec{
+					MQTT: &mqttapi.MQTTOptions{
 						Client: mqttapi.MQTTClientOptions{
 							Server: testUnencryptedBrokerAddress,
 						},
 						Message: mqttapi.MQTTMessageOptions{
-							Topic: mqttapi.MQTTMessageTopic{
-								MQTTMessageTopicDynamic: mqttapi.MQTTMessageTopicDynamic{
-									Prefix: "cattle.io/octopus",
-								},
-							},
+							Topic: "cattle.io/octopus/:namespace/:name",
 						},
 					},
 				},
@@ -223,7 +208,7 @@ var _ = Describe("MQTT", func() {
 				On:   true,
 				Gear: v1alpha1.DummySpecialDeviceGearFast,
 			}
-			err = testDevice.Configure(nil, testSpec)
+			err = testDevice.Configure(nil, testInstance)
 			Expect(err).ToNot(HaveOccurred())
 
 			err = testSubscriptionStream.Intercept(15*time.Second, func(actual *packet.Message) bool {
@@ -237,21 +222,17 @@ var _ = Describe("MQTT", func() {
 				change to static topic
 			*/
 
-			testSubscriptionStream, err = mqtt.NewTestSubscriptionStream(testUnencryptedBrokerAddress, "cattle.io/octopus/default/test3/static", 0)
+			testSubscriptionStream, err = mqtttest.NewSubscriptionStream(testUnencryptedBrokerAddress, "cattle.io/octopus/default/test3/static", 0)
 			Expect(err).ToNot(HaveOccurred())
 
-			var testNewSpec = v1alpha1.DummySpecialDeviceSpec{
+			testInstance.Spec = v1alpha1.DummySpecialDeviceSpec{
 				Extension: v1alpha1.DeviceExtensionSpec{
-					MQTT: &mqttapi.MQTTOptionsSpec{
+					MQTT: &mqttapi.MQTTOptions{
 						Client: mqttapi.MQTTClientOptions{
 							Server: testUnencryptedBrokerAddress,
 						},
 						Message: mqttapi.MQTTMessageOptions{
-							Topic: mqttapi.MQTTMessageTopic{
-								MQTTMessageTopicStatic: mqttapi.MQTTMessageTopicStatic{
-									Name: "cattle.io/octopus/default/test3/static",
-								},
-							},
+							Topic: "cattle.io/octopus/default/test3/static",
 						},
 					},
 				},
@@ -261,7 +242,7 @@ var _ = Describe("MQTT", func() {
 				On:   true,
 				Gear: v1alpha1.DummySpecialDeviceGearMiddle,
 			}
-			err = testDevice.Configure(nil, testNewSpec)
+			err = testDevice.Configure(nil, testInstance)
 			Expect(err).ToNot(HaveOccurred())
 
 			err = testSubscriptionStream.Intercept(15*time.Second, func(actual *packet.Message) bool {
@@ -273,7 +254,7 @@ var _ = Describe("MQTT", func() {
 		})
 	})
 
-	Context("Protocol Device", func() {
+	Context("on DummyProtocolDevice", func() {
 		var (
 			testInstance               *v1alpha1.DummyProtocolDevice
 			testInstanceNamespacedName types.NamespacedName
@@ -286,20 +267,27 @@ var _ = Describe("MQTT", func() {
 					Namespace: testNamespace,
 					Name:      fmt.Sprintf("p-%d", timestamp),
 					UID:       types.UID(fmt.Sprintf("uid-%d", timestamp)),
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							Name:       fmt.Sprintf("p-%d", timestamp),
+							UID:        types.UID(fmt.Sprintf("dl-uid-%d", timestamp)),
+							Controller: pointer.BoolPtr(true),
+						},
+					},
 				},
 			}
 			testInstanceNamespacedName = object.GetNamespacedName(testInstance)
 		})
 
-		It("should subscribe the status changes", func() {
+		It("should publish the status changes", func() {
 
 			/*
 				since the dummy protocol device can mocking the device' status change,
 				we can just create an instance and keep watching if there is any subscribed message incomes.
 			*/
 
-			var testSubscriptionStream *mqtt.TestSubscriptionStream
-			testSubscriptionStream, err = mqtt.NewTestSubscriptionStream(testUnencryptedBrokerAddress, fmt.Sprintf("cattle.io/octopus/%s", testInstanceNamespacedName), 0)
+			var testSubscriptionStream *mqtttest.SubscriptionStream
+			testSubscriptionStream, err = mqtttest.NewSubscriptionStream(testUnencryptedBrokerAddress, fmt.Sprintf("cattle.io/octopus/%s", testInstanceNamespacedName), 0)
 			Expect(err).ToNot(HaveOccurred())
 			defer testSubscriptionStream.Close()
 
@@ -310,22 +298,15 @@ var _ = Describe("MQTT", func() {
 			)
 			defer testDevice.Shutdown()
 
-			var testSpec = v1alpha1.DummyProtocolDeviceSpec{
+			testInstance.Spec = v1alpha1.DummyProtocolDeviceSpec{
 				Extension: v1alpha1.DeviceExtensionSpec{
-					MQTT: &mqttapi.MQTTOptionsSpec{
+					MQTT: &mqttapi.MQTTOptions{
 						Client: mqttapi.MQTTClientOptions{
 							Server: testUnencryptedBrokerAddress,
 						},
 						Message: mqttapi.MQTTMessageOptions{
 							// dynamic topic
-							Topic: mqttapi.MQTTMessageTopic{
-								MQTTMessageTopicDynamic: mqttapi.MQTTMessageTopicDynamic{
-									Prefix: "cattle.io/octopus",
-								},
-							},
-							MQTTMessagePayloadOptions: mqttapi.MQTTMessagePayloadOptions{
-								QoS: 1,
-							},
+							Topic: "cattle.io/octopus/:namespace/:name",
 						},
 					},
 				},
@@ -367,7 +348,7 @@ var _ = Describe("MQTT", func() {
 					},
 				},
 			}
-			err = testDevice.Configure(nil, testSpec)
+			err = testDevice.Configure(nil, testInstance)
 			Expect(err).ToNot(HaveOccurred())
 
 			var receivedCount = 2

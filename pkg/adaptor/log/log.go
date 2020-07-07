@@ -12,6 +12,10 @@ func SetLogger(logger logr.Logger) {
 	log = logger
 }
 
+func GetLogger() logr.Logger {
+	return log
+}
+
 func Info(msg string, keysAndValues ...interface{}) {
 	log.Info(msg, keysAndValues...)
 }

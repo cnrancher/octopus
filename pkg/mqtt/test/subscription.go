@@ -1,6 +1,6 @@
 // +build test
 
-package mqtt
+package test
 
 import (
 	"time"
@@ -10,12 +10,12 @@ import (
 	"github.com/pkg/errors"
 )
 
-type TestSubscriptionStream struct {
+type SubscriptionStream struct {
 	client   *cli.Client
 	messages chan interface{}
 }
 
-func (s *TestSubscriptionStream) Close() {
+func (s *SubscriptionStream) Close() {
 	if s.client != nil {
 		_ = s.client.Close()
 	}
@@ -24,9 +24,9 @@ func (s *TestSubscriptionStream) Close() {
 	}
 }
 
-type TestSubscriptionStreamInterception func(actual *packet.Message) bool
+type SubscriptionStreamInterception func(actual *packet.Message) bool
 
-func (s *TestSubscriptionStream) Intercept(wait time.Duration, interception TestSubscriptionStreamInterception) error {
+func (s *SubscriptionStream) Intercept(wait time.Duration, interception SubscriptionStreamInterception) error {
 	var deadline = time.After(wait)
 	for {
 		select {
@@ -45,7 +45,7 @@ func (s *TestSubscriptionStream) Intercept(wait time.Duration, interception Test
 	}
 }
 
-func NewTestSubscriptionStream(address, topic string, qos byte) (*TestSubscriptionStream, error) {
+func NewSubscriptionStream(address, topic string, qos byte) (*SubscriptionStream, error) {
 	var messages = make(chan interface{})
 
 	var c = cli.New()
@@ -80,7 +80,7 @@ func NewTestSubscriptionStream(address, topic string, qos byte) (*TestSubscripti
 		return nil, errors.Wrap(err, "failed to wait subscribing")
 	}
 
-	return &TestSubscriptionStream{
+	return &SubscriptionStream{
 		client:   c,
 		messages: messages,
 	}, nil

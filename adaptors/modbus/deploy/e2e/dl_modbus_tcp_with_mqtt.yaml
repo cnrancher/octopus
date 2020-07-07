@@ -1,7 +1,7 @@
 apiVersion: edge.cattle.io/v1alpha1
 kind: DeviceLink
 metadata:
-  name: thermometer-tcp
+  name: modbus-tcp
 spec:
   adaptor:
     node: edge-worker
@@ -19,9 +19,8 @@ spec:
           client:
             server: tcp://test.mosquitto.org:1883
           message:
-            topic:
-              prefix: cattle.io/octopus
-              with: nn
+            # uses dynamic topic with namespaced name
+            topic: "cattle.io/octopus/:namespace/:name"
       parameters:
         syncInterval: 15s
         timeout: 10s

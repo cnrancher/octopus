@@ -14,7 +14,7 @@ const (
 	ModbusRegisterTypeInputRegister         ModbusRegisterType = "InputRegister"
 	ModbusRegisterTypeHoldingRegister       ModbusRegisterType = "HoldingRegister"
 
-	//Modbus property data types
+	// Modbus property data types
 	PropertyDataTypeInt     PropertyDataType = "int"
 	PropertyDataTypeString  PropertyDataType = "string"
 	PropertyDataTypeFloat   PropertyDataType = "float"
@@ -125,10 +125,6 @@ const (
 
 // ModbusDeviceStatus defines the observed state of ModbusDevice
 type ModbusDeviceStatus struct {
-	// Reports the extension of device.
-	// +optional
-	Extension *DeviceExtensionStatus `json:"extension,omitempty"`
-
 	// Reports the status of the modbus device.
 	// +optional
 	Properties []StatusProperties `json:"properties,omitempty"`

@@ -14,10 +14,13 @@ import (
 	api "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
 	"github.com/rancher/octopus/pkg/adaptor/connection"
 	"github.com/rancher/octopus/pkg/adaptor/log"
+	"github.com/rancher/octopus/pkg/mqtt"
 	"github.com/rancher/octopus/pkg/util/object"
 )
 
 func NewService() *Service {
+	mqtt.SetLogger(log.GetLogger())
+
 	var scheme = k8sruntime.NewScheme()
 	utilruntime.Must(v1alpha1.AddToScheme(scheme))
 
@@ -106,7 +109,7 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 			}
 
 			// configure device
-			if err := holder.Configure(req.GetReferencesHandler(), device.Spec); err != nil {
+			if err := holder.Configure(req.GetReferencesHandler(), &device); err != nil {
 				return status.Errorf(codes.InvalidArgument, "failed to configure the device: %v", err)
 			}
 
@@ -146,7 +149,7 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 			}
 
 			// configure device
-			if err := holder.Configure(req.GetReferencesHandler(), device.Spec); err != nil {
+			if err := holder.Configure(req.GetReferencesHandler(), &device); err != nil {
 				return status.Errorf(codes.InvalidArgument, "failed to configure the device: %v", err)
 			}
 

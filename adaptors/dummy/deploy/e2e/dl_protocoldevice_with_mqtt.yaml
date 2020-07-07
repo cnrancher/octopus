@@ -18,14 +18,12 @@ spec:
         mqtt:
           client:
             server: tcp://test.mosquitto.org:1883
-          will:
-            payloadContent: "Y2xvc2Vk"
-            payloadEncode: base64
           message:
-            topic:
-              prefix: cattle.io/octopus
-              with: uid
-            payloadEncode: base64
+            # uses dynamic topic with uid
+            topic: "cattle.io/octopus/:uid"
+            will:
+              # will message topic is "cattle.io/octopus/:uid/$will"
+              content: "Y2xvc2Vk"
       protocol:
         ip: "127.0.0.1"
       props:
