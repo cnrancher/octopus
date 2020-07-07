@@ -105,6 +105,9 @@ function octopus::cluster_kind::startup() {
     octopus::log::fatal "kind hasn't been installed"
   fi
 
+  octopus::log::info "unset proxy config"
+  octopus::util::unsetproxy
+
   octopus::log::info "creating ${CLUSTER_NAME} cluster with ${K8S_VERSION}"
   # setup cluster
   octopus::cluster_kind::setup_configuration
@@ -124,7 +127,7 @@ function octopus::cluster_kind::spinup() {
   octopus::cluster_kind::startup
 
   octopus::log::warn "please input CTRL+C to stop the local cluster"
-  read -r /dev/null
+  read -r -d '' _ </dev/tty
 }
 
 function octopus::cluster_kind::add_worker() {

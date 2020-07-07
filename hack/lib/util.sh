@@ -97,3 +97,9 @@ function octopus::util::get_random_port_start() {
     fi
   done
 }
+
+# Unset Proxy
+function octopus::util::unsetproxy() {
+    unset {http,https,ftp}_proxy
+    unset {HTTP,HTTPS,FTP}_PROXY
+}
