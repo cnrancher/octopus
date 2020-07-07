@@ -1,0 +1,75 @@
+apiVersion: edge.cattle.io/v1alpha1
+kind: DeviceLink
+metadata:
+  name: kitchen-door
+spec:
+  adaptor:
+    node: edge-worker
+    name: adaptors.edge.cattle.io/mqtt
+  model:
+    apiVersion: "devices.edge.cattle.io/v1alpha1"
+    kind: "MQTTDevice"
+  template:
+    metadata:
+      labels:
+        device: kitchen-door
+    spec:
+      protocol:
+        pattern: "AttributedTopic"
+        client:
+          server: "tcp://test.mosquitto.org:1883"
+        message:
+          topic: "cattle.io/octopus/home/status/kitchen/door/:path"
+      properties:
+        - name: "state"
+          path: "state"
+          description: "The state of door"
+          type: "string"
+          annotations:
+            type: "enum"
+            format: "open,close"
+        - name: "width"
+          path: "width"
+          description: "The width of door"
+          type: "float"
+          annotations:
+            unit: "meter"
+        - name: "height"
+          path: "height"
+          description: "The height of door"
+          type: "float"
+          annotations: 
+            unit: "meter"
+        - name: "material"
+          path: "material"
+          description: "The material of light"
+          type: "string"
+    # status:
+    #   properties:
+    #     - name: "state"
+    #       path: "state"
+    #       description: "The state of door"
+    #       type: "string"
+    #       value: "open"
+    #       annotations:
+    #         type: "enum"
+    #         format: "open,close"
+    #     - name: "width"
+    #       path: "width"
+    #       description: "The width of door"
+    #       type: "float"
+    #       value: "1.2"
+    #       annotations:
+    #         unit: "meter"
+    #     - name: "height"
+    #       path: "height"
+    #       description: "The height of door"
+    #       type: "float"
+    #       value: "1.8"
+    #       annotations: 
+    #         unit: "meter"
+    #     - name: "material"
+    #       path: "material"
+    #       description: "The material of light"
+    #       type: "string"
+    #       value: "wood"

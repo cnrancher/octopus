@@ -1,13 +1,11 @@
 package adaptor
 
 import (
-	jsoniter "github.com/json-iterator/go"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 
 	"github.com/rancher/octopus/adaptors/mqtt/api/v1alpha1"
@@ -15,11 +13,16 @@ import (
 	api "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
 	"github.com/rancher/octopus/pkg/adaptor/connection"
 	"github.com/rancher/octopus/pkg/adaptor/log"
+	"github.com/rancher/octopus/pkg/mqtt"
+	"github.com/rancher/octopus/pkg/util/converter"
 	"github.com/rancher/octopus/pkg/util/object"
 )
 
 func NewService() *Service {
+	mqtt.SetLogger(log.GetLogger())
+
 	var scheme = k8sruntime.NewScheme()
+	// register v1alpha1 scheme into runtime scheme.
 	utilruntime.Must(v1alpha1.AddToScheme(scheme))
 
 	return &Service{
@@ -41,76 +44,75 @@ func (s *Service) toJSON(in metav1.Object) []byte {
 }
 
 func (s *Service) Connect(server api.Connection_ConnectServer) error {
-	var device physical.Device
+	var holder physical.Device
 	defer func() {
-		if device != nil {
-			device.Shutdown()
+		if holder != nil {
+			holder.Shutdown()
 		}
 	}()
 
 	for {
-
 		var req, err = server.Recv()
 		if err != nil {
 			if !connection.IsClosed(err) {
 				log.Error(err, "Failed to receive connect request from Limb")
-				return status.Errorf(codes.Unknown, "shutdown connection as receiving error from Limb")
+				return status.Error(codes.Unknown, "shutdown connection as receiving error from Limb")
 			}
 			return nil
 		}
 
-		// validate device
-		var mqtt v1alpha1.MqttDevice
-		if err := jsoniter.Unmarshal(req.GetDevice(), &mqtt); err != nil {
-			return status.Errorf(codes.InvalidArgument, "failed to unmarshal device: %v", err)
+		// validates model GVK
+		var model = req.GetModel()
+		if model == nil {
+			return status.Error(codes.InvalidArgument, "invalid empty model")
+		}
+		var modelGVK = model.GroupVersionKind()
+		if modelGVK.Group != "devices.edge.cattle.io" {
+			return status.Errorf(codes.InvalidArgument, "invalid model group: %s", modelGVK.Group)
 		}
 
-		if device == nil {
-			var deviceName = object.GetNamespacedName(&mqtt)
-			if deviceName.Namespace == "" || deviceName.Name == "" {
-				return status.Error(codes.InvalidArgument, "failed to recognize the empty device as the namespace/name is blank")
+		// processes device
+		switch modelGVK.Kind {
+		case "MQTTDevice":
+			// gets device spec
+			var device v1alpha1.MQTTDevice
+			if err := converter.UnmarshalJSON(req.GetDevice(), &device); err != nil {
+				return status.Errorf(codes.InvalidArgument, "failed to unmarshal device: %v", err)
 			}
 
-			var dataHandler = func(name types.NamespacedName, status v1alpha1.MqttDeviceStatus) {
-				// send device by {name, namespace, status} tuple
-				var resp v1alpha1.MqttDevice
-				resp.Namespace = name.Namespace
-				resp.Name = name.Name
-				resp.Status = status
+			// creates device handler
+			if holder == nil {
+				// gets device namespaced name
+				var deviceName = object.GetNamespacedName(&device)
+				if deviceName.Namespace == "" || deviceName.Name == "" {
+					return status.Error(codes.InvalidArgument, "failed to recognize the empty device as the namespace/name is blank")
+				}
 
-				// convert device to json bytes
-				var respBytes = s.toJSON(&resp)
+				// gets log
+				var logger = log.WithValues("mqtt device", deviceName)
 
-				log.Info("dataHandler device update", "MqttDevice", string(respBytes))
+				// creates handler for syncing to limb
+				var toLimb = func(in *v1alpha1.MQTTDevice) {
+					// convert device to json bytes
+					var respBytes = s.toJSON(in)
 
-				// send device
-				if err := server.Send(&api.ConnectResponse{Device: respBytes}); err != nil {
-					if !connection.IsClosed(err) {
-						log.Error(err, "Failed to send response to connection")
+					// send device to limb
+					if err := server.Send(&api.ConnectResponse{Device: respBytes}); err != nil {
+						if !connection.IsClosed(err) {
+							logger.Error(err, "Failed to send response to connection")
+						}
 					}
 				}
+
+				holder = physical.NewDevice(logger, device.ObjectMeta, toLimb)
 			}
 
-			mqttClient, err := physical.NewMqttClient(mqtt.Name, mqtt.Spec.Config)
-			if err != nil {
-				log.Error(err, "connect receive new device NewMqttClient error")
-				return status.Errorf(codes.InvalidArgument, "failed to connect mqtt: %v", err)
+			// configures device
+			if err := holder.Configure(req.GetReferencesHandler(), &device); err != nil {
+				return status.Errorf(codes.InvalidArgument, "failed to configure the device: %v", err)
 			}
-
-			device = physical.NewDevice(
-				log.WithValues("device", deviceName),
-				&mqtt,
-				dataHandler,
-				mqttClient,
-			)
-
-			go device.On()
-
-			log.Info("connect receive new device success", "name", mqtt.Name)
-
-		} else {
-			device.Configure(&mqtt.Spec)
+		default:
+			return status.Errorf(codes.InvalidArgument, "invalid model kind: %s", modelGVK.Kind)
 		}
-
 	}
 }

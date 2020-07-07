@@ -32,6 +32,7 @@ function entry() {
   fi
   deviceNameLowercase=$(echo -n "${deviceName}" | tr '[:upper:]' '[:lower:]')
   sed "s#TemplateDevice#${deviceName}#g" "${adaptorPath}/api/v1alpha1/templatedevice_types.go" >"${tmpfile}" && mv "${tmpfile}" "${adaptorPath}/api/v1alpha1/templatedevice_types.go"
+  sed "s#template device#${deviceName} device#g" "${adaptorPath}/api/v1alpha1/templatedevice_types.go" >"${tmpfile}" && mv "${tmpfile}" "${adaptorPath}/api/v1alpha1/templatedevice_types.go"
   mv "${adaptorPath}/api/v1alpha1/templatedevice_types.go" "${adaptorPath}/api/v1alpha1/${deviceNameLowercase}_types.go"
 
   # change cmd template to expected
@@ -50,9 +51,10 @@ function entry() {
   mv "${adaptorPath}/pkg/template" "${adaptorPath}/pkg/${adaptorNameLowercase}"
 
   # change deploy template to expected
-  mv "${adaptorPath}/deploy/manifests/crd/base/devices.edge.cattle.io_templatedevices.yaml" "${adaptorPath}/deploy/manifests/crd/base/devices.edge.cattle.io_${deviceNameLowercase}.yaml"
-  sed "s#devices.edge.cattle.io_templatedevices.yaml#devices.edge.cattle.io_${deviceNameLowercase}.yaml#g" "${adaptorPath}/deploy/manifests/crd/kustomization.yaml" >"${tmpfile}" && mv "${tmpfile}" "${adaptorPath}/deploy/manifests/crd/kustomization.yaml"
+  mv "${adaptorPath}/deploy/manifests/crd/base/devices.edge.cattle.io_templatedevices.yaml" "${adaptorPath}/deploy/manifests/crd/base/devices.edge.cattle.io_${deviceNameLowercase}s.yaml"
+  sed "s#devices.edge.cattle.io_templatedevices.yaml#devices.edge.cattle.io_${deviceNameLowercase}s.yaml#g" "${adaptorPath}/deploy/manifests/crd/kustomization.yaml" >"${tmpfile}" && mv "${tmpfile}" "${adaptorPath}/deploy/manifests/crd/kustomization.yaml"
   sed "s#octopus-adaptor-template#octopus-adaptor-${adaptorNameLowercase}#g" "${adaptorPath}/deploy/manifests/workload/daemonset.yaml" >"${tmpfile}" && mv "${tmpfile}" "${adaptorPath}/deploy/manifests/workload/daemonset.yaml"
+  sed "s#octopus-adaptor-template#octopus-adaptor-${adaptorNameLowercase}#g" "${adaptorPath}/deploy/manifests/overlays/default/kustomization.yaml" >"${tmpfile}" && mv "${tmpfile}" "${adaptorPath}/deploy/manifests/overlays/default/kustomization.yaml"
 
   # change Dockerfile template to expected
   sed "s#template#${adaptorNameLowercase}#g" "${adaptorPath}/Dockerfile" >"${tmpfile}" && mv "${tmpfile}" "${adaptorPath}/Dockerfile"
