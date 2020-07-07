@@ -10,10 +10,13 @@ import (
 	"github.com/gopcua/opcua"
 	"github.com/gopcua/opcua/ua"
 	"github.com/pkg/errors"
+
 	"github.com/rancher/octopus/adaptors/opcua/api/v1alpha1"
 	api "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
 	"github.com/rancher/octopus/pkg/mqtt"
 	"github.com/rancher/octopus/pkg/util/critical"
+	"github.com/rancher/octopus/pkg/util/object"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -30,10 +33,6 @@ func NewDevice(log logr.Logger, name types.NamespacedName, handler DataHandler) 
 		handler: handler,
 	}
 }
-
-const (
-	mqttTimeout = 5 * time.Second
-)
 
 type device struct {
 	sync.Mutex
@@ -64,15 +63,12 @@ func (d *device) Configure(references api.ReferencesHandler, obj v1alpha1.OPCUAD
 
 	if !reflect.DeepEqual(d.spec.Extension, deviceSpec.Extension) {
 		if d.mqttClient != nil {
-			d.mqttClient.Disconnect(mqttTimeout)
+			d.mqttClient.Disconnect()
 			d.mqttClient = nil
-
-			// since there is only a MQTT inside extension field, here can set to nil directly.
-			d.status.Extension = nil
 		}
 
 		if d.spec.Extension.MQTT != nil {
-			var cli, outline, err = mqtt.NewClient(&obj, *d.spec.Extension.MQTT, references.ToDataMap())
+			var cli, err = mqtt.NewClient(*d.spec.Extension.MQTT, object.GetControlledOwnerObjectReference(&obj), references)
 			if err != nil {
 				return errors.Wrap(err, "failed to create MQTT client")
 			}
@@ -82,11 +78,6 @@ func (d *device) Configure(references api.ReferencesHandler, obj v1alpha1.OPCUAD
 				return errors.Wrap(err, "failed to connect MQTT broker")
 			}
 			d.mqttClient = cli
-
-			if d.status.Extension == nil {
-				d.status.Extension = &v1alpha1.DeviceExtensionStatus{}
-			}
-			d.status.Extension.MQTT = outline
 		}
 	}
 
@@ -206,7 +197,7 @@ func (d *device) Shutdown() {
 
 	// close MQTT connection
 	if d.mqttClient != nil {
-		d.mqttClient.Disconnect(mqttTimeout)
+		d.mqttClient.Disconnect()
 		d.mqttClient = nil
 	}
 
@@ -263,8 +254,7 @@ func (d *device) receiveNotification(ctx context.Context, notifyCh chan *opcua.P
 				// pub updated status to the MQTT broker
 				if d.mqttClient != nil {
 					var status = d.status.DeepCopy()
-					status.Extension = nil
-					if err := d.mqttClient.Publish(status); err != nil {
+					if err := d.mqttClient.Publish(mqtt.PublishMessage{Payload: status}); err != nil {
 						d.log.Error(err, "Failed to publish MQTT message")
 					}
 				}

@@ -22,9 +22,8 @@ spec:
           client:
             server: tcp://test.mosquitto.org:1883
           message:
-            topic:
-              prefix: cattle.io/octopus
-              with: nn # namespace/name
+            # uses dynamic topic with namespaced name
+            topic: "cattle.io/octopus/:namespace/:name"
       protocol:
         url: opc.tcp://192.168.64.5:30839/
       properties:

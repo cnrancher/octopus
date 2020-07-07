@@ -15,10 +15,13 @@ import (
 	api "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
 	"github.com/rancher/octopus/pkg/adaptor/connection"
 	"github.com/rancher/octopus/pkg/adaptor/log"
+	"github.com/rancher/octopus/pkg/mqtt"
 	"github.com/rancher/octopus/pkg/util/object"
 )
 
 func NewService() *Service {
+	mqtt.SetLogger(log.GetLogger())
+
 	var scheme = k8sruntime.NewScheme()
 	utilruntime.Must(v1alpha1.AddToScheme(scheme))
 

@@ -16,6 +16,12 @@ func DecodeBase64String(str string) ([]byte, error) {
 	return base64.RawStdEncoding.DecodeString(str)
 }
 
+// DecodeBase64 decodes the input bytes, which can
+// accept padded or none padded format.
+func DecodeBase64(src []byte) ([]byte, error) {
+	return DecodeBase64String(UnsafeBytesToString(src))
+}
+
 // EncodeBase64 encodes the input bytes,
 // and then output standard format.
 func EncodeBase64(src []byte) []byte {

@@ -12,6 +12,7 @@ import (
 	"github.com/rancher/octopus/adaptors/dummy/api/v1alpha1"
 	api "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
 	"github.com/rancher/octopus/pkg/mqtt"
+	"github.com/rancher/octopus/pkg/util/object"
 )
 
 func NewProtocolDevice(log logr.Logger, instance *v1alpha1.DummyProtocolDevice, toLimb ProtocolDeviceSyncer) Device {
@@ -41,26 +42,24 @@ type protocolDevice struct {
 }
 
 func (d *protocolDevice) Configure(references api.ReferencesHandler, configuration interface{}) error {
-	var spec, ok = configuration.(v1alpha1.DummyProtocolDeviceSpec)
+	var device, ok = configuration.(*v1alpha1.DummyProtocolDevice)
 	if !ok {
 		d.log.Error(errors.New("invalidate configuration type"), "Failed to configure")
 		return nil
 	}
+	var spec = device.Spec
 
 	d.Lock()
 	defer d.Unlock()
 
 	if !reflect.DeepEqual(d.instance.Spec.Extension.MQTT, spec.Extension.MQTT) {
 		if d.mqttClient != nil {
-			d.mqttClient.Disconnect(5 * time.Second)
+			d.mqttClient.Disconnect()
 			d.mqttClient = nil
-
-			// since there is only a MQTT inside extension field, here can set to nil directly.
-			d.instance.Status.Extension = nil
 		}
 
 		if spec.Extension.MQTT != nil {
-			var cli, outline, err = mqtt.NewClient(d.instance, *spec.Extension.MQTT, references.ToDataMap())
+			var cli, err = mqtt.NewClient(*spec.Extension.MQTT, object.GetControlledOwnerObjectReference(device), references)
 			if err != nil {
 				return errors.Wrap(err, "failed to create MQTT client")
 			}
@@ -70,11 +69,6 @@ func (d *protocolDevice) Configure(references api.ReferencesHandler, configurati
 				return errors.Wrap(err, "failed to connect MQTT broker")
 			}
 			d.mqttClient = cli
-
-			if d.instance.Status.Extension == nil {
-				d.instance.Status.Extension = &v1alpha1.DeviceExtensionStatus{}
-			}
-			d.instance.Status.Extension.MQTT = outline
 		}
 	}
 
@@ -95,7 +89,7 @@ func (d *protocolDevice) Shutdown() {
 	defer d.Unlock()
 
 	if d.mqttClient != nil {
-		d.mqttClient.Disconnect(5 * time.Second)
+		d.mqttClient.Disconnect()
 		d.mqttClient = nil
 	}
 
@@ -147,10 +141,8 @@ func (d *protocolDevice) sync() {
 		d.toLimb(d.instance)
 	}
 	if d.mqttClient != nil {
-		// NB(thxCode) we don't need to send extension status outside.
 		var status = d.instance.Status.DeepCopy()
-		status.Extension = nil
-		if err := d.mqttClient.Publish(status); err != nil {
+		if err := d.mqttClient.Publish(mqtt.PublishMessage{Payload: status}); err != nil {
 			d.log.Error(err, "Failed to publish MQTT broker")
 		}
 	}

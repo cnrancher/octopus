@@ -1,6 +1,6 @@
 // +build test
 
-package mqtt
+package test
 
 import (
 	"fmt"
@@ -13,17 +13,17 @@ import (
 	"github.com/pkg/errors"
 )
 
-type TestMemoryBroker struct {
+type MemoryBroker struct {
 	server  transport.Server
 	backend *broker.MemoryBackend
 }
 
-func (b *TestMemoryBroker) Start() {
+func (b *MemoryBroker) Start() {
 	var engine = broker.NewEngine(b.backend)
 	engine.Accept(b.server)
 }
 
-func (b *TestMemoryBroker) Close() {
+func (b *MemoryBroker) Close() {
 	if b.backend != nil {
 		b.backend.Close(5 * time.Second)
 	}
@@ -32,7 +32,7 @@ func (b *TestMemoryBroker) Close() {
 	}
 }
 
-func NewTestMemoryBroker(address string, log logr.Logger) (*TestMemoryBroker, error) {
+func NewMemoryBroker(address string, log logr.Logger) (*MemoryBroker, error) {
 	var server, err = transport.Launch(address)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to launch broker")
@@ -51,7 +51,7 @@ func NewTestMemoryBroker(address string, log logr.Logger) (*TestMemoryBroker, er
 		}
 	}
 
-	return &TestMemoryBroker{
+	return &MemoryBroker{
 		server:  server,
 		backend: backend,
 	}, nil

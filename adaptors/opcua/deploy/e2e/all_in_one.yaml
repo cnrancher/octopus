@@ -60,6 +60,7 @@ spec:
                         description: Specifies the client settings.
                         properties:
                           autoReconnect:
+                            default: true
                             description: Configures using the automatic reconnection
                               logic. The default value is "true".
                             type: boolean
@@ -107,6 +108,7 @@ spec:
                                 type: object
                             type: object
                           cleanSession:
+                            default: true
                             description: Specifies setting the "clean session" flag
                               in the connect message that the MQTT broker should not
                               save it. If the value is "false", the broker stores
@@ -116,16 +118,16 @@ spec:
                               send upon connecting to the broker. The default value
                               is "true".
                             type: boolean
-                          clientID:
-                            description: Specifies the client ID to be used for connection,
-                              it must be no longer than 23 characters if specified
-                              to use MQTT v3.1.
-                            type: string
                           connectTimeout:
+                            default: 30s
                             description: Specifies the amount of time that the client
                               try to open a connection to an MQTT broker before timing
                               out and getting error. A duration of 0 never times out.
                               The default value is "30s".
+                            type: string
+                          disconnectQuiesce:
+                            description: Specifies the quiesce when the client disconnects.
+                              The default value is "5s".
                             type: string
                           httpHeaders:
                             additionalProperties:
@@ -135,7 +137,9 @@ spec:
                             description: Specifies the additional HTTP headers that
                               the client sends in the WebSocket opening handshake.
                             type: object
+                            x-kubernetes-map-type: atomic
                           keepAlive:
+                            default: 30s
                             description: Specifies the amount of time that the client
                               should wait before sending a PING request to the broker.
                               This will allow the client to know that the connection
@@ -143,6 +147,7 @@ spec:
                               keeps alive. The default keep alive is "30s".
                             type: string
                           maxReconnectInterval:
+                            default: 10m
                             description: Specifies the amount of time that the client
                               should wait before reconnecting to the broker. The first
                               reconnect interval is 1 second, and then the interval
@@ -152,6 +157,7 @@ spec:
                               The default value is "10m".
                             type: string
                           messageChannelDepth:
+                            default: 100
                             description: Specifies the size of the internal queue
                               that holds messages while the client is temporarily
                               offline, allowing the application to publish when the
@@ -159,6 +165,7 @@ spec:
                               is true. The default value is "100".
                             type: integer
                           order:
+                            default: true
                             description: Specifies the message routing to guarantee
                               order within each QoS level. If set to false, the message
                               can be delivered asynchronously from the client to the
@@ -166,6 +173,7 @@ spec:
                               value is "true".
                             type: boolean
                           pingTimeout:
+                            default: 10s
                             description: Specifies the amount of time that the client
                               should wait after sending a PING request to the broker.
                               This will allow the client to know that the connection
@@ -173,14 +181,19 @@ spec:
                               unnecessary timeout error. The default value is "10s".
                             type: string
                           protocolVersion:
+                            default: 0
                             description: Specifies the MQTT protocol version that
                               the cluster uses to connect to broker. Legitimate values
-                              are currently 3 - MQTT v3.1 or 4 - MQTT v3.1.1.
+                              are currently 3 - MQTT v3.1 or 4 - MQTT v3.1.1. The
+                              default value is 0, which means MQTT v3.1.1 identification
+                              is preferred.
                             enum:
+                            - 0
                             - 3
                             - 4
                             type: integer
                           resumeSubs:
+                            default: false
                             description: Specifies to enable resuming of stored (un)subscribe
                               messages when connecting but not reconnecting. This
                               is only valid if `CleanSession` is false. The default
@@ -195,8 +208,7 @@ spec:
                             type: string
                           store:
                             description: Specifies to provide message persistence
-                              in cases where QoS level is 1 or 2. The default store
-                              is "memory".
+                              in cases where QoS level is 1 or 2.
                             properties:
                               directoryPrefix:
                                 description: Specifies the directory prefix of the
@@ -205,11 +217,12 @@ spec:
                                 pattern: ^/.*[^/]$
                                 type: string
                               type:
+                                default: Memory
                                 description: Specifies the type of storage. The default
-                                  value is "memory".
+                                  value is "Memory".
                                 enum:
-                                - memory
-                                - file
+                                - Memory
+                                - File
                                 type: string
                             type: object
                           tlsConfig:
@@ -287,50 +300,13 @@ spec:
                                   to http://tools.ietf.org/html/rfc4366#section-3.1.
                                 type: string
                             type: object
-                          will:
-                            description: Specifies the will message that the client
-                              gives it to the broker, which can be published to any
-                              clients that are subscribed the provided topic.
-                            properties:
-                              payloadContent:
-                                description: Specifies the payload content.
-                                type: string
-                              payloadEncode:
-                                description: Specifies the encode way of payload content.
-                                  The "base64" way allows to input bytes (`PayloadContent`)
-                                  that cannot be characterized. The default way is
-                                  "raw".
-                                enum:
-                                - raw
-                                - base64
-                                type: string
-                              qos:
-                                description: Specifies the QoS of the will message.
-                                  The default value is "0".
-                                enum:
-                                - 0
-                                - 1
-                                - 2
-                                type: integer
-                              retained:
-                                description: Specifies the will message to be retained.
-                                  The default value is "false".
-                                type: boolean
-                              topic:
-                                description: Specifies the topic for publishing the
-                                  will message, if not set, the will topic will append
-                                  "$will" to the topic name specified in global settings
-                                  as its topic name.
-                                properties:
-                                  name:
-                                    description: Specifies the static name of topic.
-                                    pattern: ^[a-zA-Z0-9_]+.*[^/]$
-                                    type: string
-                                type: object
-                            required:
-                            - payloadContent
-                            type: object
+                          waitTimeout:
+                            description: Specifies the amount of time that the client
+                              should timeout after subscribed/published a message.
+                              A duration of 0 never times out.
+                            type: string
                           writeTimeout:
+                            default: 30s
                             description: Specifies the amount of time that the client
                               publish a message successfully before getting a timeout
                               error. A duration of 0 never times out. The default
@@ -342,51 +318,60 @@ spec:
                       message:
                         description: Specifies the message settings.
                         properties:
-                          payloadEncode:
-                            description: Specifies the encode way of payload content.
-                              The default way is "raw".
-                            enum:
-                            - raw
-                            - base64
+                          operator:
+                            description: Specifies the operator for rendering the
+                              `:operator` keyword of topic.
+                            properties:
+                              read:
+                                description: Specifies the operator for rendering
+                                  the `:operator` keyword of topic during subscribing.
+                                type: string
+                              write:
+                                description: Specifies the operator for rendering
+                                  the `:operator` keyword of topic during publishing.
+                                type: string
+                            type: object
+                          path:
+                            description: Specifies the path for rendering the `:path`
+                              keyword of topic.
                             type: string
                           qos:
+                            default: 1
                             description: Specifies the QoS of the message. The default
-                              value is "0".
+                              value is "1".
                             enum:
                             - 0
                             - 1
                             - 2
                             type: integer
                           retained:
+                            default: true
                             description: Specifies if the last published message to
-                              be retained. The default value is "false".
+                              be retained. The default value is "true".
                             type: boolean
                           topic:
-                            description: Specifies the topic settings.
-                            properties:
-                              name:
-                                description: Specifies the static name of topic.
-                                pattern: ^[a-zA-Z0-9_]+.*[^/]$
-                                type: string
-                              prefix:
-                                description: Specifies the prefix for the dynamic
-                                  name of topic. The prefix is required for dynamic
-                                  name.
-                                pattern: ^[a-zA-Z0-9_]+.*[^/]$
-                                type: string
-                              with:
-                                description: Specifies the mode for the dynamic name
-                                  of topic. The default mode is "nn".
-                                enum:
-                                - uid
-                                - nn
-                                type: string
-                            type: object
-                          waitTimeout:
-                            description: Specifies the amount of time that the client
-                              should wait after operating. A duration of 0 never times
-                              out. The default value is "0s".
+                            description: Specifies the topic.
+                            pattern: .*[^/]$
                             type: string
+                          will:
+                            description: Specifies the will message.
+                            properties:
+                              content:
+                                description: Specifies the content of will message.
+                                  The serialized form of the content is a base64 encoded
+                                  string, representing the arbitrary (possibly non-string)
+                                  content value here.
+                                type: string
+                              topic:
+                                description: Specifies the topic of will message.
+                                  if not set, the topic will append "$will" to the
+                                  topic name specified in parent field as its topic
+                                  name.
+                                pattern: .*[^/]$
+                                type: string
+                            required:
+                            - content
+                            type: object
                         required:
                         - topic
                         type: object
@@ -501,151 +486,6 @@ spec:
           status:
             description: OPCUADeviceStatus defines the observed state of OPCUADevice
             properties:
-              extension:
-                description: Reports the extension of device.
-                properties:
-                  mqtt:
-                    description: Reports the MQTT settings.
-                    properties:
-                      client:
-                        description: Observes the client settings.
-                        properties:
-                          autoReconnect:
-                            default: true
-                            description: Observes if using the automatic reconnection
-                              logic.
-                            type: boolean
-                          cleanSession:
-                            default: true
-                            description: Observes if setting the "clean session" flag.
-                            type: boolean
-                          clientID:
-                            description: Observes the client ID.
-                            type: string
-                          configBasicAuth:
-                            description: Observes if configuring basic authentication.
-                            type: boolean
-                          configTLS:
-                            description: Observes if configuring TLS.
-                            type: boolean
-                          connectTimeout:
-                            default: 30s
-                            description: Observes the amount of time that the client
-                              try to open a connection to an MQTT broker before timing
-                              out and getting error.
-                            type: string
-                          httpHeaders:
-                            additionalProperties:
-                              items:
-                                type: string
-                              type: array
-                            description: Observes the additional HTTP headers that
-                              the client sends in the WebSocket opening handshake.
-                            type: object
-                          keepAlive:
-                            default: 30s
-                            description: Observes the amount of time that the client
-                              should wait before sending a PING request to the broker.
-                            type: string
-                          maxReconnectInterval:
-                            default: 10m
-                            description: Observes the amount of time that the client
-                              should wait before reconnecting to the broker.
-                            type: string
-                          messageChannelDepth:
-                            default: 100
-                            description: Observes the size of the internal queue that
-                              holds messages while the client is temporarily offline,
-                              allowing the application to publish when the client
-                              is reconnected.
-                            type: integer
-                          order:
-                            default: true
-                            description: Observes the message routing to guarantee
-                              order within each QoS level.
-                            type: boolean
-                          pingTimeout:
-                            default: 10s
-                            description: Observes the amount of time that the client
-                              should wait after sending a PING request to the broker.
-                            type: string
-                          protocolVersion:
-                            description: Observes the protocol version.
-                            type: integer
-                          resumeSubs:
-                            default: false
-                            description: Observes if enabling resuming of stored (un)subscribe
-                              messages when connecting but not reconnecting.
-                            type: boolean
-                          server:
-                            description: Observes the broker server URI.
-                            type: string
-                          store:
-                            description: Observes the store type.
-                            properties:
-                              directory:
-                                description: Observes the directory of the file storage.
-                                type: string
-                              type:
-                                default: memory
-                                description: Observes the type of storage.
-                                type: string
-                            type: object
-                          will:
-                            description: Observes the will message that the client
-                              gives it to the broker.
-                            properties:
-                              payloadEncode:
-                                default: raw
-                                description: Observes the encode way of payload content.
-                                type: string
-                              qos:
-                                default: 0
-                                description: Observes the QoS of the will message.
-                                type: integer
-                              retained:
-                                default: false
-                                description: Observes if retaining the will message.
-                                type: boolean
-                              topicName:
-                                description: Observes the topic for publishing the
-                                  will message.
-                                type: string
-                            type: object
-                          writeTimeout:
-                            default: 0s
-                            description: Observes the amount of time that the client
-                              publish a message successfully before getting a timeout
-                              error.
-                            type: string
-                        type: object
-                      message:
-                        description: Observes the message settings.
-                        properties:
-                          payloadEncode:
-                            default: raw
-                            description: Observes the encode way of payload content.
-                            type: string
-                          qos:
-                            default: 0
-                            description: Observes the QoS of the message.
-                            type: integer
-                          retained:
-                            default: false
-                            description: Observes if retaining the message.
-                            type: boolean
-                          topicName:
-                            description: Observes the topic for publishing/subscribing
-                              the message.
-                            type: string
-                          waitTimeout:
-                            default: 0s
-                            description: Observes the amount of time that the client
-                              should wait after operating.
-                            type: string
-                        type: object
-                    type: object
-                type: object
               properties:
                 description: Reports the status of the OPC-UA device.
                 items:

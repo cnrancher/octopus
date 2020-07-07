@@ -99,10 +99,6 @@ const (
 
 // BluetoothDeviceStatus defines the observed state of BluetoothDevice
 type BluetoothDeviceStatus struct {
-	// Reports the extension of device.
-	// +optional
-	Extension *DeviceExtensionStatus `json:"extension,omitempty"`
-
 	// Reports the status of the BLE device.
 	// +optional
 	Properties []StatusProperties `json:"properties,omitempty"`
