@@ -13,13 +13,22 @@ spec:
     kind: DummyProtocolDevice
     listKind: DummyProtocolDeviceList
     plural: dummyprotocoldevices
+    shortNames:
+    - dummyprotocol
     singular: dummyprotocoldevice
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.protocol.ip
+      name: IP
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: AGE
+      type: date
+    name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: DummyProtocolDevice is the Schema for the dummy protocol device
+        description: DummyProtocolDevice is the schema for the dummy protocol device
           API.
         properties:
           apiVersion:
@@ -367,29 +376,29 @@ spec:
                     - message
                     type: object
                 type: object
-              props:
+              properties:
                 additionalProperties:
-                  description: DummyProtocolDeviceSpecProps defines the property of
-                    DummyProtocolDeviceSpec.
+                  description: DummyProtocolDeviceProperty defines the desired property
+                    of DummyProtocolDevice.
                   properties:
-                    arrayProps:
-                      description: Describes item properties of the array type.
+                    arrayProperties:
+                      description: Specifies the item property if the type is "array".
                       type: object
                       x-kubernetes-preserve-unknown-fields: true
                     description:
-                      description: Outlines the property.
+                      description: Specifies the description of property.
                       type: string
-                    objectProps:
+                    objectProperties:
                       additionalProperties:
                         type: object
                         x-kubernetes-preserve-unknown-fields: true
-                      description: Describes properties of the object type.
+                      description: Specifies the object property if the type is "object".
                       type: object
                     readOnly:
-                      description: Configures the property is readOnly or not.
+                      description: Specifies if the property is readonly.
                       type: boolean
                     type:
-                      description: Describes the type of property.
+                      description: Specifies the type of property.
                       enum:
                       - string
                       - int
@@ -401,13 +410,13 @@ spec:
                   required:
                   - type
                   type: object
-                description: Describe the desired properties.
+                description: Specifies the properties of device.
                 type: object
               protocol:
-                description: Protocol for accessing the dummy protocol device.
+                description: Specifies the protocol for accessing the device.
                 properties:
                   ip:
-                    description: Specifies where to connect the dummy protocol device.
+                    description: Specifies the IP address of device.
                     type: string
                 required:
                 - ip
@@ -418,10 +427,10 @@ spec:
           status:
             description: DummyProtocolDeviceStatus defines the observed state of DummyProtocolDevice.
             properties:
-              props:
+              properties:
                 additionalProperties:
-                  description: DummyProtocolDeviceStatusProps defines the property
-                    of DummyProtocolDeviceStatus.
+                  description: DummyProtocolDeviceStatusProperty defines the observed
+                    property of DummyProtocolDevice.
                   properties:
                     arrayValue:
                       description: Reports the value of array type.
@@ -461,10 +470,8 @@ spec:
                       - array
                       - object
                       type: string
-                  required:
-                  - type
                   type: object
-                description: Reports the observed value of the desired properties.
+                description: Reports the properties of device.
                 type: object
             type: object
         type: object

@@ -5,50 +5,51 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// DummyProtocolDevicePropertyType describes the type of property.
+// DummyProtocolDevicePropertyType defines the type of property.
 // +kubebuilder:validation:Enum=string;int;float;boolean;array;object
 type DummyProtocolDevicePropertyType string
 
 const (
-	DummyProtocolDevicePropertyTypeString  DummyProtocolDevicePropertyType = "string"
 	DummyProtocolDevicePropertyTypeInt     DummyProtocolDevicePropertyType = "int"
 	DummyProtocolDevicePropertyTypeFloat   DummyProtocolDevicePropertyType = "float"
+	DummyProtocolDevicePropertyTypeString  DummyProtocolDevicePropertyType = "string"
 	DummyProtocolDevicePropertyTypeBoolean DummyProtocolDevicePropertyType = "boolean"
 	DummyProtocolDevicePropertyTypeArray   DummyProtocolDevicePropertyType = "array"
 	DummyProtocolDevicePropertyTypeObject  DummyProtocolDevicePropertyType = "object"
 )
 
-type DummyProtocolDeviceSpecObjectOrArrayProps struct {
+type DummyProtocolDeviceObjectOrArrayProperty struct {
 	// +kubebuilder:validation:XPreserveUnknownFields
-	DummyProtocolDeviceSpecProps `json:",inline"`
+	DummyProtocolDeviceProperty `json:",inline"`
 }
 
-// DummyProtocolDeviceSpecProps defines the property of DummyProtocolDeviceSpec.
-type DummyProtocolDeviceSpecProps struct {
-	// Describes the type of property.
-	// +kubebuilder:validation:Required
-	Type DummyProtocolDevicePropertyType `json:"type"`
-
-	// Outlines the property.
+// DummyProtocolDeviceProperty defines the desired property of DummyProtocolDevice.
+type DummyProtocolDeviceProperty struct {
+	// Specifies the description of property.
 	// +optional
 	Description string `json:"description,omitempty"`
 
-	// Configures the property is readOnly or not.
+	// Specifies the type of property.
+	// +kubebuilder:validation:Required
+	Type DummyProtocolDevicePropertyType `json:"type"`
+
+	// Specifies if the property is readonly.
 	// +optional
 	ReadOnly bool `json:"readOnly,omitempty"`
 
-	// Describes item properties of the array type.
+	// Specifies the item property if the type is "array".
 	// +optional
-	ArrayProps *DummyProtocolDeviceSpecObjectOrArrayProps `json:"arrayProps,omitempty"`
+	ArrayProperties *DummyProtocolDeviceObjectOrArrayProperty `json:"arrayProperties,omitempty"`
 
-	// Describes properties of the object type.
+	// Specifies the object property if the type is "object".
 	// +optional
-	ObjectProps map[string]DummyProtocolDeviceSpecObjectOrArrayProps `json:"objectProps,omitempty"`
+	ObjectProperties map[string]DummyProtocolDeviceObjectOrArrayProperty `json:"objectProperties,omitempty"`
 }
 
-// DummyProtocolDeviceProtocol describes the accessing protocol for dummy protocol device.
+// DummyProtocolDeviceProtocol defines the desired protocol of DummyProtocolDevice.
 type DummyProtocolDeviceProtocol struct {
-	// Specifies where to connect the dummy protocol device.
+	// Specifies the IP address of device.
+	// +kubebuilder:validation:Required
 	IP string `json:"ip"`
 }
 
@@ -56,26 +57,27 @@ type DummyProtocolDeviceProtocol struct {
 type DummyProtocolDeviceSpec struct {
 	// Specifies the extension of device.
 	// +optional
-	Extension DeviceExtensionSpec `json:"extension,omitempty"`
+	Extension *DummyDeviceExtension `json:"extension,omitempty"`
 
-	// Protocol for accessing the dummy protocol device.
+	// Specifies the protocol for accessing the device.
 	// +kubebuilder:validation:Required
 	Protocol DummyProtocolDeviceProtocol `json:"protocol"`
 
-	// Describe the desired properties.
+	// Specifies the properties of device.
 	// +optional
-	Props map[string]DummyProtocolDeviceSpecProps `json:"props,omitempty"`
+	Properties map[string]DummyProtocolDeviceProperty `json:"properties,omitempty"`
 }
 
-type DummyProtocolDeviceStatusObjectOrArrayProps struct {
+type DummyProtocolDeviceStatusObjectOrArrayProperty struct {
 	// +kubebuilder:validation:XPreserveUnknownFields
-	DummyProtocolDeviceStatusProps `json:",inline"`
+	DummyProtocolDeviceStatusProperty `json:",inline"`
 }
 
-// DummyProtocolDeviceStatusProps defines the property of DummyProtocolDeviceStatus.
-type DummyProtocolDeviceStatusProps struct {
+// DummyProtocolDeviceStatusProperty defines the observed property of DummyProtocolDevice.
+type DummyProtocolDeviceStatusProperty struct {
 	// Reports the type of property.
-	Type DummyProtocolDevicePropertyType `json:"type"`
+	// +optional
+	Type DummyProtocolDevicePropertyType `json:"type,omitempty"`
 
 	// Reports the value of int type.
 	// +optional
@@ -95,24 +97,27 @@ type DummyProtocolDeviceStatusProps struct {
 
 	// Reports the value of array type.
 	// +optional
-	ArrayValue []DummyProtocolDeviceStatusObjectOrArrayProps `json:"arrayValue,omitempty"`
+	ArrayValue []DummyProtocolDeviceStatusObjectOrArrayProperty `json:"arrayValue,omitempty"`
 
 	// Reports the value of object type.
 	// +optional
-	ObjectValue map[string]DummyProtocolDeviceStatusObjectOrArrayProps `json:"objectValue,omitempty"`
+	ObjectValue map[string]DummyProtocolDeviceStatusObjectOrArrayProperty `json:"objectValue,omitempty"`
 }
 
 // DummyProtocolDeviceStatus defines the observed state of DummyProtocolDevice.
 type DummyProtocolDeviceStatus struct {
-	// Reports the observed value of the desired properties.
+	// Reports the properties of device.
 	// +optional
-	Props map[string]DummyProtocolDeviceStatusProps `json:"props,omitempty"`
+	Properties map[string]DummyProtocolDeviceStatusProperty `json:"properties,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 // +k8s:openapi-gen=true
+// +kubebuilder:resource:shortName=dummyprotocol
 // +kubebuilder:subresource:status
-// DummyProtocolDevice is the Schema for the dummy protocol device API.
+// +kubebuilder:printcolumn:name="IP",type="string",JSONPath=`.spec.protocol.ip`
+// +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=`.metadata.creationTimestamp`
+// DummyProtocolDevice is the schema for the dummy protocol device API.
 type DummyProtocolDevice struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -122,11 +127,12 @@ type DummyProtocolDevice struct {
 }
 
 // +kubebuilder:object:root=true
-// DummyProtocolDeviceList contains a list of DummyProtocolDevice
+// DummyProtocolDeviceList contains a list of DummyProtocolDevice.
 type DummyProtocolDeviceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []DummyProtocolDevice `json:"items"`
+
+	Items []DummyProtocolDevice `json:"items"`
 }
 
 func init() {

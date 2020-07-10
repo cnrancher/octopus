@@ -60,99 +60,104 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 			return nil
 		}
 
-		// validate model GVK
+		// validates model GVK
 		var model = req.GetModel()
 		if model == nil {
 			return status.Error(codes.InvalidArgument, "invalid empty model")
 		}
 		var modelGVK = model.GroupVersionKind()
-		if modelGVK.Group != v1alpha1.GroupVersion.Group {
+		if modelGVK.Group != "devices.edge.cattle.io" {
 			return status.Errorf(codes.InvalidArgument, "invalid model group: %s", modelGVK.Group)
 		}
-		// NB(thxCode) the version of model can use to make compatible, the kind of model can use to determine the type of object.
 
-		// process device
+		// processes device
 		switch modelGVK.Kind {
 		case "DummySpecialDevice":
-			// get device spec
+			// gets device spec
 			var device v1alpha1.DummySpecialDevice
 			if err := jsoniter.Unmarshal(req.GetDevice(), &device); err != nil {
 				return status.Errorf(codes.InvalidArgument, "failed to unmarshal device: %v", err)
 			}
 
-			// create device handler
+			// creates device handler
 			if holder == nil {
-				// get device NamespacedName
+				// gets device namespaced name
 				var deviceName = object.GetNamespacedName(&device)
 				if deviceName.Namespace == "" || deviceName.Name == "" {
 					return status.Error(codes.InvalidArgument, "failed to recognize the empty device as the namespace/name is blank")
 				}
 
-				// create handler for sync to limb
-				var toLimb = func(in *v1alpha1.DummySpecialDevice) {
+				// gets log
+				var logger = log.WithValues("dummy special device", deviceName)
+
+				// creates handler for sync to limb
+				var toLimb = func(in *v1alpha1.DummySpecialDevice) error {
+					// send device by {name, namespace, status} tuple
+					var resp = &v1alpha1.DummySpecialDevice{}
+					resp.Namespace = in.Namespace
+					resp.Name = in.Namespace
+					resp.Status = in.Status
+
 					// convert device to json bytes
-					var respBytes = s.toJSON(in)
+					var respBytes = s.toJSON(resp)
 
 					// send device to limb
 					if err := server.Send(&api.ConnectResponse{Device: respBytes}); err != nil {
-						if !connection.IsClosed(err) {
-							log.Error(err, "Failed to send response to connection", "device", deviceName)
-						}
+						return status.Errorf(codes.Unknown, "failed to send device to limb, %v", err)
 					}
+					return nil
 				}
 
-				holder = physical.NewSpecialDevice(
-					log.WithValues("device", deviceName),
-					&device,
-					toLimb,
-				)
+				holder = physical.NewSpecialDevice(logger, device.ObjectMeta, toLimb)
 			}
 
-			// configure device
+			// configures device
 			if err := holder.Configure(req.GetReferencesHandler(), &device); err != nil {
 				return status.Errorf(codes.InvalidArgument, "failed to configure the device: %v", err)
 			}
-
 		case "DummyProtocolDevice":
-			// get device spec
+			// gets device spec
 			var device v1alpha1.DummyProtocolDevice
 			if err := jsoniter.Unmarshal(req.GetDevice(), &device); err != nil {
 				return status.Errorf(codes.InvalidArgument, "failed to unmarshal device: %v", err)
 			}
 
-			// create device handler
+			// creates device handler
 			if holder == nil {
-				// get device NamespacedName
+				// gets device namespaced name
 				var deviceName = object.GetNamespacedName(&device)
 				if deviceName.Namespace == "" || deviceName.Name == "" {
 					return status.Error(codes.InvalidArgument, "failed to recognize the empty device as the namespace/name is blank")
 				}
 
-				// create handler for sync to limb
-				var toLimb = func(in *v1alpha1.DummyProtocolDevice) {
+				// gets log
+				var logger = log.WithValues("dummy protocol device", deviceName)
+
+				// creates handler for sync to limb
+				var toLimb = func(in *v1alpha1.DummyProtocolDevice) error {
+					// send device by {name, namespace, status} tuple
+					var resp = &v1alpha1.DummyProtocolDevice{}
+					resp.Namespace = in.Namespace
+					resp.Name = in.Namespace
+					resp.Status = in.Status
+
 					// convert device to json bytes
-					var respBytes = s.toJSON(in)
+					var respBytes = s.toJSON(resp)
 
 					// send device to limb
 					if err := server.Send(&api.ConnectResponse{Device: respBytes}); err != nil {
-						if !connection.IsClosed(err) {
-							log.Error(err, "Failed to send response to connection", "device", deviceName)
-						}
+						return status.Errorf(codes.Unknown, "failed to send device to limb, %v", err)
 					}
+					return nil
 				}
 
-				holder = physical.NewProtocolDevice(
-					log.WithValues("device", deviceName),
-					&device,
-					toLimb,
-				)
+				holder = physical.NewProtocolDevice(logger, device.ObjectMeta, toLimb)
 			}
 
-			// configure device
+			// configures device
 			if err := holder.Configure(req.GetReferencesHandler(), &device); err != nil {
-				return status.Errorf(codes.InvalidArgument, "failed to configure the device: %v", err)
+				return status.Errorf(codes.FailedPrecondition, "failed to configure the device: %v", err)
 			}
-
 		default:
 			return status.Errorf(codes.InvalidArgument, "invalid model kind: %s", modelGVK.Kind)
 		}

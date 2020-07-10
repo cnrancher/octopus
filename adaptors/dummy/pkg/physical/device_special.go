@@ -8,22 +8,22 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/runtime"
 
 	"github.com/rancher/octopus/adaptors/dummy/api/v1alpha1"
+	"github.com/rancher/octopus/adaptors/dummy/pkg/metadata"
 	api "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
+	"github.com/rancher/octopus/pkg/adaptor/socket/handler"
 	"github.com/rancher/octopus/pkg/mqtt"
 	"github.com/rancher/octopus/pkg/util/object"
 )
 
-func NewSpecialDevice(log logr.Logger, instance *v1alpha1.DummySpecialDevice, toLimb SpecialDeviceSyncer) Device {
+func NewSpecialDevice(log logr.Logger, meta metav1.ObjectMeta, toLimb DummySpecialDeviceLimbSyncer) Device {
+	log.Info("Created ")
 	return &specialDevice{
 		log: log,
 		instance: &v1alpha1.DummySpecialDevice{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: instance.Namespace,
-				Name:      instance.Name,
-				UID:       instance.UID,
-			},
+			ObjectMeta: meta,
 		},
 		toLimb: toLimb,
 	}
@@ -32,37 +32,43 @@ func NewSpecialDevice(log logr.Logger, instance *v1alpha1.DummySpecialDevice, to
 type specialDevice struct {
 	sync.Mutex
 
-	stop chan struct{}
-	log  logr.Logger
+	log      logr.Logger
+	instance *v1alpha1.DummySpecialDevice
+	toLimb   DummySpecialDeviceLimbSyncer
+	stop     chan struct{}
 
-	instance   *v1alpha1.DummySpecialDevice
-	toLimb     SpecialDeviceSyncer
 	mqttClient mqtt.Client
 }
 
 func (d *specialDevice) Configure(references api.ReferencesHandler, configuration interface{}) error {
+	defer runtime.HandleCrash(handler.NewPanicsCleanupSocketHandler(metadata.Endpoint))
+
+	d.Lock()
+	defer d.Unlock()
+
 	var device, ok = configuration.(*v1alpha1.DummySpecialDevice)
 	if !ok {
 		d.log.Error(errors.New("invalidate configuration type"), "Failed to configure")
 		return nil
 	}
-	var spec = device.Spec
+	var newSpec = device.Spec
 
-	if spec.Gear == "" {
-		spec.Gear = v1alpha1.DummySpecialDeviceGearSlow
+	// configures MQTT client if needed
+	var staleExtension, newExtension v1alpha1.DummyDeviceExtension
+	if d.instance.Spec.Extension != nil {
+		staleExtension = *d.instance.Spec.Extension
 	}
-
-	d.Lock()
-	defer d.Unlock()
-
-	if !reflect.DeepEqual(d.instance.Spec.Extension.MQTT, spec.Extension.MQTT) {
+	if newSpec.Extension != nil {
+		newExtension = *newSpec.Extension
+	}
+	if !reflect.DeepEqual(staleExtension.MQTT, newExtension.MQTT) {
 		if d.mqttClient != nil {
 			d.mqttClient.Disconnect()
 			d.mqttClient = nil
 		}
 
-		if spec.Extension.MQTT != nil {
-			var cli, err = mqtt.NewClient(*spec.Extension.MQTT, object.GetControlledOwnerObjectReference(device), references)
+		if newExtension.MQTT != nil {
+			var cli, err = mqtt.NewClient(*newExtension.MQTT, object.GetControlledOwnerObjectReference(device), references)
 			if err != nil {
 				return errors.Wrap(err, "failed to create MQTT client")
 			}
@@ -75,69 +81,58 @@ func (d *specialDevice) Configure(references api.ReferencesHandler, configuratio
 		}
 	}
 
-	d.instance.Spec = spec
-	if spec.On {
-		d.on(spec.Gear)
-	} else {
-		d.off()
-	}
-	return nil
+	return d.refresh(newSpec)
 }
 
 func (d *specialDevice) Shutdown() {
 	d.Lock()
 	defer d.Unlock()
 
+	d.stopMock()
 	if d.mqttClient != nil {
 		d.mqttClient.Disconnect()
 		d.mqttClient = nil
 	}
-
-	d.off()
-	d.log.Info("Closed connection")
+	d.log.Info("Shutdown")
 }
 
-func (d *specialDevice) on(gear v1alpha1.DummySpecialDeviceGear) {
-	if d.instance.Status.Gear == gear {
-		return
+// refresh refreshes the status with new spec.
+func (d *specialDevice) refresh(newSpec v1alpha1.DummySpecialDeviceSpec) error {
+	var status = d.instance.Status
+	if newSpec.On {
+		var staleSpec = d.instance.Spec
+		if staleSpec.Gear != newSpec.Gear {
+			d.stopMock()
+
+			status.Gear = newSpec.Gear
+			switch status.Gear {
+			case v1alpha1.DummySpecialDeviceGearFast:
+				status.RotatingSpeed = 200
+			case v1alpha1.DummySpecialDeviceGearMiddle:
+				status.RotatingSpeed = 100
+			case v1alpha1.DummySpecialDeviceGearSlow:
+				status.RotatingSpeed = 0
+			}
+		}
+		d.startMock(newSpec.Gear)
+	} else {
+		d.stopMock()
 	}
 
-	if d.stop != nil {
-		close(d.stop)
-		d.stop = nil
-	}
-	d.stop = make(chan struct{})
-
-	// setup
-	d.instance.Status.Gear = gear
-	switch gear {
-	case v1alpha1.DummySpecialDeviceGearFast:
-		d.instance.Status.RotatingSpeed = 200
-	case v1alpha1.DummySpecialDeviceGearMiddle:
-		d.instance.Status.RotatingSpeed = 100
-	case v1alpha1.DummySpecialDeviceGearSlow:
-		d.instance.Status.RotatingSpeed = 0
-	}
-	d.sync()
-
-	go d.mockPhysicalWatching(gear, d.stop)
+	// records
+	d.instance.Spec = newSpec
+	d.instance.Status = status
+	return d.sync()
 }
 
-func (d *specialDevice) off() {
-	if d.stop != nil {
-		close(d.stop)
-		d.stop = nil
-	}
-
-	d.instance.Status = v1alpha1.DummySpecialDeviceStatus{}
-}
-
-// mockPhysicalWatching is used to simulate real device state changes
+// mock is blocked, it is used to simulate real device state changes
 // and synchronize the changed values back to the limb.
-func (d *specialDevice) mockPhysicalWatching(gear v1alpha1.DummySpecialDeviceGear, stop <-chan struct{}) {
-	d.log.Info("Mocking started")
+func (d *specialDevice) mock(gear v1alpha1.DummySpecialDeviceGear, stop <-chan struct{}) {
+	defer runtime.HandleCrash(handler.NewPanicsCleanupSocketHandler(metadata.Endpoint))
+
+	d.log.Info("Mocking")
 	defer func() {
-		d.log.Info("Mocking finished")
+		d.log.Info("Finished mocking")
 	}()
 
 	var duration time.Duration
@@ -160,25 +155,27 @@ func (d *specialDevice) mockPhysicalWatching(gear v1alpha1.DummySpecialDeviceGea
 		}
 
 		d.Lock()
-
 		func() {
 			defer d.Unlock()
 
-			switch d.instance.Status.Gear {
+			var status = &d.instance.Status
+			switch status.Gear {
 			case v1alpha1.DummySpecialDeviceGearFast:
-				if d.instance.Status.RotatingSpeed < 300 {
-					d.instance.Status.RotatingSpeed++
+				if status.RotatingSpeed < 300 {
+					status.RotatingSpeed++
 				}
 			case v1alpha1.DummySpecialDeviceGearMiddle:
-				if d.instance.Status.RotatingSpeed < 200 {
-					d.instance.Status.RotatingSpeed++
+				if status.RotatingSpeed < 200 {
+					status.RotatingSpeed++
 				}
 			case v1alpha1.DummySpecialDeviceGearSlow:
-				if d.instance.Status.RotatingSpeed < 100 {
-					d.instance.Status.RotatingSpeed++
+				if status.RotatingSpeed < 100 {
+					status.RotatingSpeed++
 				}
 			}
-			d.sync()
+			if err := d.sync(); err != nil {
+				d.log.Error(err, "failed to sync")
+			}
 		}()
 
 		select {
@@ -189,14 +186,32 @@ func (d *specialDevice) mockPhysicalWatching(gear v1alpha1.DummySpecialDeviceGea
 	}
 }
 
-func (d *specialDevice) sync() {
-	if d.toLimb != nil {
-		d.toLimb(d.instance)
+func (d *specialDevice) stopMock() {
+	if d.stop != nil {
+		close(d.stop)
+		d.stop = nil
 	}
-	if d.mqttClient != nil {
-		var status = d.instance.Status.DeepCopy()
-		if err := d.mqttClient.Publish(mqtt.PublishMessage{Payload: status}); err != nil {
-			d.log.Error(err, "Failed to publish MQTT broker")
+}
+
+func (d *specialDevice) startMock(gear v1alpha1.DummySpecialDeviceGear) {
+	if d.stop == nil {
+		d.stop = make(chan struct{})
+		go d.mock(gear, d.stop)
+	}
+}
+
+// sync combines all synchronization operations.
+func (d *specialDevice) sync() error {
+	if d.toLimb != nil {
+		if err := d.toLimb(d.instance); err != nil {
+			return err
 		}
 	}
+	if d.mqttClient != nil {
+		if err := d.mqttClient.Publish(mqtt.PublishMessage{Payload: d.instance.Status}); err != nil {
+			return err
+		}
+	}
+	d.log.V(1).Info("Synced")
+	return nil
 }

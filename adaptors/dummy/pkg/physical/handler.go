@@ -4,8 +4,8 @@ import (
 	"github.com/rancher/octopus/adaptors/dummy/api/v1alpha1"
 )
 
-// SpecialDeviceSyncer is used to sync physical special device.
-type SpecialDeviceSyncer func(in *v1alpha1.DummySpecialDevice)
+// DummySpecialDeviceLimbSyncer is used to sync physical special device.
+type DummySpecialDeviceLimbSyncer func(in *v1alpha1.DummySpecialDevice) error
 
-// ProtocolDeviceSyncer is used to sync physical special device.
-type ProtocolDeviceSyncer func(in *v1alpha1.DummyProtocolDevice)
+// DummyProtocolDeviceLimbSyncer is used to sync physical special device.
+type DummyProtocolDeviceLimbSyncer func(in *v1alpha1.DummyProtocolDevice) error

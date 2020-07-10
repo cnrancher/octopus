@@ -1,8 +1,8 @@
 commonAnnotations:
   devices.edge.cattle.io/enable: "true"
-  devices.edge.cattle.io/device-property: "" # specify device property to display in the UI
-  devices.edge.cattle.io/icon: "" # specify display icon for the UI
-  devices.edge.cattle.io/description: "dummy device description"
+  devices.edge.cattle.io/device-property: ""
+  devices.edge.cattle.io/icon: ""
+  devices.edge.cattle.io/description: "Dummy is used to quickly experience Octopus. The Dummy adaptor can simulate the interaction of limb and adaptor."
 
 resources:
   - base/devices.edge.cattle.io_dummyspecialdevices.yaml
