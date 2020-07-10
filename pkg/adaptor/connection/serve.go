@@ -1,10 +1,10 @@
 package connection
 
 import (
-	"os"
-	"path/filepath"
+	"k8s.io/apimachinery/pkg/util/runtime"
 
 	api "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
+	"github.com/rancher/octopus/pkg/adaptor/socket/handler"
 )
 
 // Serve provides the connection service `svc` on /var/lib/octopus/adaptors/`endpoint`,
@@ -30,19 +30,7 @@ type releaseSocketServer struct {
 }
 
 func (s *releaseSocketServer) Connect(server api.Connection_ConnectServer) error {
-	defer func() {
-		if r := recover(); r != nil {
-			var socketPath = filepath.Join(api.AdaptorPath, s.endpoint)
-			if pi, err := os.Stat(socketPath); err == nil && !pi.IsDir() && pi.Mode()&os.ModeSocket != 0 {
-				_ = os.RemoveAll(socketPath)
-			}
+	defer runtime.HandleCrash(handler.NewPanicsCleanupSocketHandler(s.endpoint))
 
-			// NB(thxCode) the purpose in this recover is to clean up the remaining socket file,
-			// which ensure the adaptor can be restarted again. For irreversible panic,
-			// returning an error is unable to solve the internal problem, and may lead to other serious errors.
-			// So just panic to upper level.
-			panic(r)
-		}
-	}()
 	return s.svc.Connect(server)
 }
