@@ -76,13 +76,13 @@ var _ = Describe("verify MQTT extension", func() {
 
 			var testDevice = physical.NewSpecialDevice(
 				log.WithValues("device", testInstanceNamespacedName),
-				testInstance,
+				testInstance.ObjectMeta,
 				nil,
 			)
 			defer testDevice.Shutdown()
 
 			testInstance.Spec = v1alpha1.DummySpecialDeviceSpec{
-				Extension: v1alpha1.DeviceExtensionSpec{
+				Extension: &v1alpha1.DummyDeviceExtension{
 					MQTT: &mqttapi.MQTTOptions{
 						Client: mqttapi.MQTTClientOptions{
 							Server: testUnencryptedBrokerAddress,
@@ -130,13 +130,13 @@ var _ = Describe("verify MQTT extension", func() {
 
 			var testDevice = physical.NewSpecialDevice(
 				log.WithValues("device", testInstanceNamespacedName),
-				testInstance,
+				testInstance.ObjectMeta,
 				nil,
 			)
 			defer testDevice.Shutdown()
 
 			testInstance.Spec = v1alpha1.DummySpecialDeviceSpec{
-				Extension: v1alpha1.DeviceExtensionSpec{
+				Extension: &v1alpha1.DummyDeviceExtension{
 					MQTT: &mqttapi.MQTTOptions{
 						Client: mqttapi.MQTTClientOptions{
 							// publish via encrypted endpoint
@@ -186,13 +186,13 @@ var _ = Describe("verify MQTT extension", func() {
 
 			var testDevice = physical.NewSpecialDevice(
 				log.WithValues("device", testInstanceNamespacedName),
-				testInstance,
+				testInstance.ObjectMeta,
 				nil,
 			)
 			defer testDevice.Shutdown()
 
 			testInstance.Spec = v1alpha1.DummySpecialDeviceSpec{
-				Extension: v1alpha1.DeviceExtensionSpec{
+				Extension: &v1alpha1.DummyDeviceExtension{
 					MQTT: &mqttapi.MQTTOptions{
 						Client: mqttapi.MQTTClientOptions{
 							Server: testUnencryptedBrokerAddress,
@@ -226,7 +226,7 @@ var _ = Describe("verify MQTT extension", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			testInstance.Spec = v1alpha1.DummySpecialDeviceSpec{
-				Extension: v1alpha1.DeviceExtensionSpec{
+				Extension: &v1alpha1.DummyDeviceExtension{
 					MQTT: &mqttapi.MQTTOptions{
 						Client: mqttapi.MQTTClientOptions{
 							Server: testUnencryptedBrokerAddress,
@@ -293,13 +293,13 @@ var _ = Describe("verify MQTT extension", func() {
 
 			var testDevice = physical.NewProtocolDevice(
 				log.WithValues("device", testInstanceNamespacedName),
-				testInstance,
+				testInstance.ObjectMeta,
 				nil,
 			)
 			defer testDevice.Shutdown()
 
 			testInstance.Spec = v1alpha1.DummyProtocolDeviceSpec{
-				Extension: v1alpha1.DeviceExtensionSpec{
+				Extension: &v1alpha1.DummyDeviceExtension{
 					MQTT: &mqttapi.MQTTOptions{
 						Client: mqttapi.MQTTClientOptions{
 							Server: testUnencryptedBrokerAddress,
@@ -313,7 +313,7 @@ var _ = Describe("verify MQTT extension", func() {
 				Protocol: v1alpha1.DummyProtocolDeviceProtocol{
 					IP: "192.168.3.6",
 				},
-				Props: map[string]v1alpha1.DummyProtocolDeviceSpecProps{
+				Properties: map[string]v1alpha1.DummyProtocolDeviceProperty{
 					"string": {
 						Type: v1alpha1.DummyProtocolDevicePropertyTypeString,
 					},
@@ -325,14 +325,14 @@ var _ = Describe("verify MQTT extension", func() {
 					},
 					"object": {
 						Type: v1alpha1.DummyProtocolDevicePropertyTypeObject,
-						ObjectProps: map[string]v1alpha1.DummyProtocolDeviceSpecObjectOrArrayProps{
+						ObjectProperties: map[string]v1alpha1.DummyProtocolDeviceObjectOrArrayProperty{
 							"objectString": {
-								DummyProtocolDeviceSpecProps: v1alpha1.DummyProtocolDeviceSpecProps{
+								DummyProtocolDeviceProperty: v1alpha1.DummyProtocolDeviceProperty{
 									Type: v1alpha1.DummyProtocolDevicePropertyTypeString,
 								},
 							},
 							"objectInteger": {
-								DummyProtocolDeviceSpecProps: v1alpha1.DummyProtocolDeviceSpecProps{
+								DummyProtocolDeviceProperty: v1alpha1.DummyProtocolDeviceProperty{
 									Type: v1alpha1.DummyProtocolDevicePropertyTypeInt,
 								},
 							},
@@ -340,8 +340,8 @@ var _ = Describe("verify MQTT extension", func() {
 					},
 					"array": {
 						Type: v1alpha1.DummyProtocolDevicePropertyTypeArray,
-						ArrayProps: &v1alpha1.DummyProtocolDeviceSpecObjectOrArrayProps{
-							DummyProtocolDeviceSpecProps: v1alpha1.DummyProtocolDeviceSpecProps{
+						ArrayProperties: &v1alpha1.DummyProtocolDeviceObjectOrArrayProperty{
+							DummyProtocolDeviceProperty: v1alpha1.DummyProtocolDeviceProperty{
 								Type: v1alpha1.DummyProtocolDevicePropertyTypeInt,
 							},
 						},

@@ -16,7 +16,7 @@ spec:
     spec:
       protocol:
         ip: "127.0.0.1"
-      props:
+      properties:
         name:
           type: string
           description: "The name (unique identifier) of the robot."
@@ -24,7 +24,7 @@ spec:
         gender:
           type: object
           description: "The gender of the robot."
-          objectProps:
+          objectProperties:
             name:
               type: string
               description: "The name of the gender."
@@ -34,7 +34,7 @@ spec:
         friends:
           type: array
           description: "The name list of the robot's friends."
-          arrayProps:
+          arrayProperties:
             type: string
             description: "The name of the friend."
         power:
