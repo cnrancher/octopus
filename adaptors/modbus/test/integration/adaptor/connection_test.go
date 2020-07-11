@@ -15,11 +15,7 @@ import (
 	mock_v1alpha1 "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1/mock"
 )
 
-// testing scenarios:
-// 	+ Server
-//		- validate if the connection stop when it closes
-// 		- validate the process of input device
-var _ = Describe("Connection", func() {
+var _ = Describe("verify Connection", func() {
 	var (
 		err error
 
@@ -36,7 +32,7 @@ var _ = Describe("Connection", func() {
 		mockCtrl.Finish()
 	})
 
-	Context("Server", func() {
+	Context("on Connect server", func() {
 
 		var mockServer *mock_v1alpha1.MockConnection_ConnectServer
 
@@ -102,9 +98,8 @@ var _ = Describe("Connection", func() {
 					"spec":{
 						"protocol":{
 							"tcp":{
-								"ip":"127.0.0.1",
-								"port":80,
-								"slaveID":1
+								"address":"127.0.0.1:80",
+								"workerID":1
 							}
 						}
 					}
@@ -112,8 +107,8 @@ var _ = Describe("Connection", func() {
 			}, nil)
 			err = service.Connect(mockServer)
 			sts = status.Convert(err)
-			Expect(sts.Code()).To(Equal(grpccodes.FailedPrecondition))
-			Expect(sts.Message()).To(Equal("failed to connect to modbus device endpoint: dial tcp 127.0.0.1:80: connect: connection refused"))
+			Expect(sts.Code()).To(Equal(grpccodes.InvalidArgument))
+			Expect(sts.Message()).To(Equal("failed to connect to device endpoint: failed to connect Modbus endpoint: failed to connect via TCP: dial tcp 127.0.0.1:80: connect: connection refused"))
 		})
 
 	})

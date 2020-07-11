@@ -8,9 +8,9 @@ metadata:
       architecture protocol. The Modbus adapter can be called a Modbus master station
       and is responsible for connecting and collecting information from Modbus slave
       stations (i.e, devices).
+    devices.edge.cattle.io/device-property: '{"name":"string","type":"string","value":"string","updatedAt":"date"}'
     devices.edge.cattle.io/enable: "true"
     devices.edge.cattle.io/icon: https://octopus-assets.oss-cn-beijing.aliyuncs.com/adaptor-icons/modbus.svg
-    devices.edge.cattle.io/status-property: '{"name":"string","dataType":"string","value":"string","updatedAt":"date"}'
   creationTimestamp: null
   labels:
     app.kubernetes.io/name: octopus-adaptor-modbus
@@ -22,26 +22,25 @@ spec:
     kind: ModbusDevice
     listKind: ModbusDeviceList
     plural: modbusdevices
+    shortNames:
+    - modbus
     singular: modbusdevice
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
+    - jsonPath: .spec.protocol..endpoint
+      name: ENDPOINT
+      type: string
+    - jsonPath: .spec.protocol..workerID
+      name: WORKER ID
+      type: string
     - jsonPath: .metadata.creationTimestamp
       name: AGE
       type: date
-    - jsonPath: .spec.protocol.tcp.ip
-      name: IP
-      type: string
-    - jsonPath: .spec.protocol.tcp.port
-      name: PORT
-      type: integer
-    - jsonPath: .spec.protocol.rtu.serialPort
-      name: SERIAL PORT
-      type: string
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: ModbusDevice is the Schema for the modbus device API
+        description: ModbusDevice is the schema for the Modbus device API.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -56,7 +55,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: ModbusDeviceSpec defines the desired state of ModbusDevice
+            description: ModbusDeviceSpec defines the desired state of ModbusDevice.
             properties:
               extension:
                 description: Specifies the extension of device.
@@ -389,63 +388,83 @@ spec:
                     type: object
                 type: object
               parameters:
-                description: Parameter of the modbus device.
+                description: Specifies the parameters of device.
                 properties:
                   syncInterval:
+                    default: 5s
+                    description: Specifies the amount of interval that synchronized
+                      to limb. The default value is "5s".
                     type: string
                   timeout:
+                    default: 10s
+                    description: Specifies the amount of timeout. The default value
+                      is "10s".
                     type: string
                 type: object
               properties:
-                description: Specifies the properties of the modbus device.
+                description: Specifies the properties of device.
                 items:
-                  description: DeviceProperty describes an individual device property
-                    / attribute like temperature / humidity etc.
+                  description: ModbusDeviceProperty defines the desired property of
+                    ModbusDevice.
                   properties:
-                    dataType:
-                      description: PropertyDataType represents the type and data validation
-                        of the property.
+                    description:
+                      description: Specifies the description of property.
+                      type: string
+                    name:
+                      description: Specifies the name of property.
+                      type: string
+                    readOnly:
+                      description: Specifies if the property is readonly. The default
+                        value is "false".
+                      type: boolean
+                    type:
+                      description: Specifies the type of property.
                       enum:
-                      - float
                       - int
+                      - float
                       - string
                       - boolean
                       type: string
-                    description:
-                      description: The device property description.
-                      type: string
-                    name:
-                      description: The device property name.
-                      type: string
-                    readOnly:
-                      type: boolean
                     value:
+                      description: Specifies the value of property, only available
+                        in the writable property.
                       type: string
                     visitor:
+                      description: Specifies the visitor of property.
                       properties:
                         offset:
-                          description: Offset indicates the starting register number
-                            to read/write data.
+                          description: Specifies the starting offset of register for
+                            read/write data.
                           type: integer
                         orderOfOperations:
+                          description: Specifies the operations in order if needed.
                           items:
+                            description: ModbusDeviceArithmeticOperation defines the
+                              arithmetic operation of ModbusDevice.
                             properties:
-                              operationType:
+                              type:
+                                description: Specifies the type of arithmetic operation.
                                 enum:
                                 - Add
                                 - Subtract
                                 - Multiply
                                 - Divide
                                 type: string
-                              operationValue:
+                              value:
+                                description: Specifies the value for arithmetic operation,
+                                  which is in form of float string.
                                 type: string
+                            required:
+                            - type
+                            - value
                             type: object
                           type: array
+                          x-kubernetes-list-type: atomic
                         quantity:
-                          description: The quantity of registers
+                          description: Specifies the quantity of register.
                           type: integer
                         register:
-                          description: Type of register
+                          description: Specifies the register to visit.
                           enum:
                           - CoilRegister
                           - DiscreteInputRegister
@@ -458,88 +477,110 @@ spec:
                       - register
                       type: object
                   required:
-                  - dataType
                   - name
+                  - type
                   - visitor
                   type: object
                 type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
               protocol:
-                description: Protocol for accessing the modbus device.
+                description: Specifies the protocol for accessing the device.
                 properties:
                   rtu:
+                    description: Specifies the connection protocol as RTU
                     properties:
                       baudRate:
-                        description: Baud rate (default 19200)
+                        default: 19200
+                        description: Specifies the baud rate of connection, a measurement
+                          of transmission speed. The default value is "19200".
                         type: integer
                       dataBits:
-                        description: 'Data bits: 5, 6, 7 or 8 (default 8)'
+                        default: 8
+                        description: Specifies the data bit of connection, selected
+                          from [5, 6, 7, 8]. The default value is "8".
                         enum:
                         - 5
                         - 6
                         - 7
                         - 8
                         type: integer
+                      endpoint:
+                        description: Specifies the serial port of device, which is
+                          in form of "/dev/ttyS0".
+                        pattern: ^/.*[^/]$
+                        type: string
                       parity:
-                        description: The parity. N - None, E - Even, O - Odd, default
-                          E.
+                        default: E
+                        description: Specifies the parity of connection, selected
+                          from [N - None, E - Even, O - Odd], the use of N(None) parity
+                          requires 2 stop bits. The default value is "E".
                         enum:
-                        - O
-                        - E
                         - "N"
+                        - E
+                        - O
                         type: string
-                      serialPort:
-                        description: Device path (/dev/ttyS0)
-                        type: string
-                      slaveID:
-                        type: integer
                       stopBits:
-                        description: 'Stop bits: 1 or 2 (default 1)'
+                        default: 1
+                        description: Specifies the stop bit of connection, selected
+                          from [1, 2], the use of N(None) parity requires 2 stop bits.
+                          The default value is "1".
                         enum:
                         - 1
                         - 2
                         type: integer
+                      workerID:
+                        description: Specifies the worker ID of device.
+                        type: integer
                     required:
-                    - serialPort
-                    - slaveID
+                    - endpoint
+                    - workerID
                     type: object
                   tcp:
+                    description: Specifies the connection protocol as TCP
                     properties:
-                      ip:
+                      endpoint:
+                        description: Specifies the IP address of device, which is
+                          in form of "ip:port".
                         type: string
-                      port:
-                        type: integer
-                      slaveID:
+                      workerID:
+                        description: Specifies the worker ID of device.
                         type: integer
                     required:
-                    - ip
-                    - port
-                    - slaveID
+                    - endpoint
+                    - workerID
                     type: object
                 type: object
             required:
             - protocol
             type: object
           status:
-            description: ModbusDeviceStatus defines the observed state of ModbusDevice
+            description: ModbusDeviceStatus defines the observed state of ModbusDevice.
             properties:
               properties:
-                description: Reports the status of the modbus device.
+                description: Reports the properties of device.
                 items:
+                  description: ModbusDeviceStatusProperty defines the observed property
+                    of ModbusDevice.
                   properties:
-                    dataType:
-                      description: The property data type.
+                    name:
+                      description: Reports the name of property.
+                      type: string
+                    type:
+                      description: Reports the type of property.
                       enum:
-                      - float
                       - int
+                      - float
                       - string
                       - boolean
                       type: string
-                    name:
-                      type: string
                     updatedAt:
+                      description: Reports the updated timestamp of property.
                       format: date-time
                       type: string
                     value:
+                      description: Reports the value of property.
                       type: string
                   type: object
                 type: array

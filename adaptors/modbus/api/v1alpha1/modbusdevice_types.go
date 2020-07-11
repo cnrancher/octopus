@@ -1,150 +1,232 @@
 package v1alpha1
 
 import (
-	"time"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// ModbusDeviceRegisterType defines the type for the register to read a device property.
+// +kubebuilder:validation:Enum=CoilRegister;DiscreteInputRegister;InputRegister;HoldingRegister
+type ModbusDeviceRegisterType string
+
 const (
-	// Modbus protocol register types
-	ModbusRegisterTypeCoilRegister          ModbusRegisterType = "CoilRegister"
-	ModbusRegisterTypeDiscreteInputRegister ModbusRegisterType = "DiscreteInputRegister"
-	ModbusRegisterTypeInputRegister         ModbusRegisterType = "InputRegister"
-	ModbusRegisterTypeHoldingRegister       ModbusRegisterType = "HoldingRegister"
-
-	// Modbus property data types
-	PropertyDataTypeInt     PropertyDataType = "int"
-	PropertyDataTypeString  PropertyDataType = "string"
-	PropertyDataTypeFloat   PropertyDataType = "float"
-	PropertyDataTypeBoolean PropertyDataType = "boolean"
-
-	DefaultSyncInterval = 5 * time.Second
-	DefaultTimeout      = 10 * time.Second
+	ModbusDeviceCoilRegister          ModbusDeviceRegisterType = "CoilRegister"
+	ModbusDeviceDiscreteInputRegister ModbusDeviceRegisterType = "DiscreteInputRegister"
+	ModbusDeviceInputRegister         ModbusDeviceRegisterType = "InputRegister"
+	ModbusDeviceHoldingRegister       ModbusDeviceRegisterType = "HoldingRegister"
 )
 
-// The Modbus register type to read a device property.
-// +kubebuilder:validation:Enum=CoilRegister;DiscreteInputRegister;InputRegister;HoldingRegister
-type ModbusRegisterType string
+// ModbusDevicePropertyType defines the type of the property value.
+// +kubebuilder:validation:Enum=int;float;string;boolean
+type ModbusDevicePropertyType string
 
-// The property data type.
-// +kubebuilder:validation:Enum=float;int;string;boolean
-type PropertyDataType string
+const (
+	ModbusDevicePropertyTypeInt     ModbusDevicePropertyType = "int"
+	ModbusDevicePropertyTypeFloat   ModbusDevicePropertyType = "float"
+	ModbusDevicePropertyTypeString  ModbusDevicePropertyType = "string"
+	ModbusDevicePropertyTypeBoolean ModbusDevicePropertyType = "boolean"
+)
 
-// ModbusDeviceSpec defines the desired state of ModbusDevice
-type ModbusDeviceSpec struct {
-	// Parameter of the modbus device.
-	// +optional
-	Parameters *Parameters `json:"parameters,omitempty"`
-
-	// Specifies the extension of device.
-	// +optional
-	Extension *DeviceExtensionSpec `json:"extension,omitempty"`
-
-	// Protocol for accessing the modbus device.
-	// +kubebuilder:validation:Required
-	ProtocolConfig *ModbusProtocolConfig `json:"protocol"`
-
-	// Specifies the properties of the modbus device.
-	// +optional
-	Properties []DeviceProperty `json:"properties,omitempty"`
-}
-
-type Parameters struct {
+// ModbusDeviceParameters defines the desired parameters of ModbusDevice.
+type ModbusDeviceParameters struct {
+	// Specifies the amount of interval that synchronized to limb.
+	// The default value is "5s".
+	// +kubebuilder:default="5s"
 	SyncInterval v1.Duration `json:"syncInterval,omitempty"`
-	Timeout      v1.Duration `json:"timeout,omitempty"`
+
+	// Specifies the amount of timeout.
+	// The default value is "10s".
+	// +kubebuilder:default="10s"
+	Timeout v1.Duration `json:"timeout,omitempty"`
 }
 
-// Only one of its members may be specified.
-type ModbusProtocolConfig struct {
-	RTU *ModbusConfigRTU `json:"rtu,omitempty"`
-	TCP *ModbusConfigTCP `json:"tcp,omitempty"`
+// ModbusDeviceProtocol defines the desired protocol of ModbusDevice.
+type ModbusDeviceProtocol struct {
+	// Specifies the connection protocol as RTU
+	// +optional
+	RTU *ModbusDeviceProtocolRTU `json:"rtu,omitempty"`
+
+	// Specifies the connection protocol as TCP
+	// +optional
+	TCP *ModbusDeviceProtocolTCP `json:"tcp,omitempty"`
 }
 
-type ModbusConfigTCP struct {
-	IP      string `json:"ip"`
-	Port    int    `json:"port"`
-	SlaveID int    `json:"slaveID"`
+// ModbusDeviceProtocolTCP defines the TCP protocol of ModbusDevice.
+type ModbusDeviceProtocolTCP struct {
+	// Specifies the IP address of device,
+	// which is in form of "ip:port".
+	// +kubebuilder:validation:Required
+	Endpoint string `json:"endpoint"`
+
+	// Specifies the worker ID of device.
+	// +kubebuilder:validation:Required
+	WorkerID int `json:"workerID"`
 }
 
-type ModbusConfigRTU struct {
-	// Device path (/dev/ttyS0)
-	SerialPort string `json:"serialPort"`
-	SlaveID    int    `json:"slaveID"`
-	// Baud rate (default 19200)
+// ModbusDeviceProtocolRTU defines the RTU protocol of ModbusDevice.
+type ModbusDeviceProtocolRTU struct {
+	// Specifies the serial port of device,
+	// which is in form of "/dev/ttyS0".
+	// +kubebuilder:validation:Pattern="^/.*[^/]$"
+	// +kubebuilder:validation:Required
+	Endpoint string `json:"endpoint"`
+
+	// Specifies the worker ID of device.
+	// +kubebuilder:validation:Required
+	WorkerID int `json:"workerID"`
+
+	// Specifies the baud rate of connection, a measurement of transmission speed.
+	// The default value is "19200".
+	// +kubebuilder:default=19200
+	// +optional
 	BaudRate int `json:"baudRate,omitempty"`
-	// Data bits: 5, 6, 7 or 8 (default 8)
+
+	// Specifies the data bit of connection, selected from [5, 6, 7, 8].
+	// The default value is "8".
 	// +kubebuilder:validation:Enum=5;6;7;8
+	// +kubebuilder:default=8
 	DataBits int `json:"dataBits,omitempty"`
-	// The parity. N - None, E - Even, O - Odd, default E.
-	// +kubebuilder:validation:Enum=O;E;N
+
+	// Specifies the parity of connection, selected from [N - None, E - Even, O - Odd],
+	// the use of N(None) parity requires 2 stop bits.
+	// The default value is "E".
+	// +kubebuilder:validation:Enum=N;E;O
+	// +kubebuilder:default="E"
 	Parity string `json:"parity,omitempty"`
-	// Stop bits: 1 or 2 (default 1)
+
+	// Specifies the stop bit of connection, selected from [1, 2],
+	// the use of N(None) parity requires 2 stop bits.
+	// The default value is "1".
 	// +kubebuilder:validation:Enum=1;2
+	// +kubebuilder:default=1
 	StopBits int `json:"stopBits,omitempty"`
 }
 
-// DeviceProperty describes an individual device property / attribute like temperature / humidity etc.
-type DeviceProperty struct {
-	// The device property name.
-	Name string `json:"name"`
-	// The device property description.
-	Description string `json:"description,omitempty"`
-	ReadOnly    bool   `json:"readOnly,omitempty"`
-	// PropertyDataType represents the type and data validation of the property.
-	DataType PropertyDataType `json:"dataType"`
-	Visitor  PropertyVisitor  `json:"visitor"`
-	Value    string           `json:"value,omitempty"`
-}
-
-type PropertyVisitor struct {
-	// Type of register
-	Register ModbusRegisterType `json:"register"`
-	// Offset indicates the starting register number to read/write data.
-	Offset uint16 `json:"offset"`
-	// The quantity of registers
-	Quantity          uint16             `json:"quantity"`
-	OrderOfOperations []ModbusOperations `json:"orderOfOperations,omitempty"`
-}
-
-type ModbusOperations struct {
-	OperationType  ArithOperationType `json:"operationType,omitempty"`
-	OperationValue string             `json:"operationValue,omitempty"`
-}
-
+// ModbusDeviceArithmeticOperationType defines the type of arithmetic operation.
 // +kubebuilder:validation:Enum=Add;Subtract;Multiply;Divide
-type ArithOperationType string
+type ModbusDeviceArithmeticOperationType string
 
 const (
-	OperationAdd      ArithOperationType = "Add"
-	OperationSubtract ArithOperationType = "Subtract"
-	OperationMultiply ArithOperationType = "Multiply"
-	OperationDivide   ArithOperationType = "Divide"
+	ModbusDeviceArithmeticAdd      ModbusDeviceArithmeticOperationType = "Add"
+	ModbusDeviceArithmeticSubtract ModbusDeviceArithmeticOperationType = "Subtract"
+	ModbusDeviceArithmeticMultiply ModbusDeviceArithmeticOperationType = "Multiply"
+	ModbusDeviceArithmeticDivide   ModbusDeviceArithmeticOperationType = "Divide"
 )
 
-// ModbusDeviceStatus defines the observed state of ModbusDevice
-type ModbusDeviceStatus struct {
-	// Reports the status of the modbus device.
-	// +optional
-	Properties []StatusProperties `json:"properties,omitempty"`
+// ModbusDeviceArithmeticOperation defines the arithmetic operation of ModbusDevice.
+type ModbusDeviceArithmeticOperation struct {
+	// Specifies the type of arithmetic operation.
+	// +kubebuilder:validation:Required
+	Type ModbusDeviceArithmeticOperationType `json:"type"`
+
+	// Specifies the value for arithmetic operation, which is in form of float string.
+	// +kubebuilder:validation:Required
+	Value string `json:"value"`
 }
 
-type StatusProperties struct {
-	Name      string           `json:"name,omitempty"`
-	Value     string           `json:"value,omitempty"`
-	DataType  PropertyDataType `json:"dataType,omitempty"`
-	UpdatedAt metav1.Time      `json:"updatedAt,omitempty"`
+// ModbusDevicePropertyVisitor defines the visitor of property.
+type ModbusDevicePropertyVisitor struct {
+	// Specifies the register to visit.
+	// +kubebuilder:validation:Required
+	Register ModbusDeviceRegisterType `json:"register"`
+
+	// Specifies the starting offset of register for read/write data.
+	// +kubebuilder:validation:Required
+	Offset uint16 `json:"offset"`
+
+	// Specifies the quantity of register.
+	// +kubebuilder:validation:Required
+	Quantity uint16 `json:"quantity"`
+
+	// Specifies the operations in order if needed.
+	// +listType=atomic
+	// +optional
+	OrderOfOperations []ModbusDeviceArithmeticOperation `json:"orderOfOperations,omitempty"`
+}
+
+// ModbusDeviceProperty defines the desired property of ModbusDevice.
+type ModbusDeviceProperty struct {
+	// Specifies the name of property.
+	// +kubebuilder:validation:Required
+	Name string `json:"name"`
+
+	// Specifies the description of property.
+	// +optional
+	Description string `json:"description,omitempty"`
+
+	// Specifies the type of property.
+	// +kubebuilder:validation:Required
+	Type ModbusDevicePropertyType `json:"type"`
+
+	// Specifies the visitor of property.
+	// +kubebuilder:validation:Required
+	Visitor ModbusDevicePropertyVisitor `json:"visitor"`
+
+	// Specifies if the property is readonly.
+	// The default value is "false".
+	// +optional
+	ReadOnly bool `json:"readOnly,omitempty"`
+
+	// Specifies the value of property, only available in the writable property.
+	// +optional
+	Value string `json:"value,omitempty"`
+}
+
+// ModbusDeviceSpec defines the desired state of ModbusDevice.
+type ModbusDeviceSpec struct {
+	// Specifies the extension of device.
+	// +optional
+	Extension *ModbusDeviceExtension `json:"extension,omitempty"`
+
+	// Specifies the parameters of device.
+	// +optional
+	Parameters ModbusDeviceParameters `json:"parameters,omitempty"`
+
+	// Specifies the protocol for accessing the device.
+	// +kubebuilder:validation:Required
+	Protocol ModbusDeviceProtocol `json:"protocol"`
+
+	// Specifies the properties of device.
+	// +listType=map
+	// +listMapKey=name
+	// +optional
+	Properties []ModbusDeviceProperty `json:"properties,omitempty"`
+}
+
+// ModbusDeviceStatus defines the observed state of ModbusDevice.
+type ModbusDeviceStatus struct {
+	// Reports the properties of device.
+	// +optional
+	Properties []ModbusDeviceStatusProperty `json:"properties,omitempty"`
+}
+
+// ModbusDeviceStatusProperty defines the observed property of ModbusDevice.
+type ModbusDeviceStatusProperty struct {
+	// Reports the name of property.
+	// +optional
+	Name string `json:"name,omitempty"`
+
+	// Reports the type of property.
+	// +optional
+	Type ModbusDevicePropertyType `json:"type,omitempty"`
+
+	// Reports the value of property.
+	// +optional
+	Value string `json:"value,omitempty"`
+
+	// Reports the updated timestamp of property.
+	// +optional
+	UpdatedAt *metav1.Time `json:"updatedAt,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 // +k8s:openapi-gen=true
+// +kubebuilder:resource:shortName=modbus
 // +kubebuilder:subresource:status
-// +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
-// +kubebuilder:printcolumn:name="IP",type="string",JSONPath=".spec.protocol.tcp.ip"
-// +kubebuilder:printcolumn:name="PORT",type="integer",JSONPath=".spec.protocol.tcp.port"
-// +kubebuilder:printcolumn:name="SERIAL PORT",type="string",JSONPath=".spec.protocol.rtu.serialPort"
-// ModbusDevice is the Schema for the modbus device API
+// +kubebuilder:printcolumn:name="ENDPOINT",type="string",JSONPath=`.spec.protocol..endpoint`
+// +kubebuilder:printcolumn:name="WORKER ID",type="string",JSONPath=`.spec.protocol..workerID`
+// +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=`.metadata.creationTimestamp`
+// ModbusDevice is the schema for the Modbus device API.
 type ModbusDevice struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -154,11 +236,12 @@ type ModbusDevice struct {
 }
 
 // +kubebuilder:object:root=true
-// ModbusDeviceList contains a list of modbus devices
+// ModbusDeviceList contains a list of Modbus devices.
 type ModbusDeviceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ModbusDevice `json:"items"`
+
+	Items []ModbusDevice `json:"items"`
 }
 
 func init() {

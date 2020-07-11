@@ -19,8 +19,8 @@ spec:
         timeout: 10s
       protocol:
         rtu:
-          serialPort: /dev/tty.usbserial-1410
-          slaveID: 1
+          endpoint: /dev/tty.usbserial-1410
+          workerID: 1
           parity: "N"
           stopBits: 1
           dataBits: 8
@@ -34,6 +34,6 @@ spec:
             offset: 0
             quantity: 1
             orderOfOperations:
-              - operationType: Divide
-                operationValue: "10"
-          dataType: float
+              - type: Divide
+                value: "10"
+          type: float
