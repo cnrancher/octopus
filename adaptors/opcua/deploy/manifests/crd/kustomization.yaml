@@ -1,6 +1,6 @@
 commonAnnotations:
   devices.edge.cattle.io/enable: "true"
-  devices.edge.cattle.io/status-property: '{"name":"string","dataType":"string","value":"string","updatedAt":"date"}'
+  devices.edge.cattle.io/device-property: '{"name":"string","type":"string","value":"string","updatedAt":"date"}'
   devices.edge.cattle.io/icon: "https://octopus-assets.oss-cn-beijing.aliyuncs.com/adaptor-icons/opc-ua.svg"
   devices.edge.cattle.io/description: "OPC Unified Architecture (OPC UA) is a machine to machine communication protocol for industrial automation developed by the OPC Foundation. OPC-UA adaptor focus on communicating with industrial equipment and systems for data collection and control."
 

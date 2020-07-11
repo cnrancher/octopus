@@ -70,7 +70,7 @@ github.com/google/uuid
 github.com/googleapis/gnostic/OpenAPIv2
 github.com/googleapis/gnostic/compiler
 github.com/googleapis/gnostic/extensions
-# github.com/gopcua/opcua v0.1.10
+# github.com/gopcua/opcua v0.1.11
 github.com/gopcua/opcua
 github.com/gopcua/opcua/debug
 github.com/gopcua/opcua/errors

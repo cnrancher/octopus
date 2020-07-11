@@ -2,6 +2,8 @@ package physical
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"reflect"
 	"sync"
 	"time"
@@ -10,67 +12,77 @@ import (
 	"github.com/gopcua/opcua"
 	"github.com/gopcua/opcua/ua"
 	"github.com/pkg/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/runtime"
 
 	"github.com/rancher/octopus/adaptors/opcua/api/v1alpha1"
+	"github.com/rancher/octopus/adaptors/opcua/pkg/metadata"
 	api "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
+	"github.com/rancher/octopus/pkg/adaptor/socket/handler"
 	"github.com/rancher/octopus/pkg/mqtt"
 	"github.com/rancher/octopus/pkg/util/critical"
 	"github.com/rancher/octopus/pkg/util/object"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
 
+// Device is an interface for device operations set.
 type Device interface {
-	Configure(references api.ReferencesHandler, obj v1alpha1.OPCUADevice) error
+	// Shutdown uses to close the connection between adaptor and real(physical) device.
 	Shutdown()
+	// Configure uses to set up the device.
+	Configure(references api.ReferencesHandler, obj *v1alpha1.OPCUADevice) error
 }
 
-func NewDevice(log logr.Logger, name types.NamespacedName, handler DataHandler) Device {
-	return &device{
-		log:     log,
-		name:    name,
-		handler: handler,
+// NewDevice creates a Device.
+func NewDevice(log logr.Logger, meta metav1.ObjectMeta, toLimb OPCUADeviceLimbSyncer) Device {
+	log.Info("Created ")
+	return &opcuaDevice{
+		log: log,
+		instance: &v1alpha1.OPCUADevice{
+			ObjectMeta: meta,
+		},
+		toLimb: toLimb,
 	}
 }
 
-type device struct {
+type opcuaDevice struct {
 	sync.Mutex
 
-	stop chan struct{}
+	log         logr.Logger
+	instance    *v1alpha1.OPCUADevice
+	toLimb      OPCUADeviceLimbSyncer
+	stop        chan struct{}
+	opcuaClient *opcua.Client
 
-	log     logr.Logger
-	name    types.NamespacedName
-	handler DataHandler
-
-	spec   v1alpha1.OPCUADeviceSpec
-	status v1alpha1.OPCUADeviceStatus
-
-	client     *opcua.Client
 	mqttClient mqtt.Client
 }
 
-func (d *device) Configure(references api.ReferencesHandler, obj v1alpha1.OPCUADevice) error {
-	deviceSpec := d.spec
-	d.spec = obj.Spec
+func (d *opcuaDevice) Configure(references api.ReferencesHandler, device *v1alpha1.OPCUADevice) error {
+	defer runtime.HandleCrash(handler.NewPanicsCleanupSocketHandler(metadata.Endpoint))
 
-	// configure protocol config and parameters
-	if !reflect.DeepEqual(d.spec.ProtocolConfig, deviceSpec.ProtocolConfig) || !reflect.DeepEqual(d.spec.Parameters, deviceSpec.Parameters) {
-		if err := d.on(); err != nil {
-			return err
-		}
+	d.Lock()
+	defer d.Unlock()
+
+	var newSpec = device.Spec
+	var staleSpec = d.instance.Spec
+
+	// configures MQTT opcuaClient if needed
+	var staleExtension, newExtension v1alpha1.OPCUADeviceExtension
+	if staleSpec.Extension != nil {
+		staleExtension = *staleSpec.Extension
 	}
-
-	if !reflect.DeepEqual(d.spec.Extension, deviceSpec.Extension) {
+	if newSpec.Extension != nil {
+		newExtension = *newSpec.Extension
+	}
+	if !reflect.DeepEqual(staleExtension.MQTT, newExtension.MQTT) {
 		if d.mqttClient != nil {
 			d.mqttClient.Disconnect()
 			d.mqttClient = nil
 		}
 
-		if d.spec.Extension.MQTT != nil {
-			var cli, err = mqtt.NewClient(*d.spec.Extension.MQTT, object.GetControlledOwnerObjectReference(&obj), references)
+		if newExtension.MQTT != nil {
+			var cli, err = mqtt.NewClient(*newExtension.MQTT, object.GetControlledOwnerObjectReference(device), references)
 			if err != nil {
-				return errors.Wrap(err, "failed to create MQTT client")
+				return errors.Wrap(err, "failed to create MQTT opcuaClient")
 			}
 
 			err = cli.Connect()
@@ -81,33 +93,102 @@ func (d *device) Configure(references api.ReferencesHandler, obj v1alpha1.OPCUAD
 		}
 	}
 
-	// configure device properties
-	properties := d.spec.Properties
-	for _, property := range properties {
-		if property.ReadOnly {
-			continue
+	// configures OPC-UA client
+	if !reflect.DeepEqual(staleSpec.Protocol, newSpec.Protocol) || !reflect.DeepEqual(staleSpec.Parameters, newSpec.Parameters) {
+		if d.opcuaClient != nil {
+			if err := d.opcuaClient.Close(); err != nil {
+				if err != io.EOF {
+					d.log.Error(err, "Error closing OPC-UA connection")
+				}
+			}
+			d.opcuaClient = nil
 		}
-		if err := d.writeProperty(property.DataType, property.Visitor, property.Value); err != nil {
-			d.log.Error(err, "Error write property", "property", property)
-			continue
+
+		var client, err = NewOPCUAClient(newSpec.Protocol, newSpec.Parameters.GetTimeout(), references)
+		if err != nil {
+			return errors.Wrap(err, "failed to create OPC-UA client")
 		}
-		d.log.Info("Write property", "property", property)
+		d.opcuaClient = client
 	}
-	return nil
+
+	return d.refresh(newSpec)
 }
 
-// write data of a property to the corresponding opc-ua node
-func (d *device) writeProperty(dataType v1alpha1.PropertyDataType, visitor v1alpha1.PropertyVisitor, value string) error {
-	data, err := StringToVariant(dataType, value)
-	if err != nil {
-		d.log.Error(err, "Error converting writing data", "data", value)
-		return err
+func (d *opcuaDevice) Shutdown() {
+	d.Lock()
+	defer d.Unlock()
+
+	d.stopSubscribe()
+	if d.opcuaClient != nil {
+		if err := d.opcuaClient.Close(); err != nil {
+			if err != io.EOF {
+				d.log.Error(err, "Error closing OPC-UA connection")
+			}
+		}
+		d.opcuaClient = nil
 	}
+	if d.mqttClient != nil {
+		d.mqttClient.Disconnect()
+		d.mqttClient = nil
+	}
+	d.log.Info("Shutdown")
+}
+
+// refresh refreshes the status with new spec.
+func (d *opcuaDevice) refresh(newSpec v1alpha1.OPCUADeviceSpec) error {
+	var status = d.instance.Status
+	var staleSpec = d.instance.Spec
+	if !reflect.DeepEqual(staleSpec.Properties, newSpec.Properties) {
+		d.stopSubscribe()
+
+		// configures properties
+		var specProps = newSpec.Properties
+		var statusProps = make([]v1alpha1.OPCUADeviceStatusProperty, 0, len(specProps))
+		for _, prop := range specProps {
+			if !prop.ReadOnly {
+				if err := d.writeProperty(prop.Type, prop.Visitor, prop.Value); err != nil {
+					return errors.Wrapf(err, "failed to write property %s", prop.Name)
+				}
+				d.log.V(4).Info("Write property", "property", prop.Name, "type", prop.Type)
+			}
+			// TODO need to read property at first?
+			statusProps = append(statusProps, v1alpha1.OPCUADeviceStatusProperty{
+				Name:      prop.Name,
+				Type:      prop.Type,
+				UpdatedAt: now(),
+			})
+		}
+		status = v1alpha1.OPCUADeviceStatus{Properties: statusProps}
+	}
+
+	// subscribed in backend
+	if err := d.startSubscribe(newSpec.Parameters.GetSyncInterval(), newSpec.Properties); err != nil {
+		return errors.Wrap(err, "failed to subscribing")
+	}
+
+	// records
+	d.instance.Spec = newSpec
+	d.instance.Status = status
+	return d.sync()
+}
+
+// writeProperty writes data of a property to the corresponding OPC-UA node.
+func (d *opcuaDevice) writeProperty(dataType v1alpha1.OPCUADevicePropertyType, visitor v1alpha1.OPCUADevicePropertyVisitor, value string) error {
+	// NB(thxCode) don't write the property if the value is blank.
+	if value == "" {
+		return nil
+	}
+
+	var data, err = StringToVariant(dataType, value)
+	if err != nil {
+		return errors.Wrapf(err, "failed to convert %s string to %s variant", value, dataType)
+	}
+
 	id, err := ua.ParseNodeID(visitor.NodeID)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to parse node ID %s", visitor.NodeID)
 	}
-	req := &ua.WriteRequest{
+	var req = &ua.WriteRequest{
 		NodesToWrite: []*ua.WriteValue{
 			{
 				NodeID:      id,
@@ -119,195 +200,143 @@ func (d *device) writeProperty(dataType v1alpha1.PropertyDataType, visitor v1alp
 			},
 		},
 	}
-	resp, err := d.client.Write(req)
+	_, err = d.opcuaClient.Write(req)
 	if err != nil {
-		d.log.Error(err, "Write failed")
-		return err
+		return errors.Wrapf(err, "failed to write")
 	}
-	d.log.Info("Writing success", "response", resp.Results[0])
 	return nil
 }
 
-func (d *device) on() error {
-	if d.stop != nil {
-		close(d.stop)
-	}
-	d.stop = make(chan struct{})
+// subscribe is blocked, it is used to watch the notification from OPC-UA server
+// and update the opcua device status.
+func (d *opcuaDevice) subscribe(ctx context.Context, notifyCh chan *opcua.PublishNotificationData) {
+	defer runtime.HandleCrash(handler.NewPanicsCleanupSocketHandler(metadata.Endpoint))
 
-	// close old client
-	if d.client != nil {
-		if err := d.client.Close(); err != nil {
-			d.log.Error(err, "Fail to close old opc-ua client")
-		}
-	}
+	d.log.Info("Subscribing")
+	defer func() {
+		d.log.Info("Finished subscription")
+	}()
 
-	// create client
-	var err error
-	spec := d.spec
-	d.client, err = newClient(spec.ProtocolConfig, spec.Parameters.Timeout.Duration)
-	if err != nil {
-		d.log.Error(err, "Fail to create opc-ua client")
-		return err
-	}
-
-	// connect to device
-	ctx := critical.Context(d.stop)
-	if err := d.client.Connect(ctx); err != nil {
-		d.log.Error(err, "Error connecting to device")
-		return err
-	}
-
-	d.subscribe(ctx, d.spec)
-	return nil
-}
-
-func (d *device) subscribe(ctx context.Context, spec v1alpha1.OPCUADeviceSpec) {
-	notifyCh := make(chan *opcua.PublishNotificationData)
-
-	sub, err := d.client.Subscribe(&opcua.SubscriptionParameters{Interval: d.spec.Parameters.SyncInterval.Duration}, notifyCh)
-	if err != nil {
-		d.log.Error(err, "Subscription error")
-	}
-	d.log.Info("Created subscription", "id", sub.SubscriptionID)
-
-	go sub.Run(ctx) // start Publish loop
-
-	properties := spec.Properties
-	for i, property := range properties {
-		d.monitorProperty(i, property, sub)
-	}
-
-	go d.receiveNotification(ctx, notifyCh, properties)
-}
-
-func (d *device) Shutdown() {
-	d.Lock()
-	defer d.Unlock()
-
-	if d.stop != nil {
-		close(d.stop)
-	}
-
-	// close OPC-UA client
-	if d.client != nil {
-		if err := d.client.Close(); err != nil {
-			d.log.Error(err, "Error closing connection")
-		}
-	}
-
-	// close MQTT connection
-	if d.mqttClient != nil {
-		d.mqttClient.Disconnect()
-		d.mqttClient = nil
-	}
-
-	d.log.Info("Closed connection")
-}
-
-// monitor data of a property from its corresponding opc-ua node
-func (d *device) monitorProperty(idx int, property v1alpha1.DeviceProperty, sub *opcua.Subscription) {
-	node := property.Visitor.NodeID
-
-	id, err := ua.ParseNodeID(node)
-	if err != nil {
-		d.log.Error(err, "Error parsing nodeID")
-	}
-
-	// index of the array is the client handle for the monitoring item
-	handle := uint32(idx)
-	miCreateRequest := opcua.NewMonitoredItemCreateRequestWithDefaults(id, ua.AttributeIDValue, handle)
-	res, err := sub.Monitor(ua.TimestampsToReturnBoth, miCreateRequest)
-	if err != nil || res.Results[0].StatusCode != ua.StatusOK {
-		d.log.Error(err, "")
-		return
-	}
-	d.log.Info("Monitoring property", "property", property)
-}
-
-// update the properties from physical device to status
-func (d *device) receiveNotification(ctx context.Context, notifyCh chan *opcua.PublishNotificationData, properties []v1alpha1.DeviceProperty) {
-	// read from subscription's notification channel until ctx is cancelled
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case res := <-notifyCh:
 			if res.Error != nil {
-				d.log.Error(res.Error, "")
+				// TODO give a way to feedback this to limb.
+				d.log.Error(res.Error, "Received error from subscription")
 				continue
 			}
 
-			switch x := res.Value.(type) {
+			switch v := res.Value.(type) {
 			case *ua.DataChangeNotification:
-				for _, item := range x.MonitoredItems {
-					property := properties[item.ClientHandle]
-					value := item.Value.Value
-					typeID := value.Type()
-					data := VariantToString(typeID, value)
-					property.DataType = typeMap[typeID]
-					d.updateDeviceStatus(&property, data)
-					d.log.V(6).Info("MonitoredItem with client", "handle", item.ClientHandle, "value", data)
-				}
-				d.handler(d.name, d.status)
-				d.log.Info("Sync opc-ua device status", "properties", d.status.Properties)
+				d.Lock()
+				func() {
+					defer d.Unlock()
 
-				// pub updated status to the MQTT broker
-				if d.mqttClient != nil {
-					var status = d.status.DeepCopy()
-					if err := d.mqttClient.Publish(mqtt.PublishMessage{Payload: status}); err != nil {
-						d.log.Error(err, "Failed to publish MQTT message")
+					var statusProps = d.instance.Status.Properties
+					for _, item := range v.MonitoredItems {
+						var idx = int(item.ClientHandle)
+						if idx >= len(statusProps) {
+							continue
+						}
+						var prop = statusProps[idx]
+						var variant = item.Value.Value
+						var value = VariantToString(variant.Type(), variant)
+						var propType = typeMap[variant.Type()]
+						d.log.V(4).Info("Received property", "property", item.ClientHandle, "type", propType)
+						statusProps[idx] = v1alpha1.OPCUADeviceStatusProperty{
+							Name:      prop.Name,
+							Value:     value,
+							Type:      propType,
+							UpdatedAt: now(),
+						}
 					}
-				}
-				d.log.V(2).Info("Success pub device status to the MQTT Broker", d.status.Properties)
+					d.instance.Status.Properties = statusProps
+					if err := d.sync(); err != nil {
+						d.log.Error(err, "failed to sync")
+					}
+				}()
 			default:
-				d.log.Info("what's this publish result? ", "value", res.Value)
+				d.log.V(4).Info(fmt.Sprintf("Received unknown property %+v", res.Value))
 			}
 		}
 	}
 }
 
-func (d *device) updateDeviceStatus(property *v1alpha1.DeviceProperty, data string) {
-	d.Lock()
-	defer d.Unlock()
-	newProperty := v1alpha1.StatusProperties{
-		Name:      property.Name,
-		DataType:  property.DataType,
-		Value:     data,
-		UpdatedAt: metav1.Time{Time: time.Now()},
-	}
-	found := false
-	for i, p := range d.status.Properties {
-		if p.Name == newProperty.Name {
-			d.status.Properties[i] = newProperty
-			found = true
-			break
-		}
-	}
-	if !found {
-		d.status.Properties = append(d.status.Properties, newProperty)
+func (d *opcuaDevice) stopSubscribe() {
+	if d.stop != nil {
+		close(d.stop)
+		d.stop = nil
 	}
 }
 
-func newClient(config *v1alpha1.OPCUAProtocolConfig, timeout time.Duration) (*opcua.Client, error) {
-	url := config.URL
-	endpoints, err := opcua.GetEndpoints(url)
-	if err != nil {
-		return nil, err
-	}
-	policy := config.SecurityPolicy
-	mode := config.SecurityMode
-	ep := opcua.SelectEndpoint(endpoints, policy, ua.MessageSecurityModeFromString(mode))
+func (d *opcuaDevice) startSubscribe(subscribeInterval time.Duration, properties []v1alpha1.OPCUADeviceProperty) error {
+	if d.stop == nil {
+		d.stop = make(chan struct{})
 
-	opts := []opcua.Option{
-		opcua.RequestTimeout(timeout),
-		opcua.SecurityPolicy(policy),
-		opcua.SecurityModeString(mode),
-		// TODO read CA file from the req.References
-		opcua.CertificateFile(config.CertificateFile),
-		opcua.PrivateKeyFile(config.PrivateKeyFile),
-		opcua.AuthAnonymous(),
-		opcua.AuthUsername(config.UserName, config.Password),
-		opcua.SecurityFromEndpoint(ep, ua.UserTokenTypeAnonymous),
+		// creates subscription
+		var notifyCh = make(chan *opcua.PublishNotificationData)
+		var sub, err = d.opcuaClient.Subscribe(&opcua.SubscriptionParameters{Interval: subscribeInterval}, notifyCh)
+		if err != nil {
+			return errors.Wrap(err, "failed to create subscription")
+		}
+		d.log.Info("Created subscription", "id", sub.SubscriptionID)
+
+		// creates monitoring request for all properties
+		for idx, prop := range properties {
+			var id, err = ua.ParseNodeID(prop.Visitor.NodeID)
+			if err != nil {
+				return errors.Wrapf(err, "failed to parse node ID %s", prop.Visitor.NodeID)
+			}
+
+			var handle = uint32(idx)
+			var miCreateRequest = opcua.NewMonitoredItemCreateRequestWithDefaults(id, ua.AttributeIDValue, handle)
+			res, err := sub.Monitor(ua.TimestampsToReturnBoth, miCreateRequest)
+			if err != nil {
+				return errors.Wrapf(err, "error monitoring property %s", prop.Name)
+			}
+			if res.Results[0].StatusCode != ua.StatusOK {
+				return errors.Errorf("failed to monitor property %s", prop.Name)
+			}
+			d.log.V(4).Info("Monitored property", "property", prop.Name)
+		}
+
+		// subscribes
+		var ctx = critical.Context(d.stop, func() {
+			var err = sub.Cancel()
+			if err != nil {
+				if err != io.EOF {
+					d.log.Error(err, "Failed to cancel subscription")
+				}
+			}
+		})
+		go sub.Run(ctx)
+		d.log.Info("Running subscription", "id", sub.SubscriptionID)
+
+		go d.subscribe(ctx, notifyCh)
 	}
-	return opcua.NewClient(url, opts...), nil
+
+	return nil
+}
+
+// sync combines all synchronization operations.
+func (d *opcuaDevice) sync() error {
+	if d.toLimb != nil {
+		if err := d.toLimb(d.instance); err != nil {
+			return err
+		}
+	}
+	if d.mqttClient != nil {
+		if err := d.mqttClient.Publish(mqtt.PublishMessage{Payload: d.instance.Status}); err != nil {
+			return err
+		}
+	}
+	d.log.V(1).Info("Synced")
+	return nil
+}
+
+func now() *metav1.Time {
+	var ret = metav1.Now()
+	return &ret
 }

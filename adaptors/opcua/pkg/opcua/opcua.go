@@ -5,17 +5,12 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/rancher/octopus/adaptors/opcua/pkg/adaptor"
+	"github.com/rancher/octopus/adaptors/opcua/pkg/metadata"
 	api "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
 	"github.com/rancher/octopus/pkg/adaptor/connection"
 	"github.com/rancher/octopus/pkg/adaptor/log"
 	"github.com/rancher/octopus/pkg/adaptor/registration"
 	"github.com/rancher/octopus/pkg/util/critical"
-)
-
-const (
-	Name     = "adaptors.edge.cattle.io/opcua"
-	Version  = "v1alpha1"
-	Endpoint = "opcua.sock"
 )
 
 // +kubebuilder:rbac:groups=devices.edge.cattle.io,resources=opcuadevices,verbs=get;list;watch;create;update;patch;delete
@@ -30,14 +25,14 @@ func Run() error {
 	stop = ctx.Done()
 	eg.Go(func() error {
 		// start adaptor to receive requests from Limb
-		return connection.Serve(Endpoint, adaptor.NewService(), stop)
+		return connection.Serve(metadata.Endpoint, adaptor.NewService(), stop)
 	})
 	eg.Go(func() error {
 		// register adaptor to Limb
 		return registration.Register(ctx, api.RegisterRequest{
-			Name:     Name,
-			Version:  Version,
-			Endpoint: Endpoint,
+			Name:     metadata.Name,
+			Version:  metadata.Version,
+			Endpoint: metadata.Endpoint,
 		})
 	})
 	return eg.Wait()

@@ -10,19 +10,19 @@ import (
 	"github.com/rancher/octopus/adaptors/opcua/api/v1alpha1"
 )
 
-var typeMap = map[ua.TypeID]v1alpha1.PropertyDataType{
-	ua.TypeIDInt16:      v1alpha1.PropertyDataTypeInt16,
-	ua.TypeIDInt32:      v1alpha1.PropertyDataTypeInt32,
-	ua.TypeIDInt64:      v1alpha1.PropertyDataTypeInt64,
-	ua.TypeIDUint16:     v1alpha1.PropertyDataTypeUInt16,
-	ua.TypeIDUint32:     v1alpha1.PropertyDataTypeUInt32,
-	ua.TypeIDUint64:     v1alpha1.PropertyDataTypeUInt64,
-	ua.TypeIDDouble:     v1alpha1.PropertyDataTypeDouble,
-	ua.TypeIDFloat:      v1alpha1.PropertyDataTypeFloat,
-	ua.TypeIDBoolean:    v1alpha1.PropertyDataTypeBoolean,
-	ua.TypeIDString:     v1alpha1.PropertyDataTypeString,
-	ua.TypeIDByteString: v1alpha1.PropertyDataTypeByteString,
-	ua.TypeIDDateTime:   v1alpha1.PropertyDataTypeDatetime,
+var typeMap = map[ua.TypeID]v1alpha1.OPCUADevicePropertyType{
+	ua.TypeIDInt16:      v1alpha1.OPCUADevicePropertyTypeInt16,
+	ua.TypeIDInt32:      v1alpha1.OPCUADevicePropertyTypeInt32,
+	ua.TypeIDInt64:      v1alpha1.OPCUADevicePropertyTypeInt64,
+	ua.TypeIDUint16:     v1alpha1.OPCUADevicePropertyTypeUInt16,
+	ua.TypeIDUint32:     v1alpha1.OPCUADevicePropertyTypeUInt32,
+	ua.TypeIDUint64:     v1alpha1.OPCUADevicePropertyTypeUInt64,
+	ua.TypeIDDouble:     v1alpha1.OPCUADevicePropertyTypeDouble,
+	ua.TypeIDFloat:      v1alpha1.OPCUADevicePropertyTypeFloat,
+	ua.TypeIDBoolean:    v1alpha1.OPCUADevicePropertyTypeBoolean,
+	ua.TypeIDString:     v1alpha1.OPCUADevicePropertyTypeString,
+	ua.TypeIDByteString: v1alpha1.OPCUADevicePropertyTypeByteString,
+	ua.TypeIDDateTime:   v1alpha1.OPCUADevicePropertyTypeDatetime,
 }
 
 func VariantToString(dataType ua.TypeID, input *ua.Variant) string {
@@ -44,68 +44,68 @@ func VariantToString(dataType ua.TypeID, input *ua.Variant) string {
 	}
 }
 
-func StringToVariant(dataType v1alpha1.PropertyDataType, input string) (*ua.Variant, error) {
+func StringToVariant(dataType v1alpha1.OPCUADevicePropertyType, input string) (*ua.Variant, error) {
 	var result interface{}
 	var err error
 	switch dataType {
-	case v1alpha1.PropertyDataTypeString:
+	case v1alpha1.OPCUADevicePropertyTypeString:
 		return ua.NewVariant(input)
-	case v1alpha1.PropertyDataTypeInt64:
+	case v1alpha1.OPCUADevicePropertyTypeInt64:
 		result, err = strconv.ParseInt(input, 10, 64)
 		if err != nil {
 			return nil, err
 		}
-	case v1alpha1.PropertyDataTypeInt32:
+	case v1alpha1.OPCUADevicePropertyTypeInt32:
 		parsed, err := strconv.ParseInt(input, 10, 32)
 		if err != nil {
 			return nil, err
 		}
 		result = int32(parsed)
-	case v1alpha1.PropertyDataTypeInt16:
+	case v1alpha1.OPCUADevicePropertyTypeInt16:
 		parsed, err := strconv.ParseInt(input, 10, 16)
 		if err != nil {
 			return nil, err
 		}
 		result = int16(parsed)
-	case v1alpha1.PropertyDataTypeUInt64:
+	case v1alpha1.OPCUADevicePropertyTypeUInt64:
 		result, err = strconv.ParseUint(input, 10, 64)
 		if err != nil {
 			return nil, err
 		}
-	case v1alpha1.PropertyDataTypeUInt32:
+	case v1alpha1.OPCUADevicePropertyTypeUInt32:
 		parsed, err := strconv.ParseUint(input, 10, 32)
 		if err != nil {
 			return nil, err
 		}
 		result = uint32(parsed)
-	case v1alpha1.PropertyDataTypeUInt16:
+	case v1alpha1.OPCUADevicePropertyTypeUInt16:
 		parsed, err := strconv.ParseUint(input, 10, 16)
 		if err != nil {
 			return nil, err
 		}
 		result = uint16(parsed)
-	case v1alpha1.PropertyDataTypeFloat:
+	case v1alpha1.OPCUADevicePropertyTypeFloat:
 		parsed, err := strconv.ParseFloat(input, 32)
 		if err != nil {
 			return nil, err
 		}
 		result = float32(parsed)
-	case v1alpha1.PropertyDataTypeDouble:
+	case v1alpha1.OPCUADevicePropertyTypeDouble:
 		result, err = strconv.ParseFloat(input, 64)
 		if err != nil {
 			return nil, err
 		}
-	case v1alpha1.PropertyDataTypeBoolean:
+	case v1alpha1.OPCUADevicePropertyTypeBoolean:
 		result, err = strconv.ParseBool(input)
 		if err != nil {
 			return nil, err
 		}
-	case v1alpha1.PropertyDataTypeDatetime:
+	case v1alpha1.OPCUADevicePropertyTypeDatetime:
 		result, err = time.Parse("2020-06-03T06:40:21.268109", input)
 		if err != nil {
 			return nil, err
 		}
-	case v1alpha1.PropertyDataTypeByteString:
+	case v1alpha1.OPCUADevicePropertyTypeByteString:
 		result = []byte(input)
 	default:
 		return nil, errors.New("invalid data type")
