@@ -15,25 +15,57 @@ spec:
         device: modbus-rtu
     spec:
       parameters:
-        syncInterval: 10s
+        syncInterval: 15s
         timeout: 10s
       protocol:
         rtu:
-          serialPort: /dev/tty.usbserial-1410
-          slaveID: 1
+          # replace the serial port if needed
+          endpoint: /dev/pts/0
+          workerID: 1
           parity: "N"
           stopBits: 1
           dataBits: 8
           baudRate: 9600
       properties:
         - name: temperature
-          description: data collection of temperature sensor
+          description: temperature value, should be divided by 10
           readOnly: true
           visitor:
             register: HoldingRegister
             offset: 0
             quantity: 1
             orderOfOperations:
-              - operationType: Divide
-                operationValue: "10"
-          dataType: float
+              - type: Divide
+                value: "10"
+          type: float
+        - name: humidity
+          description: humidity value, should be divided by 10
+          readOnly: true
+          visitor:
+            register: HoldingRegister
+            offset: 1
+            quantity: 1
+            orderOfOperations:
+              - type: Divide
+                value: "10"
+          type: float
+        - name: alert
+          description: the value reaches alert limitation
+          readOnly: true
+          visitor:
+            register: CoilRegister
+            offset: 0
+            quantity: 1
+          type: boolean
+        - name: limitation
+          description: the limitation
+          readOnly: false
+          value: "200"
+          visitor:
+            register: HoldingRegister
+            offset: 5
+            quantity: 1
+            orderOfOperations:
+              - type: Divide
+                value: "10"
+          type: float
