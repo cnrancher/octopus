@@ -15,12 +15,7 @@ import (
 	mock_v1alpha1 "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1/mock"
 )
 
-// testing scenarios:
-// 	+ Server
-//		- validate if the connection stop when it closes
-//		- validate the process of input parameters
-// 		- validate the process of input device
-var _ = Describe("Connection", func() {
+var _ = Describe("verify Connection", func() {
 	var (
 		err error
 
@@ -37,7 +32,7 @@ var _ = Describe("Connection", func() {
 		mockCtrl.Finish()
 	})
 
-	Context("Server", func() {
+	Context("on Connect server", func() {
 
 		var mockServer *mock_v1alpha1.MockConnection_ConnectServer
 
@@ -109,8 +104,8 @@ var _ = Describe("Connection", func() {
 			}, nil)
 			err = service.Connect(mockServer)
 			sts = status.Convert(err)
-			Expect(sts.Code()).To(Equal(grpccodes.FailedPrecondition))
-			Expect(sts.Message()).To(Equal("failed to connect to opc-ua device endpoint: dial tcp 127.0.0.1:53530: connect: connection refused"))
+			Expect(sts.Code()).To(Equal(grpccodes.InvalidArgument))
+			Expect(sts.Message()).To(Equal("failed to configure the device: failed to create OPC-UA client: failed to get OPC-UA endpoint: dial tcp 127.0.0.1:53530: connect: connection refused"))
 		})
 
 	})

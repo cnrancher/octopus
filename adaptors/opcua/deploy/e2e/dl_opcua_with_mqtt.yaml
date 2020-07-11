@@ -25,25 +25,25 @@ spec:
             # uses dynamic topic with namespaced name
             topic: "cattle.io/octopus/:namespace/:name"
       protocol:
-        url: opc.tcp://192.168.64.5:30839/
+        endpoint: opc.tcp://192.168.64.5:30839/
       properties:
         - name: datetime
           description: the current datetime
           readOnly: true
           visitor:
             nodeID: ns=0;i=2258
-          dataType: datetime
+          type: datetime
         - name: integer
           description: mock number. Default value is 42
           readOnly: false
           visitor:
             nodeID: ns=1;s=the.answer
-          dataType: int32
+          type: int32
           value: "1"
         - name: string
           description: mock byte string. Default value is "test123"
           readOnly: false
           visitor:
             nodeID: ns=1;s=myByteString
-          dataType: byteString
+          type: byteString
           value: "newString"

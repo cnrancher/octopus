@@ -6,9 +6,9 @@ metadata:
       to machine communication protocol for industrial automation developed by the
       OPC Foundation. OPC-UA adaptor focus on communicating with industrial equipment
       and systems for data collection and control.
+    devices.edge.cattle.io/device-property: '{"name":"string","type":"string","value":"string","updatedAt":"date"}'
     devices.edge.cattle.io/enable: "true"
     devices.edge.cattle.io/icon: https://octopus-assets.oss-cn-beijing.aliyuncs.com/adaptor-icons/opc-ua.svg
-    devices.edge.cattle.io/status-property: '{"name":"string","dataType":"string","value":"string","updatedAt":"date"}'
   creationTimestamp: null
   labels:
     app.kubernetes.io/name: octopus-adaptor-opcua
@@ -20,20 +20,22 @@ spec:
     kind: OPCUADevice
     listKind: OPCUADeviceList
     plural: opcuadevices
+    shortNames:
+    - opcua
     singular: opcuadevice
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
+    - jsonPath: .spec.protocol.endpoint
+      name: ENDPOINT
+      type: string
     - jsonPath: .metadata.creationTimestamp
       name: AGE
       type: date
-    - jsonPath: .spec.protocol.url
-      name: ENDPOINT
-      type: string
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: OPCUADevice is the Schema for the OPC-UA device API
+        description: OPCUADevice is the schema for the OPC-UA device API.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -48,7 +50,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: OPCUADeviceSpec defines the desired state of OPCUADevice
+            description: OPCUADeviceSpec defines the desired state of OPCUADevice.
             properties:
               extension:
                 description: Specifies the extension of device.
@@ -381,22 +383,37 @@ spec:
                     type: object
                 type: object
               parameters:
-                description: Parameter of the OPC-UA device.
+                description: Specifies the parameters of device.
                 properties:
                   syncInterval:
+                    default: 5s
+                    description: Specifies the amount of interval that synchronized
+                      to limb. The default value is "5s".
                     type: string
                   timeout:
+                    default: 10s
+                    description: Specifies the amount of timeout. The default value
+                      is "10s".
                     type: string
                 type: object
               properties:
-                description: Specifies the OPC-UA device properties.
+                description: Specifies the properties of device.
                 items:
-                  description: DeviceProperty describes an individual device property
-                    / attribute like temperature / humidity etc.
+                  description: OPCUADeviceProperty defines the desired property of
+                    OPCUADevice.
                   properties:
-                    dataType:
-                      description: PropertyDataType represents the type and data validation
-                        of the property.
+                    description:
+                      description: Specifies the description of property.
+                      type: string
+                    name:
+                      description: Specifies the name of property.
+                      type: string
+                    readOnly:
+                      description: Specifies if the property is readonly. The default
+                        value is "false".
+                      type: boolean
+                    type:
+                      description: Specifies the type of property.
                       enum:
                       - float
                       - double
@@ -411,58 +428,91 @@ spec:
                       - byteString
                       - datetime
                       type: string
-                    description:
-                      description: The device property description.
-                      type: string
-                    name:
-                      description: The device property name.
-                      type: string
-                    readOnly:
-                      type: boolean
                     value:
+                      description: Specifies the value of property, only available
+                        in the writable property.
                       type: string
                     visitor:
-                      description: PropertyVisitor represents the way to access the
-                        property.
+                      description: Specifies the visitor of property.
                       properties:
                         browseName:
-                          description: The name of opc-ua node
+                          description: Specifies the name of OPC-UA node.
                           type: string
                         nodeID:
-                          description: 'Required: The ID of opc-ua node, e.g. "ns=1,i=1005"'
+                          description: Specifies the id of OPC-UA node, e.g. "ns=1,i=1005".
                           type: string
                       required:
                       - nodeID
                       type: object
                   required:
-                  - dataType
                   - name
+                  - type
                   - visitor
                   type: object
                 type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
               protocol:
-                description: Protocol for accessing the OPC-UA device.
+                description: Specifies the protocol for accessing the device.
                 properties:
-                  certificateFile:
-                    description: Certificate file for accessing opc-ua server.
-                    type: string
-                  password:
-                    description: Password for accessing opc-ua server.
-                    type: string
-                  privateKeyFile:
-                    description: PrivateKey file for accessing opc-ua server.
+                  basicAuth:
+                    description: Specifies the username and password that the client
+                      connects to OPC-UA server.
+                    properties:
+                      password:
+                        description: Specifies the password for accessing OPC-UA server.
+                        type: string
+                      passwordRef:
+                        description: Specifies the relationship of DeviceLink's references
+                          to refer to the value as the password.
+                        properties:
+                          item:
+                            description: Specifies the item name of the referred reference.
+                            type: string
+                          name:
+                            description: Specifies the name of reference.
+                            type: string
+                        required:
+                        - item
+                        - name
+                        type: object
+                      username:
+                        description: Specifies the username for accessing OPC-UA server.
+                        type: string
+                      usernameRef:
+                        description: Specifies the relationship of DeviceLink's references
+                          to refer to the value as the username.
+                        properties:
+                          item:
+                            description: Specifies the item name of the referred reference.
+                            type: string
+                          name:
+                            description: Specifies the name of reference.
+                            type: string
+                        required:
+                        - item
+                        - name
+                        type: object
+                    type: object
+                  endpoint:
+                    description: Specifies the URL of OPC-UA server endpoint, which
+                      is start with "opc.tcp://".
+                    pattern: ^opc\.tcp://[^\s]*$
                     type: string
                   securityMode:
-                    description: Defaults to "None". Valid values are "None", "Sign",
-                      and "SignAndEncrypt".
+                    default: None
+                    description: Specifies the security mode for accessing OPC-UA
+                      server. The default value is "None".
                     enum:
                     - None
                     - Sign
                     - SignAndEncrypt
                     type: string
                   securityPolicy:
-                    description: Defaults to "None". Valid values are "None", "Basic128Rsa15",
-                      "Basic256", "Basic256Sha256", "Aes128Sha256RsaOaep", "Aes256Sha256RsaPss".
+                    default: None
+                    description: Specifies the security policy for accessing OPC-UA
+                      server. The default value is "None".
                     enum:
                     - None
                     - Basic128Rsa15
@@ -471,27 +521,70 @@ spec:
                     - Aes128Sha256RsaOaep
                     - Aes256Sha256RsaPss
                     type: string
-                  url:
-                    description: 'Required: The URL for opc-ua server endpoint.'
-                    type: string
-                  userName:
-                    description: Username for accessing opc-ua server.
-                    type: string
+                  tlsConfig:
+                    description: Specifies the TLS configuration that the client connects
+                      to OPC-UA server.
+                    properties:
+                      certFilePEM:
+                        description: Specifies the PEM format content of the certificate(public
+                          key), which is used for client authenticate to the OPC-UA
+                          server.
+                        type: string
+                      certFilePEMRef:
+                        description: Specifies the relationship of DeviceLink's references
+                          to refer to the value as the client certificate file PEM
+                          content.
+                        properties:
+                          item:
+                            description: Specifies the item name of the referred reference.
+                            type: string
+                          name:
+                            description: Specifies the name of reference.
+                            type: string
+                        required:
+                        - item
+                        - name
+                        type: object
+                      keyFilePEM:
+                        description: Specifies the PEM format content of the key(private
+                          key), which is used for client authenticate to the OPC-UA
+                          server.
+                        type: string
+                      keyFilePEMRef:
+                        description: Specifies the relationship of DeviceLink's references
+                          to refer to the value as the client key file PEM content.
+                        properties:
+                          item:
+                            description: Specifies the item name of the referred reference.
+                            type: string
+                          name:
+                            description: Specifies the name of reference.
+                            type: string
+                        required:
+                        - item
+                        - name
+                        type: object
+                    type: object
                 required:
-                - url
+                - endpoint
                 type: object
             required:
             - protocol
             type: object
           status:
-            description: OPCUADeviceStatus defines the observed state of OPCUADevice
+            description: OPCUADeviceStatus defines the observed state of OPCUADevice.
             properties:
               properties:
-                description: Reports the status of the OPC-UA device.
+                description: Reports the properties of device.
                 items:
+                  description: OPCUADeviceStatusProperty defines the observed property
+                    of OPCUADevice.
                   properties:
-                    dataType:
-                      description: The property data type.
+                    name:
+                      description: Reports the name of property.
+                      type: string
+                    type:
+                      description: Reports the type of property.
                       enum:
                       - float
                       - double
@@ -506,12 +599,12 @@ spec:
                       - byteString
                       - datetime
                       type: string
-                    name:
-                      type: string
                     updatedAt:
+                      description: Reports the updated timestamp of property.
                       format: date-time
                       type: string
                     value:
+                      description: Reports the value of property.
                       type: string
                   type: object
                 type: array
