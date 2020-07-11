@@ -8,7 +8,8 @@ Octopus is a light-weight and cloud-native device management system for Kubernet
 
 - [Idea](#idea)
 - [Documentation](#documentation)
-- [Quick-Start](#quick-start)
+- [Quick-start](#quick-start)
+- [Source code](#source-code)
 - [License](#license)
 
 <!-- /toc -->
@@ -35,7 +36,7 @@ For more details please refer to the [official documentation](https://cnrancher.
     - [How to contribute](./CONTRIBUTING.md)
 <!-- /toc -->
 
-## Quick-Start
+## Quick-start
 
 There are two ways to deploy the Octopus, for quick-start, you can use the manifest YAML file to bring up the Octopus. 
 The installer YAML file is under the [deploy/e2e](./deploy/e2e) directory on Github:
@@ -55,6 +56,15 @@ $ kubectl create ns octopus-system
 # install octopus
 $ helm install --namespace octopus-system octopus octopus/octopus
 ```
+
+## Source code
+Octopus is 100% open source software. Project source code is spread across a number of repos:
+
+1. Octopus UI -- https://github.com/cnrancher/octopus-ui
+1. Octopus API Server --  https://github.com/cnrancher/octopus-api-server
+1. Octopus Chart -- https://github.com/cnrancher/octopus-chart
+1. Octopus Docs -- https://github.com/cnrancher/docs-octopus
+
 
 ## License
 Copyright (c) 2020 [Rancher Labs, Inc.](http://rancher.com)
