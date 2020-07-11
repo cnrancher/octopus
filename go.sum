@@ -201,8 +201,8 @@ github.com/googleapis/gnostic v0.0.0-20170729233727-0c5108395e2d/go.mod h1:sJBsC
 github.com/googleapis/gnostic v0.1.0/go.mod h1:sJBsCZ4ayReDTBIg8b9dl28c5xFWyhBTVRp3pOg5EKY=
 github.com/googleapis/gnostic v0.3.1 h1:WeAefnSUHlBb0iJKwxFDZdbfGwkd7xRNuV+IpXMJhYk=
 github.com/googleapis/gnostic v0.3.1/go.mod h1:on+2t9HRStVgn95RSsFWFz+6Q0Snyqv1awfrALZdbtU=
-github.com/gopcua/opcua v0.1.10 h1:0sObtBY390MzwFDVqsNuP9hDv22qSLKH4O4iZBOeKXo=
-github.com/gopcua/opcua v0.1.10/go.mod h1:O2l+/u0jM6f3WKRbz5L5ep7yNpQX2l5DOagXqXNcDV8=
+github.com/gopcua/opcua v0.1.11 h1:i7qDkVYRQP5LTiAEnPu09RcPSA1KGPkHsNd/TeDcZc8=
+github.com/gopcua/opcua v0.1.11/go.mod h1:O2l+/u0jM6f3WKRbz5L5ep7yNpQX2l5DOagXqXNcDV8=
 github.com/gophercloud/gophercloud v0.1.0/go.mod h1:vxM41WHh5uqHVBMZHzuwNOHh8XEoIEcSTewFxm1c5g8=
 github.com/gorilla/websocket v0.0.0-20170926233335-4201258b820c/go.mod h1:E7qHFY5m1UJ88s3WnNqhKjPHQ0heANvMoAMk2YaljkQ=
 github.com/gorilla/websocket v1.4.0/go.mod h1:E7qHFY5m1UJ88s3WnNqhKjPHQ0heANvMoAMk2YaljkQ=

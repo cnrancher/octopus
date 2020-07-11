@@ -18,26 +18,26 @@ spec:
         syncInterval: 5s
         timeout: 10s
       protocol:
-        url: opc.tcp://10.0.2.2:53530/OPCUA/SimulationServer
-        username: dadmin
-        password: admin
+        # replace the address if needed
+        endpoint: opc.tcp://10.43.29.71:4840/
       properties:
-        - name: counter
-          description: enable data collection of temperature sensor
+        - name: datetime
+          description: the current datetime
           readOnly: true
           visitor:
-            nodeID: ns=3;s=Counter
-          dataType: int32
-        - name: random
-          description: enable data collection of temperature sensor
-          readOnly: true
-          visitor:
-            nodeID: ns=3;s=Random
-          dataType: double
-        - name: constant
-          description: enable data collection of temperature sensor
+            nodeID: ns=0;i=2258
+          type: datetime
+        - name: integer
+          description: mock number. Default value is 42
           readOnly: false
           visitor:
-            nodeID: ns=3;s=Constant
-          value: "2.33"
-          dataType: float
+            nodeID: ns=1;s=the.answer
+          type: int32
+          value: "1"
+        - name: string
+          description: mock byte string. Default value is "test123"
+          readOnly: false
+          visitor:
+            nodeID: ns=1;s=myByteString
+          type: byteString
+          value: "newString"
