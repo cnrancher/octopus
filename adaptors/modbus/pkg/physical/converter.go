@@ -11,12 +11,12 @@ import (
 )
 
 // convert read data to string value
-func ByteArrayToString(input []byte, dataType v1alpha1.PropertyDataType, operations []v1alpha1.ModbusOperations) (string, error) {
+func ByteArrayToString(input []byte, dataType v1alpha1.ModbusDevicePropertyType, operations []v1alpha1.ModbusDeviceArithmeticOperation) (string, error) {
 	var result string
 	switch dataType {
-	case v1alpha1.PropertyDataTypeString:
+	case v1alpha1.ModbusDevicePropertyTypeString:
 		result = string(input)
-	case v1alpha1.PropertyDataTypeInt, v1alpha1.PropertyDataTypeFloat:
+	case v1alpha1.ModbusDevicePropertyTypeInt, v1alpha1.ModbusDevicePropertyTypeFloat:
 		arr, err := toTargetLength(input, 8)
 		if err != nil {
 			return "", err
@@ -24,10 +24,10 @@ func ByteArrayToString(input []byte, dataType v1alpha1.PropertyDataType, operati
 		value := binary.BigEndian.Uint64(arr)
 		converted := convertReadData(float64(value), operations)
 		result = fmt.Sprint(converted)
-		if dataType == v1alpha1.PropertyDataTypeInt {
+		if dataType == v1alpha1.ModbusDevicePropertyTypeInt {
 			result = fmt.Sprint(int(converted))
 		}
-	case v1alpha1.PropertyDataTypeBoolean:
+	case v1alpha1.ModbusDevicePropertyTypeBoolean:
 		b := input[len(input)-1]
 		if b == 0 {
 			result = "false"
@@ -43,12 +43,12 @@ func ByteArrayToString(input []byte, dataType v1alpha1.PropertyDataType, operati
 }
 
 // convert written data to byte array according to datatype
-func StringToByteArray(input string, dataType v1alpha1.PropertyDataType, length int) ([]byte, error) {
+func StringToByteArray(input string, dataType v1alpha1.ModbusDevicePropertyType, length int) ([]byte, error) {
 	var data []byte
 	switch dataType {
-	case v1alpha1.PropertyDataTypeString:
+	case v1alpha1.ModbusDevicePropertyTypeString:
 		data = []byte(input)
-	case v1alpha1.PropertyDataTypeBoolean:
+	case v1alpha1.ModbusDevicePropertyTypeBoolean:
 		b, err := strconv.ParseBool(input)
 		if err != nil {
 			return nil, err
@@ -58,7 +58,7 @@ func StringToByteArray(input string, dataType v1alpha1.PropertyDataType, length 
 		} else {
 			data = []byte{0}
 		}
-	case v1alpha1.PropertyDataTypeInt, v1alpha1.PropertyDataTypeFloat:
+	case v1alpha1.ModbusDevicePropertyTypeInt, v1alpha1.ModbusDevicePropertyTypeFloat:
 		data = make([]byte, 8)
 		i, err := strconv.ParseUint(input, 10, 64)
 		if err != nil {
@@ -90,20 +90,20 @@ func toTargetLength(input []byte, length int) ([]byte, error) {
 }
 
 // ConvertReadData helps to convert the number read from the device into meaningful data
-func convertReadData(result float64, operations []v1alpha1.ModbusOperations) float64 {
+func convertReadData(result float64, operations []v1alpha1.ModbusDeviceArithmeticOperation) float64 {
 	for _, executeOperation := range operations {
-		operationValue, err := strconv.ParseFloat(executeOperation.OperationValue, 64)
+		operationValue, err := strconv.ParseFloat(executeOperation.Value, 64)
 		if err != nil {
 			logrus.Error(err, "failed to parse operation value")
 		}
-		switch executeOperation.OperationType {
-		case v1alpha1.OperationAdd:
+		switch executeOperation.Type {
+		case v1alpha1.ModbusDeviceArithmeticAdd:
 			result = result + operationValue
-		case v1alpha1.OperationSubtract:
+		case v1alpha1.ModbusDeviceArithmeticSubtract:
 			result = result - operationValue
-		case v1alpha1.OperationMultiply:
+		case v1alpha1.ModbusDeviceArithmeticMultiply:
 			result = result * operationValue
-		case v1alpha1.OperationDivide:
+		case v1alpha1.ModbusDeviceArithmeticDivide:
 			result = result / operationValue
 		}
 	}

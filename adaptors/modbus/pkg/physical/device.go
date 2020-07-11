@@ -1,34 +1,41 @@
 package physical
 
 import (
+	"io"
 	"reflect"
-	"strconv"
 	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/goburrow/modbus"
 	"github.com/pkg/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/runtime"
 
 	"github.com/rancher/octopus/adaptors/modbus/api/v1alpha1"
+	"github.com/rancher/octopus/adaptors/modbus/pkg/metadata"
 	api "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
+	"github.com/rancher/octopus/pkg/adaptor/socket/handler"
 	"github.com/rancher/octopus/pkg/mqtt"
 	"github.com/rancher/octopus/pkg/util/object"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
 
+// Device is an interface for device operations set.
 type Device interface {
-	Configure(references api.ReferencesHandler, obj v1alpha1.ModbusDevice) error
+	// Shutdown uses to close the connection between adaptor and real(physical) device.
 	Shutdown()
+	// Configure uses to set up the device.
+	Configure(references api.ReferencesHandler, device *v1alpha1.ModbusDevice) error
 }
 
-func NewDevice(log logr.Logger, name types.NamespacedName, handler DataHandler) Device {
-	return &device{
-		log:     log,
-		name:    name,
-		handler: handler,
+// NewDevice creates a Device.
+func NewDevice(log logr.Logger, meta metav1.ObjectMeta, toLimb ModbusDeviceLimbSyncer) Device {
+	log.Info("Created ")
+	return &modbusDevice{
+		log: log,
+		instance: &v1alpha1.ModbusDevice{
+			ObjectMeta: meta,
+		},
+		toLimb: toLimb,
 	}
 }
 
@@ -36,46 +43,43 @@ const (
 	bits = 8
 )
 
-type device struct {
+type modbusDevice struct {
 	sync.Mutex
 
-	stop chan struct{}
+	log           logr.Logger
+	instance      *v1alpha1.ModbusDevice
+	toLimb        ModbusDeviceLimbSyncer
+	stop          chan struct{}
+	modbusHandler ModbusClientHandler
 
-	log     logr.Logger
-	name    types.NamespacedName
-	handler DataHandler
-
-	spec   v1alpha1.ModbusDeviceSpec
-	status v1alpha1.ModbusDeviceStatus
-
-	modbusHandler modbus.ClientHandler
-	mqttClient    mqtt.Client
+	mqttClient mqtt.Client
 }
 
-func (d *device) Configure(references api.ReferencesHandler, obj v1alpha1.ModbusDevice) error {
-	spec := d.spec
-	d.spec = obj.Spec
+func (d *modbusDevice) Configure(references api.ReferencesHandler, device *v1alpha1.ModbusDevice) error {
+	defer runtime.HandleCrash(handler.NewPanicsCleanupSocketHandler(metadata.Endpoint))
 
-	// configure protocol config and parameters
-	if !reflect.DeepEqual(d.spec.ProtocolConfig, spec.ProtocolConfig) || !reflect.DeepEqual(d.spec.Parameters, spec.Parameters) {
-		var modbusHandler, err = newModbusHandler(d.spec.ProtocolConfig, d.spec.Parameters.Timeout.Duration)
-		d.modbusHandler = modbusHandler
-		if err != nil {
-			d.log.Error(err, "Failed to connect to modbus device endpoint")
-			return err
-		}
-		// if connected and sync interval changed, reconfigure sync interval
-		d.on()
+	d.Lock()
+	defer d.Unlock()
+
+	var newSpec = device.Spec
+	var staleSpec = d.instance.Spec
+
+	// configures MQTT client if needed
+	var staleExtension, newExtension v1alpha1.ModbusDeviceExtension
+	if staleSpec.Extension != nil {
+		staleExtension = *staleSpec.Extension
 	}
-
-	if !reflect.DeepEqual(d.spec.Extension, spec.Extension) {
+	if newSpec.Extension != nil {
+		newExtension = *newSpec.Extension
+	}
+	if !reflect.DeepEqual(staleExtension.MQTT, newExtension.MQTT) {
 		if d.mqttClient != nil {
 			d.mqttClient.Disconnect()
 			d.mqttClient = nil
 		}
 
-		if d.spec.Extension.MQTT != nil {
-			var cli, err = mqtt.NewClient(*d.spec.Extension.MQTT, object.GetControlledOwnerObjectReference(&obj), references)
+		if newExtension.MQTT != nil {
+			var cli, err = mqtt.NewClient(*newExtension.MQTT, object.GetControlledOwnerObjectReference(device), references)
 			if err != nil {
 				return errors.Wrap(err, "failed to create MQTT client")
 			}
@@ -88,216 +92,255 @@ func (d *device) Configure(references api.ReferencesHandler, obj v1alpha1.Modbus
 		}
 	}
 
-	// configure properties
-	for _, property := range d.spec.Properties {
-		if property.ReadOnly {
-			continue
+	// configures Modbus client
+	if !reflect.DeepEqual(staleSpec.Protocol, newSpec.Protocol) || !reflect.DeepEqual(staleSpec.Parameters, newSpec.Parameters) {
+		if d.modbusHandler != nil {
+			if err := d.modbusHandler.Close(); err != nil {
+				if err != io.EOF {
+					d.log.Error(err, "Error closing Modbus connection")
+				}
+			}
+			d.modbusHandler = nil
 		}
-		if err := d.writeProperty(property.DataType, property.Visitor, property.Value); err != nil {
-			d.log.Error(err, "Error write property", "property", property)
-			continue
+
+		var handler, err = NewModbusClientHandler(newSpec.Protocol, newSpec.Parameters.GetTimeout())
+		if err != nil {
+			return errors.Wrap(err, "failed to connect Modbus endpoint")
 		}
-		d.log.Info("Write property", "property", property)
+		d.modbusHandler = handler
 	}
-	d.updateStatus(d.spec.Properties)
-	return nil
+
+	return d.refresh(newSpec)
 }
 
-func (d *device) on() {
-	// close connection to old device
-	if d.stop != nil {
-		close(d.stop)
-	}
-	d.stop = make(chan struct{})
+func (d *modbusDevice) Shutdown() {
+	d.Lock()
+	defer d.Unlock()
 
-	d.log.Info("Connect to device", "device", d.name)
-
-	// periodically sync device status
-	go func() {
-		var ticker = time.NewTicker(d.spec.Parameters.SyncInterval.Duration)
-		defer ticker.Stop()
-
-		for {
-			d.updateStatus(d.spec.Properties)
-			d.log.Info("Sync modbus device status", "properties", d.status.Properties)
-			select {
-			case <-d.stop:
-				return
-			case <-ticker.C:
+	d.stopFetch()
+	if d.modbusHandler != nil {
+		if err := d.modbusHandler.Close(); err != nil {
+			if err != io.EOF {
+				d.log.Error(err, "Error closing Modbus connection")
 			}
 		}
-	}()
-}
-
-func (d *device) Shutdown() {
-	if d.stop != nil {
-		close(d.stop)
+		d.modbusHandler = nil
 	}
-
 	if d.mqttClient != nil {
 		d.mqttClient.Disconnect()
 		d.mqttClient = nil
 	}
-
-	d.log.Info("Closed connection")
+	d.log.Info("Shutdown")
 }
 
-// write data of a property to coil register or holding register
-func (d *device) writeProperty(dataType v1alpha1.PropertyDataType, visitor v1alpha1.PropertyVisitor, value string) error {
-	register := visitor.Register
-	quantity := visitor.Quantity
-	address := visitor.Offset
+// refresh refreshes the status with new spec.
+func (d *modbusDevice) refresh(newSpec v1alpha1.ModbusDeviceSpec) error {
+	var status = d.instance.Status
+	var staleSpec = d.instance.Spec
+	if !reflect.DeepEqual(staleSpec.Properties, newSpec.Properties) {
+		d.stopFetch()
 
-	client := modbus.NewClient(d.modbusHandler)
-	switch register {
-	case v1alpha1.ModbusRegisterTypeCoilRegister:
+		// configures properties
+		var specProps = newSpec.Properties
+		var statusProps = make([]v1alpha1.ModbusDeviceStatusProperty, 0, len(specProps))
+		for _, prop := range specProps {
+			if !prop.ReadOnly {
+				if err := d.writeProperty(prop.Type, prop.Visitor, prop.Value); err != nil {
+					return errors.Wrapf(err, "failed to write property %s", prop.Name)
+				}
+				d.log.V(4).Info("Write property", "property", prop.Name, "type", prop.Type)
+			}
+			value, err := d.readProperty(prop.Type, prop.Visitor)
+			if err != nil {
+				return errors.Wrapf(err, "failed to read property %s", prop.Name)
+			}
+			d.log.V(4).Info("Read property", "property", prop.Name, "type", prop.Type)
+			statusProps = append(statusProps, v1alpha1.ModbusDeviceStatusProperty{
+				Name:      prop.Name,
+				Value:     value,
+				Type:      prop.Type,
+				UpdatedAt: now(),
+			})
+		}
+		status = v1alpha1.ModbusDeviceStatus{Properties: statusProps}
+	}
+
+	// fetches in backend
+	d.startFetch(newSpec.Parameters.GetSyncInterval())
+
+	// records
+	d.instance.Spec = newSpec
+	d.instance.Status = status
+	return d.sync()
+}
+
+// fetch is blocked, it is used to sync the modbus device status periodically,
+// it's worth noting that it just reads the properties from modbus device.
+func (d *modbusDevice) fetch(interval time.Duration, stop <-chan struct{}) {
+	defer runtime.HandleCrash(handler.NewPanicsCleanupSocketHandler(metadata.Endpoint))
+
+	d.log.Info("Fetching")
+	defer func() {
+		d.log.Info("Finished fetching")
+	}()
+
+	var ticker = time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-stop:
+			return
+		case <-ticker.C:
+		}
+
+		d.Lock()
+		func() {
+			defer d.Unlock()
+
+			// read according to the properties defined by the spec,
+			// and finally fill it back to status.
+			var specProps = d.instance.Spec.Properties
+			var statusProps = make([]v1alpha1.ModbusDeviceStatusProperty, 0, len(specProps))
+			for _, prop := range specProps {
+				var value, err = d.readProperty(prop.Type, prop.Visitor)
+				if err != nil {
+					// TODO give a way to feedback this to limb.
+					d.log.Error(err, "Error fetching device property", "property", prop.Name)
+				}
+				d.log.V(4).Info("Read property", "property", prop.Name, "type", prop.Type)
+				statusProps = append(statusProps, v1alpha1.ModbusDeviceStatusProperty{
+					Name:      prop.Name,
+					Value:     value,
+					Type:      prop.Type,
+					UpdatedAt: now(),
+				})
+			}
+			d.instance.Status.Properties = statusProps
+			if err := d.sync(); err != nil {
+				d.log.Error(err, "failed to sync")
+			}
+		}()
+
+		select {
+		case <-d.stop:
+			return
+		default:
+		}
+	}
+}
+
+// writeProperty writes data of a property to CoilRegister or HoldingRegister.
+func (d *modbusDevice) writeProperty(dataType v1alpha1.ModbusDevicePropertyType, visitor v1alpha1.ModbusDevicePropertyVisitor, value string) error {
+	var client = d.modbusHandler.Connect()
+
+	// NB(thxCode) don't write the property if the value is blank.
+	if value == "" {
+		return nil
+	}
+
+	switch visitor.Register {
+	case v1alpha1.ModbusDeviceCoilRegister:
 		// one bit per register
-		l := quantity / bits
+		var quantity = visitor.Quantity
+		var length = quantity / bits
 		if quantity%bits != 0 {
-			l++
+			length++
 		}
-		data, err := StringToByteArray(value, dataType, int(l))
+
+		var data, err = StringToByteArray(value, dataType, int(length))
 		if err != nil {
-			d.log.Error(err, "Error converting data to byte array", "value", value)
-			return err
+			return errors.Wrapf(err, "failed to convert %s string to %s byte array", value, dataType)
 		}
-		_, err = client.WriteMultipleCoils(address, quantity, data)
+		_, err = client.WriteMultipleCoils(visitor.Offset, quantity, data)
 		if err != nil {
-			d.log.Error(err, "Error writing property to register", "register", register, "data", data)
-			return err
+			return errors.Wrapf(err, "failed to write %s to %s register", data, visitor.Register)
 		}
-	case v1alpha1.ModbusRegisterTypeHoldingRegister:
+	case v1alpha1.ModbusDeviceHoldingRegister:
 		// two bytes per register
-		data, err := StringToByteArray(value, dataType, int(quantity*2))
+		var quantity = visitor.Quantity
+		var length = quantity * 2
+
+		var data, err = StringToByteArray(value, dataType, int(length))
 		if err != nil {
-			d.log.Error(err, "Error converting data to byte array", "value", value)
-			return err
+			return errors.Wrapf(err, "failed to convert %s string to %s byte array", value, dataType)
 		}
-		_, err = client.WriteMultipleRegisters(address, quantity, data)
+		_, err = client.WriteMultipleRegisters(visitor.Offset, quantity, data)
 		if err != nil {
-			d.log.Error(err, "Error writing property to register", "register", register, "data", data)
-			return err
+			return errors.Wrapf(err, "failed to write %s to %s register", data, visitor.Register)
 		}
 	}
 	return nil
 }
 
-// read data of a property from its corresponding register
-func (d *device) readProperty(dataType v1alpha1.PropertyDataType, visitor v1alpha1.PropertyVisitor) (string, error) {
-	register := visitor.Register
-	quantity := visitor.Quantity
-	address := visitor.Offset
+// readProperty reads data of a property from its corresponding register.
+func (d *modbusDevice) readProperty(dataType v1alpha1.ModbusDevicePropertyType, visitor v1alpha1.ModbusDevicePropertyVisitor) (result string, err error) {
+	var client = d.modbusHandler.Connect()
 
-	var result string
 	var data []byte
-	var err error
-	client := modbus.NewClient(d.modbusHandler)
-	switch register {
-	case v1alpha1.ModbusRegisterTypeCoilRegister:
-		data, err = client.ReadCoils(address, quantity)
+	switch visitor.Register {
+	case v1alpha1.ModbusDeviceCoilRegister:
+		data, err = client.ReadCoils(visitor.Offset, visitor.Quantity)
 		if err != nil {
-			d.log.Error(err, "Error reading property from register", "register", register)
-			return "", err
+			return "", errors.Wrapf(err, "failed to read property from %s register", visitor.Register)
 		}
-	case v1alpha1.ModbusRegisterTypeDiscreteInputRegister:
-		data, err = client.ReadDiscreteInputs(address, quantity)
+	case v1alpha1.ModbusDeviceDiscreteInputRegister:
+		data, err = client.ReadDiscreteInputs(visitor.Offset, visitor.Quantity)
 		if err != nil {
-			d.log.Error(err, "Error reading property from register", "register", register)
-			return "", err
+			return "", errors.Wrapf(err, "failed to read property from %s register", visitor.Register)
 		}
-
-	case v1alpha1.ModbusRegisterTypeHoldingRegister:
-		data, err = client.ReadHoldingRegisters(address, quantity)
+	case v1alpha1.ModbusDeviceHoldingRegister:
+		data, err = client.ReadHoldingRegisters(visitor.Offset, visitor.Quantity)
 		if err != nil {
-			d.log.Error(err, "Error reading property from register", "register", register)
-			return "", err
+			return "", errors.Wrapf(err, "failed to read property from %s register", visitor.Register)
 		}
-
-	case v1alpha1.ModbusRegisterTypeInputRegister:
-		data, err = client.ReadInputRegisters(address, quantity)
+	case v1alpha1.ModbusDeviceInputRegister:
+		data, err = client.ReadInputRegisters(visitor.Offset, visitor.Quantity)
 		if err != nil {
-			d.log.Error(err, "Error reading property from register", "register", register)
-			return "", err
+			return "", errors.Wrapf(err, "failed to read property from %s register", visitor.Register)
 		}
-
+	default:
+		return "", errors.Errorf("invalid readable register %s", visitor.Register)
 	}
+
 	result, err = ByteArrayToString(data, dataType, visitor.OrderOfOperations)
 	if err != nil {
-		d.log.Error(err, "Error converting to string", "datatype", dataType)
+		return "", errors.Wrapf(err, "failed to convert %s byte array to string", dataType)
 	}
 	return result, nil
 }
 
-// update the properties from physical device to status
-func (d *device) updateStatus(properties []v1alpha1.DeviceProperty) {
-	d.Lock()
-	defer d.Unlock()
-	for _, property := range properties {
-		value, err := d.readProperty(property.DataType, property.Visitor)
-		if err != nil {
-			d.log.Error(err, "Error sync device property", "property", property)
-			continue
-		}
-		d.updateStatusProperty(property.Name, value, property.DataType)
+func (d *modbusDevice) stopFetch() {
+	if d.stop != nil {
+		close(d.stop)
+		d.stop = nil
 	}
-	d.handler(d.name, d.status)
+}
 
+func (d *modbusDevice) startFetch(fetchInterval time.Duration) {
+	if d.stop == nil {
+		d.stop = make(chan struct{})
+		go d.fetch(fetchInterval, d.stop)
+	}
+}
+
+// sync combines all synchronization operations.
+func (d *modbusDevice) sync() error {
+	if d.toLimb != nil {
+		if err := d.toLimb(d.instance); err != nil {
+			return err
+		}
+	}
 	if d.mqttClient != nil {
-		var status = d.status.DeepCopy()
-		if err := d.mqttClient.Publish(mqtt.PublishMessage{Payload: status}); err != nil {
-			d.log.Error(err, "Failed to publish MQTT message")
+		if err := d.mqttClient.Publish(mqtt.PublishMessage{Payload: d.instance.Status}); err != nil {
+			return err
 		}
 	}
+	d.log.V(1).Info("Synced")
+	return nil
 }
 
-func (d *device) updateStatusProperty(name, value string, dataType v1alpha1.PropertyDataType) {
-	sp := v1alpha1.StatusProperties{
-		Name:      name,
-		Value:     value,
-		DataType:  dataType,
-		UpdatedAt: metav1.Time{Time: time.Now()},
-	}
-	found := false
-	for i, property := range d.status.Properties {
-		if property.Name == sp.Name {
-			d.status.Properties[i] = sp
-			found = true
-			break
-		}
-	}
-	if !found {
-		d.status.Properties = append(d.status.Properties, sp)
-	}
-}
-func newModbusHandler(config *v1alpha1.ModbusProtocolConfig, timeout time.Duration) (modbus.ClientHandler, error) {
-	var TCPConfig = config.TCP
-	var RTUConfig = config.RTU
-	var handler modbus.ClientHandler
-
-	if TCPConfig != nil {
-		endpoint := TCPConfig.IP + ":" + strconv.Itoa(TCPConfig.Port)
-		handlerTCP := modbus.NewTCPClientHandler(endpoint)
-		handlerTCP.Timeout = timeout
-		handlerTCP.SlaveId = byte(TCPConfig.SlaveID)
-		if err := handlerTCP.Connect(); err != nil {
-			return nil, err
-		}
-		defer handlerTCP.Close()
-		handler = handlerTCP
-	} else if RTUConfig != nil {
-		serialPort := RTUConfig.SerialPort
-		handlerRTU := modbus.NewRTUClientHandler(serialPort)
-		handlerRTU.BaudRate = RTUConfig.BaudRate
-		handlerRTU.DataBits = RTUConfig.DataBits
-		handlerRTU.Parity = RTUConfig.Parity
-		handlerRTU.StopBits = RTUConfig.StopBits
-		handlerRTU.SlaveId = byte(RTUConfig.SlaveID)
-		handlerRTU.Timeout = timeout
-		if err := handlerRTU.Connect(); err != nil {
-			return nil, err
-		}
-		defer handlerRTU.Close()
-		handler = handlerRTU
-	}
-	return handler, nil
+func now() *metav1.Time {
+	var ret = metav1.Now()
+	return &ret
 }

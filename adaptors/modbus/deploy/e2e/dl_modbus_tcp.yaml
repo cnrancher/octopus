@@ -15,28 +15,52 @@ spec:
         device: modbus-tcp
     spec:
       parameters:
-        syncInterval: 5s
+        syncInterval: 15s
       protocol:
         tcp:
-          ip: 192.168.1.3
-          port: 502
-          slaveID: 1
+          # replace the ip:port address if needed
+          endpoint: 192.168.1.3:5020
+          workerID: 1
       properties:
-        - name: temperature-enable
-          description: enable data collection of temperature sensor
-          readOnly: false
-          visitor:
-            register: CoilRegister
-            offset: 2
-            quantity: 1
-          value: "true"
-          dataType: boolean
         - name: temperature
-          description: enable data collection of temperature sensor
-          readOnly: false
+          description: temperature value, should be divided by 10
+          readOnly: true
           visitor:
             register: HoldingRegister
-            offset: 2
-            quantity: 8
-          value: "33.3"
-          dataType: float
+            offset: 0
+            quantity: 1
+            orderOfOperations:
+              - type: Divide
+                value: "10"
+          type: float
+        - name: humidity
+          description: humidity value, should be divided by 10
+          readOnly: true
+          visitor:
+            register: HoldingRegister
+            offset: 1
+            quantity: 1
+            orderOfOperations:
+              - type: Divide
+                value: "10"
+          type: float
+        - name: alert
+          description: the value reaches alert limitation
+          readOnly: true
+          visitor:
+            register: CoilRegister
+            offset: 0
+            quantity: 1
+          type: boolean
+        - name: limitation
+          description: the limitation
+          readOnly: false
+          value: "20"
+          visitor:
+            register: HoldingRegister
+            offset: 5
+            quantity: 1
+            orderOfOperations:
+              - type: Divide
+                value: "10"
+          type: float

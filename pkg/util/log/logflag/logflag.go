@@ -21,6 +21,10 @@ func AddFlags(fs *flag.FlagSet) {
 	fs.BoolVar(&logging.inProduction, "log-in-production", logging.inProduction, "Use the reasonable production logging configuration of zap.")
 }
 
+func GetLogVerbosity() int {
+	return logging.verbosity
+}
+
 // LoggerSetter injects a function to set logger.
 type LoggerSetter func(logger logr.Logger)
 

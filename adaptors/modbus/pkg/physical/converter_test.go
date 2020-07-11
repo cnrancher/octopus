@@ -12,8 +12,8 @@ import (
 func TestByteArrayToString(t *testing.T) {
 	type given struct {
 		input      []byte
-		dataType   v1alpha1.PropertyDataType
-		operations []v1alpha1.ModbusOperations
+		dataType   v1alpha1.ModbusDevicePropertyType
+		operations []v1alpha1.ModbusDeviceArithmeticOperation
 	}
 	type expect struct {
 		result string
@@ -68,7 +68,7 @@ func TestByteArrayToString(t *testing.T) {
 func TestStringToByteArray(t *testing.T) {
 	type given struct {
 		input    string
-		dataType v1alpha1.PropertyDataType
+		dataType v1alpha1.ModbusDevicePropertyType
 		length   int
 	}
 	type expect struct {
