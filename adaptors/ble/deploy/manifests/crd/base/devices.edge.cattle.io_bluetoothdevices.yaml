@@ -19,19 +19,16 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .spec.protocol.name
-      name: Name
+    - jsonPath: .spec.protocol.endpoint
+      name: ENDPOINT
       type: string
-    - jsonPath: .spec.protocol.macAddress
-      name: MacAddress
-      type: integer
     - jsonPath: .metadata.creationTimestamp
       name: AGE
       type: date
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: BluetoothDevice is the Schema for the ble device API
+        description: BluetoothDevice is the schema for the BLE device API.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -379,7 +376,7 @@ spec:
                     type: object
                 type: object
               parameters:
-                description: Parameter of the modbus device.
+                description: Specifies the parameters of device.
                 properties:
                   syncInterval:
                     description: Specifies default device sync interval
@@ -389,89 +386,135 @@ spec:
                     type: string
                 type: object
               properties:
-                description: Specifies the properties of the BLE device.
+                description: Specifies the properties of device.
                 items:
-                  description: DeviceProperty defines an individual ble device property
+                  description: BluetoothDeviceProperty defines an individual ble device
+                    property
                   properties:
                     accessMode:
-                      description: 'Required: The URL for opc-ua server endpoint.'
+                      default: NotifyOnly
+                      description: Specifies the access mode of property. The default
+                        value is "NotifyOnly".
+                      enum:
+                      - ReadWrite
+                      - ReadOnly
+                      - NotifyOnly
                       type: string
                     description:
-                      description: The device property description.
+                      description: Specifies the description of property.
                       type: string
                     name:
-                      description: The device property name.
+                      description: Specifies the name of property.
                       type: string
                     visitor:
-                      description: PropertyVisitor represents the way to access the
-                        property.
+                      description: Specifies the visitor of property.
                       properties:
                         characteristicUUID:
+                          description: Specifies the characteristic UUID of property.
                           type: string
                         dataConverter:
-                          description: BluetoothDataConverter defines the read data
-                            converting operation
+                          description: Specifies the converter to convert data read
+                            from device to a string.
                           properties:
                             endIndex:
+                              description: Specifies the end index of incoming byte
+                                stream to be converted.
                               type: integer
                             orderOfOperations:
+                              description: Specifies the operations in order if needed.
                               items:
+                                description: BluetoothDeviceArithmeticOperation defines
+                                  the arithmetic operation of BluetoothDevice.
                                 properties:
-                                  operationType:
+                                  type:
+                                    description: Specifies the type of arithmetic
+                                      operation.
+                                    enum:
+                                    - Add
+                                    - Subtract
+                                    - Multiply
+                                    - Divide
                                     type: string
-                                  operationValue:
+                                  value:
+                                    description: Specifies the value for arithmetic
+                                      operation, which is in form of float string.
                                     type: string
+                                required:
+                                - type
+                                - value
                                 type: object
                               type: array
+                              x-kubernetes-list-type: atomic
                             shiftLeft:
+                              description: Specifies the number of bits to shift left.
                               type: integer
                             shiftRight:
+                              description: Specifies the number of bits to shift right.
                               type: integer
                             startIndex:
+                              description: Specifies the start index of the incoming
+                                byte stream to be converted.
                               type: integer
                           type: object
                         dataWrite:
                           additionalProperties:
                             format: byte
                             type: string
+                          description: Specifies the data to write to device.
                           type: object
                         defaultValue:
+                          description: Specifies the default value of property, when
+                            access mode is "ReadWrite".
                           type: string
                       required:
                       - characteristicUUID
                       type: object
                   required:
-                  - accessMode
                   - name
+                  - visitor
                   type: object
                 type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
               protocol:
-                description: Protocol for accessing the BLE device.
+                description: Specifies the protocol for accessing the device.
                 properties:
-                  macAddress:
+                  endpoint:
+                    description: Specifies the endpoint of device, it can be the name
+                      or MAC address of device.
                     type: string
-                  name:
-                    type: string
+                required:
+                - endpoint
                 type: object
             required:
             - protocol
             type: object
           status:
-            description: BluetoothDeviceStatus defines the observed state of BluetoothDevice
+            description: BluetoothDeviceStatus defines the observed state of BluetoothDevice.
             properties:
               properties:
                 description: Reports the status of the BLE device.
                 items:
+                  description: BluetoothDeviceStatusProperty defines the observed
+                    property of BluetoothDevice.
                   properties:
                     accessMode:
-                      description: The access mode for  a device property.
+                      description: Specifies the access mode of property.
+                      enum:
+                      - ReadWrite
+                      - ReadOnly
+                      - NotifyOnly
                       type: string
                     name:
+                      description: Reports the properties of device.
                       type: string
                     updatedAt:
+                      description: Reports the updated timestamp of property.
                       format: date-time
                       type: string
                     value:
+                      description: Reports the value of property.
                       type: string
                   type: object
                 type: array

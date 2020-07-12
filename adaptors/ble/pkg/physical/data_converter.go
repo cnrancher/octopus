@@ -33,18 +33,18 @@ func ConvertReadData(dataConverter v1alpha1.BluetoothDataConverter, data []byte)
 	}
 	finalResult := float64(intermediateResult)
 	for _, executeOperation := range dataConverter.OrderOfOperations {
-		operationValue, err := strconv.ParseFloat(executeOperation.OperationValue, 64)
+		operationValue, err := strconv.ParseFloat(executeOperation.Value, 64)
 		if err != nil {
 			logrus.Error(err, "failed to parse operation value")
 		}
-		switch executeOperation.OperationType {
-		case v1alpha1.OperationAdd:
+		switch executeOperation.Type {
+		case v1alpha1.BluetoothDeviceArithmeticAdd:
 			finalResult = finalResult + operationValue
-		case v1alpha1.OperationSubtract:
+		case v1alpha1.BluetoothDeviceArithmeticSubtract:
 			finalResult = finalResult - operationValue
-		case v1alpha1.OperationMultiply:
+		case v1alpha1.BluetoothDeviceArithmeticMultiply:
 			finalResult = finalResult * operationValue
-		case v1alpha1.OperationDivide:
+		case v1alpha1.BluetoothDeviceArithmeticDivide:
 			finalResult = finalResult / operationValue
 		}
 	}

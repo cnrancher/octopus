@@ -7,6 +7,7 @@ import (
 
 	"github.com/rancher/octopus/adaptors/ble/pkg/ble"
 	"github.com/rancher/octopus/pkg/adaptor/log"
+	_ "github.com/rancher/octopus/pkg/util/log/handler"
 	"github.com/rancher/octopus/pkg/util/log/logflag"
 	"github.com/rancher/octopus/pkg/util/version/verflag"
 )

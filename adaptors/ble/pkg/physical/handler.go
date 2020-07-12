@@ -1,9 +1,8 @@
 package physical
 
 import (
-	"k8s.io/apimachinery/pkg/types"
-
 	"github.com/rancher/octopus/adaptors/ble/api/v1alpha1"
 )
 
-type DataHandler func(name types.NamespacedName, status v1alpha1.BluetoothDeviceStatus)
+// BluetoothDeviceLimSyncer is used to sync ble device to limb.
+type BluetoothDeviceLimSyncer func(in *v1alpha1.BluetoothDevice) error
