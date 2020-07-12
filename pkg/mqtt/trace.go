@@ -27,7 +27,7 @@ func (l printer) Printf(format string, v ...interface{}) {
 func SetLogger(logger logr.Logger) {
 	log = printer{logger: logger.WithName("mqtt.client").V(5)}
 
-	logger = logger.WithName("paho.mqtt.golang")
+	logger = logger.WithName("mqtt.client")
 	mqtt.DEBUG = printer{logger: logger.V(6)}
 	mqtt.WARN = printer{logger: logger}
 	mqtt.ERROR = printer{logger: logger}

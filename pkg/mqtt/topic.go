@@ -52,7 +52,11 @@ func (t segmentTopic) RenderForSubscribe(renders ...map[string]string) string {
 	var globalRender = make(map[string]string, 2)
 	globalRender["path"] = t.operation.Path
 	if t.operation.Operator != nil {
-		globalRender["operator"] = t.operation.Operator.Read
+		var read = t.operation.Operator.Read
+		if read == "null" {
+			read = ""
+		}
+		globalRender["operator"] = read
 	}
 	return t.render(globalRender, renders...)
 }
@@ -61,7 +65,11 @@ func (t segmentTopic) RenderForPublish(renders ...map[string]string) string {
 	var globalRender = make(map[string]string, 2)
 	globalRender["path"] = t.operation.Path
 	if t.operation.Operator != nil {
-		globalRender["operator"] = t.operation.Operator.Write
+		var write = t.operation.Operator.Write
+		if write == "null" {
+			write = ""
+		}
+		globalRender["operator"] = write
 	}
 	return t.render(globalRender, renders...)
 }
