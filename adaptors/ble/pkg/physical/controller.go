@@ -7,16 +7,17 @@ import (
 
 	"github.com/bettercap/gatt"
 	"github.com/go-logr/logr"
-	"github.com/rancher/octopus/adaptors/ble/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/rancher/octopus/adaptors/ble/api/v1alpha1"
 )
 
 type BLEController struct {
-	done       chan struct{}
-	deviceDone chan struct{}
-	spec       v1alpha1.BluetoothDeviceSpec
-	status     v1alpha1.BluetoothDeviceStatus
-	log        logr.Logger
+	done        chan struct{}
+	endpoint    string
+	properties  []v1alpha1.BluetoothDeviceProperty
+	statusProps []v1alpha1.BluetoothDeviceStatusProperty
+	log         logr.Logger
 }
 
 func (c *BLEController) onStateChanged(d gatt.Device, s gatt.State) {
@@ -32,13 +33,8 @@ func (c *BLEController) onStateChanged(d gatt.Device, s gatt.State) {
 }
 
 func (c *BLEController) onPeripheralDiscovered(p gatt.Peripheral, a *gatt.Advertisement, rssi int) {
-	name := c.spec.Protocol.Name
-	addr := c.spec.Protocol.MacAddress
-	if name != "" && a.LocalName != name {
-		return
-	}
-
-	if addr != "" && strings.ToUpper(p.ID()) != strings.ToUpper(addr) {
+	var endpoint = strings.ToUpper(c.endpoint)
+	if strings.ToUpper(a.LocalName) != endpoint && strings.ToUpper(p.ID()) != endpoint {
 		return
 	}
 
@@ -73,13 +69,13 @@ func (c *BLEController) onPeripheralConnected(p gatt.Peripheral, err error) {
 		}
 
 		for _, ch := range cs {
-			property, found := findCharacteristic(c.spec, svc.UUID().String())
+			property, found := findCharacteristic(c.properties, svc.UUID().String())
 			if !found {
 				continue
 			}
 
 			switch property.AccessMode {
-			case v1alpha1.ReadOnly:
+			case v1alpha1.BluetoothDevicePropertyReadOnly:
 				{
 					_, err := c.readCharacteristic(p, ch, property)
 					if err != nil {
@@ -87,7 +83,7 @@ func (c *BLEController) onPeripheralConnected(p gatt.Peripheral, err error) {
 						continue
 					}
 				}
-			case v1alpha1.ReadWrite:
+			case v1alpha1.BluetoothDevicePropertyReadWrite:
 				{
 					err := c.writeCharacteristic(p, ch, property)
 					if err != nil {
@@ -95,7 +91,7 @@ func (c *BLEController) onPeripheralConnected(p gatt.Peripheral, err error) {
 						return
 					}
 				}
-			case v1alpha1.NotifyOnly:
+			case v1alpha1.BluetoothDevicePropertyNotifyOnly:
 				{
 					err := c.getNotifyCharacteristic(p, ch, property)
 					if err != nil {
@@ -120,9 +116,9 @@ func (c *BLEController) onPeriphDisconnected(p gatt.Peripheral, err error) {
 	c.log.Info("Device disconnected")
 }
 
-func findCharacteristic(spec v1alpha1.BluetoothDeviceSpec, characteristicUUID string) (v1alpha1.DeviceProperty, bool) {
-	deviceProperty := v1alpha1.DeviceProperty{}
-	for _, p := range spec.Properties {
+func findCharacteristic(properties []v1alpha1.BluetoothDeviceProperty, characteristicUUID string) (v1alpha1.BluetoothDeviceProperty, bool) {
+	deviceProperty := v1alpha1.BluetoothDeviceProperty{}
+	for _, p := range properties {
 		if p.Visitor.CharacteristicUUID == characteristicUUID {
 			return p, true
 		}
@@ -130,21 +126,21 @@ func findCharacteristic(spec v1alpha1.BluetoothDeviceSpec, characteristicUUID st
 	return deviceProperty, false
 }
 
-func (c *BLEController) readCharacteristic(p gatt.Peripheral, ch *gatt.Characteristic, property v1alpha1.DeviceProperty) (string, error) {
+func (c *BLEController) readCharacteristic(p gatt.Peripheral, ch *gatt.Characteristic, property v1alpha1.BluetoothDeviceProperty) (string, error) {
 	b, err := p.ReadCharacteristic(ch)
 	if err != nil {
 		return "", err
 	}
 	c.log.Info("ReadCharacteristic value", string(b))
 
-	convertedValue := fmt.Sprintf("%f", ConvertReadData(property.Visitor.BluetoothDataConverter, b))
+	convertedValue := fmt.Sprintf("%f", ConvertReadData(property.Visitor.DataConverter, b))
 	c.log.Info("Converted read value to", convertedValue)
 	c.updateDeviceStatus(property.Name, convertedValue, property.AccessMode)
 	return convertedValue, nil
 }
 
-func (c *BLEController) writeCharacteristic(p gatt.Peripheral, ch *gatt.Characteristic, property v1alpha1.DeviceProperty) error {
-	if len(property.Visitor.DataWriteTo) == 0 {
+func (c *BLEController) writeCharacteristic(p gatt.Peripheral, ch *gatt.Characteristic, property v1alpha1.BluetoothDeviceProperty) error {
+	if len(property.Visitor.DataWrite) == 0 {
 		return fmt.Errorf("invalid length 0 of writeDataTo")
 	}
 
@@ -166,7 +162,7 @@ func (c *BLEController) writeCharacteristic(p gatt.Peripheral, ch *gatt.Characte
 	return nil
 }
 
-func (c *BLEController) getNotifyCharacteristic(p gatt.Peripheral, ch *gatt.Characteristic, property v1alpha1.DeviceProperty) error {
+func (c *BLEController) getNotifyCharacteristic(p gatt.Peripheral, ch *gatt.Characteristic, property v1alpha1.BluetoothDeviceProperty) error {
 	_, err := p.DiscoverDescriptors(nil, ch)
 	if err != nil {
 		return fmt.Errorf("failed to discover descriptors, %s", err.Error())
@@ -185,8 +181,8 @@ func (c *BLEController) getNotifyCharacteristic(p gatt.Peripheral, ch *gatt.Char
 	return nil
 }
 
-func findDataWriteToDeviceByDefaultValue(visitor v1alpha1.PropertyVisitor) ([]byte, bool) {
-	for k, v := range visitor.DataWriteTo {
+func findDataWriteToDeviceByDefaultValue(visitor v1alpha1.BluetoothDevicePropertyVisitor) ([]byte, bool) {
+	for k, v := range visitor.DataWrite {
 		if visitor.DefaultValue == k {
 			return v, true
 		}
@@ -194,22 +190,27 @@ func findDataWriteToDeviceByDefaultValue(visitor v1alpha1.PropertyVisitor) ([]by
 	return nil, false
 }
 
-func (c *BLEController) updateDeviceStatus(name, value string, accessMode v1alpha1.PropertyAccessMode) {
-	sp := v1alpha1.StatusProperties{
+func (c *BLEController) updateDeviceStatus(name, value string, accessMode v1alpha1.BluetoothDevicePropertyAccessMode) {
+	sp := v1alpha1.BluetoothDeviceStatusProperty{
 		Name:       name,
 		Value:      value,
 		AccessMode: accessMode,
-		UpdatedAt:  metav1.Time{Time: time.Now()},
+		UpdatedAt:  now(),
 	}
 	found := false
-	for i, property := range c.status.Properties {
+	for i, property := range c.statusProps {
 		if property.Name == sp.Name {
-			c.status.Properties[i] = sp
+			c.statusProps[i] = sp
 			found = true
 			break
 		}
 	}
 	if !found {
-		c.status.Properties = append(c.status.Properties, sp)
+		c.statusProps = append(c.statusProps, sp)
 	}
+}
+
+func now() *metav1.Time {
+	var ret = metav1.Now()
+	return &ret
 }
