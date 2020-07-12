@@ -18,8 +18,7 @@ spec:
         syncInterval: 15s
         timeout: 10s
       protocol:
-        name: "MJ_HT_V1"
-        macAddress: ""
+        endpoint: "MJ_HT_V1"
       properties:
         - name: data
           description: XiaoMi temp sensor with temperature and humidity data
@@ -37,8 +36,8 @@ spec:
               endIndex: 0
               shiftRight: 2
               orderOfOperations:
-                - operationType: Multiply # options are Add/Subtract/Multiply/Divide
-                  operationValue: "0.03125"
+                - type: Multiply # options are Add/Subtract/Multiply/Divide
+                  value: "0.03125"
         - name: power-enabled
           description: turn the device power on or off
           accessMode: ReadWrite
@@ -55,5 +54,5 @@ spec:
               endIndex: 0
               shiftRight: 3
               orderOfOperations:
-                - operationType: Multiply
-                  operationValue: "0.03125"
+                - type: Multiply
+                  value: "0.03125"

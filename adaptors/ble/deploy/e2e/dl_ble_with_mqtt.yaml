@@ -25,11 +25,10 @@ spec:
             # uses dynamic topic with namespaced name
             topic: "cattle.io/octopus/:namespace/:name"
       protocol:
-        name: "MJ_HT_V1"
-        macAddress: ""
+        endpoint: "MJ_HT_V1"
       properties:
-      - name: data
-        description: XiaoMi temp sensor with temperature and humidity data
-        accessMode: NotifyOnly
-        visitor:
-          characteristicUUID: 226c000064764566756266734470666d
+        - name: data
+          description: XiaoMi temp sensor with temperature and humidity data
+          accessMode: NotifyOnly
+          visitor:
+            characteristicUUID: 226c000064764566756266734470666d

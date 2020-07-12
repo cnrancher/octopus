@@ -9,7 +9,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 
 	"github.com/rancher/octopus/adaptors/ble/api/v1alpha1"
@@ -54,10 +53,10 @@ func (s *Service) toJSON(in metav1.Object) []byte {
 }
 
 func (s *Service) Connect(server api.Connection_ConnectServer) error {
-	var device physical.Device
+	var holder physical.Device
 	defer func() {
-		if device != nil {
-			device.Shutdown()
+		if holder != nil {
+			holder.Shutdown()
 		}
 	}()
 
@@ -71,56 +70,62 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 			return nil
 		}
 
-		// validate parameters
-		var parameters = physical.DefaultParameters()
-		if req.GetParameters() != nil {
-			if err := jsoniter.Unmarshal(req.GetParameters(), &parameters); err != nil {
-				return status.Errorf(codes.InvalidArgument, "failed to unmarshal parameters: %v", err)
-			}
+		// validates model GVK
+		var model = req.GetModel()
+		if model == nil {
+			return status.Error(codes.InvalidArgument, "invalid empty model")
 		}
-		if err := parameters.Validate(); err != nil {
-			return status.Errorf(codes.InvalidArgument, "failed to validate parameters: %v", err)
-		}
-
-		// validate device
-		var bleDevice v1alpha1.BluetoothDevice
-		if err := jsoniter.Unmarshal(req.GetDevice(), &bleDevice); err != nil {
-			return status.Errorf(codes.InvalidArgument, "failed to unmarshal device: %v", err)
+		var modelGVK = model.GroupVersionKind()
+		if modelGVK.Group != "devices.edge.cattle.io" {
+			return status.Errorf(codes.InvalidArgument, "invalid model group: %s", modelGVK.Group)
 		}
 
-		// process device
-		if device == nil {
-			var deviceName = object.GetNamespacedName(&bleDevice)
-			if deviceName.Namespace == "" || deviceName.Name == "" {
-				return status.Error(codes.InvalidArgument, "failed to recognize the empty device as the namespace/name is blank")
+		// processes device
+		switch modelGVK.Kind {
+		case "BluetoothDevice":
+			// gets device spec
+			var device v1alpha1.BluetoothDevice
+			if err := jsoniter.Unmarshal(req.GetDevice(), &device); err != nil {
+				return status.Errorf(codes.InvalidArgument, "failed to unmarshal device: %v", err)
 			}
 
-			var dataHandler = func(name types.NamespacedName, status v1alpha1.BluetoothDeviceStatus) {
-				// send device by {name, namespace, status} tuple
-				var resp v1alpha1.BluetoothDevice
-				resp.Namespace = name.Namespace
-				resp.Name = name.Name
-				resp.Status = status
-
-				// convert device to json bytes
-				var respBytes = s.toJSON(&resp)
-
-				// send device
-				if err := server.Send(&api.ConnectResponse{Device: respBytes}); err != nil {
-					if !connection.IsClosed(err) {
-						log.Error(err, "Failed to send response to connection")
-					}
+			// creates device handler
+			if holder == nil {
+				// gets device namespaced name
+				var deviceName = object.GetNamespacedName(&device)
+				if deviceName.Namespace == "" || deviceName.Name == "" {
+					return status.Error(codes.InvalidArgument, "failed to recognize the empty device as the namespace/name is blank")
 				}
+
+				// gets log
+				var logger = log.WithValues("ble device", deviceName)
+
+				var toLimb = func(in *v1alpha1.BluetoothDevice) error {
+					// send device by {name, namespace, status} tuple
+					var resp = &v1alpha1.BluetoothDevice{}
+					resp.Namespace = in.Namespace
+					resp.Name = in.Namespace
+					resp.Status = in.Status
+
+					// convert device to json bytes
+					var respBytes = s.toJSON(resp)
+
+					// send device to limb
+					if err := server.Send(&api.ConnectResponse{Device: respBytes}); err != nil {
+						return status.Errorf(codes.Unknown, "failed to send device to limb, %v", err)
+					}
+					return nil
+				}
+
+				holder = physical.NewDevice(logger, device.ObjectMeta, toLimb, s.gattDevice)
 			}
 
-			device = physical.NewDevice(
-				log.WithValues("device", deviceName),
-				deviceName,
-				dataHandler,
-			)
-		}
-		if err := device.Configure(req.GetReferences(), bleDevice, s.gattDevice); err != nil {
-			return status.Errorf(codes.FailedPrecondition, "failed to connect to BLE device: %v", err)
+			// configures device
+			if err := holder.Configure(req.GetReferences(), &device); err != nil {
+				return status.Errorf(codes.InvalidArgument, "failed to connect to BLE device: %v", err)
+			}
+		default:
+			return status.Errorf(codes.InvalidArgument, "invalid model kind: %s", modelGVK.Kind)
 		}
 	}
 }
