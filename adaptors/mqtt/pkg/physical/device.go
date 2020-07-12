@@ -9,9 +9,12 @@ import (
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/runtime"
 
 	"github.com/rancher/octopus/adaptors/mqtt/api/v1alpha1"
+	"github.com/rancher/octopus/adaptors/mqtt/pkg/metadata"
 	api "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
+	"github.com/rancher/octopus/pkg/adaptor/socket/handler"
 	"github.com/rancher/octopus/pkg/mqtt"
 	"github.com/rancher/octopus/pkg/util/converter"
 	"github.com/rancher/octopus/pkg/util/object"
@@ -27,7 +30,7 @@ type Device interface {
 
 // NewDevice creates a Device.
 func NewDevice(log logr.Logger, meta metav1.ObjectMeta, toLimb MQTTDeviceLimbSyncer) Device {
-	log.Info("Created")
+	log.Info("Created ")
 	return &mqttDevice{
 		log: log,
 		instance: &v1alpha1.MQTTDevice{
@@ -40,23 +43,27 @@ func NewDevice(log logr.Logger, meta metav1.ObjectMeta, toLimb MQTTDeviceLimbSyn
 type mqttDevice struct {
 	sync.Mutex
 
-	log logr.Logger
-
+	log        logr.Logger
 	instance   *v1alpha1.MQTTDevice
 	toLimb     MQTTDeviceLimbSyncer
 	mqttClient mqtt.Client
 }
 
 func (d *mqttDevice) Shutdown() {
-	d.log.Info("Shutdown")
+	d.Lock()
+	defer d.Unlock()
+
 	if d.mqttClient != nil {
 		d.mqttClient.Disconnect()
 		d.mqttClient = nil
 		d.log.V(1).Info("Disconnected connection")
 	}
+	d.log.Info("Shutdown")
 }
 
 func (d *mqttDevice) Configure(references api.ReferencesHandler, configuration interface{}) error {
+	defer runtime.HandleCrash(handler.NewPanicsCleanupSocketHandler(metadata.Endpoint))
+
 	var device, ok = configuration.(*v1alpha1.MQTTDevice)
 	if !ok {
 		d.log.Error(errors.New("invalidate configuration type"), "Failed to configure")
@@ -90,6 +97,7 @@ func (d *mqttDevice) Configure(references api.ReferencesHandler, configuration i
 	return d.refresh(newSpec)
 }
 
+// refresh refreshes the status with new spec.
 func (d *mqttDevice) refresh(newSpec v1alpha1.MQTTDeviceSpec) error {
 	// indexes stale status properties
 	var staleStatusPropsIndex = make(map[string]v1alpha1.MQTTDeviceStatusProperty, len(d.instance.Status.Properties))
@@ -145,14 +153,20 @@ func (d *mqttDevice) refresh(newSpec v1alpha1.MQTTDeviceSpec) error {
 	// records
 	d.instance.Spec = newSpec
 	d.instance.Status = v1alpha1.MQTTDeviceStatus{Properties: newStatusProps}
-	d.toLimb(d.instance)
-	return nil
+	return d.sync()
 }
 
+// refreshAsAttributedMessage treats all properties as a whole JSON payload.
+// When subscribing, the data in JSON will be obtained according to the `path` of each property.
+// When publishing, all writable properties will be assembled into a JSON for transmission.
+// It is worth noting that in order to reduce publishing,
+// only when the value of the writable property changes will be pushed.
 func (d *mqttDevice) refreshAsAttributedMessage(staleSpecPropsIndex map[string]v1alpha1.MQTTDeviceProperty, newSpecProps []v1alpha1.MQTTDeviceProperty) error {
 	// subscribes
 	var subscribeTopics = []mqtt.SubscribeTopic{{}}
 	var subscribeHandler = func(msg mqtt.SubscribeMessage) {
+		defer runtime.HandleCrash(handler.NewPanicsCleanupSocketHandler(metadata.Endpoint))
+
 		// receives and updates status properties
 		d.Lock()
 		defer d.Unlock()
@@ -170,7 +184,10 @@ func (d *mqttDevice) refreshAsAttributedMessage(staleSpecPropsIndex map[string]v
 			prop.UpdatedAt = now()
 			d.instance.Status.Properties[idx] = prop
 		}
-		d.toLimb(d.instance)
+		d.log.V(4).Info("Received payload", "type", "AttributedMessage")
+		if err := d.sync(); err != nil {
+			d.log.Error(err, "failed to sync")
+		}
 	}
 	if err := d.mqttClient.Subscribe(subscribeTopics, subscribeHandler); err != nil {
 		return errors.Wrap(err, "failed to subscribe")
@@ -204,11 +221,19 @@ func (d *mqttDevice) refreshAsAttributedMessage(staleSpecPropsIndex map[string]v
 		if err := d.mqttClient.Publish(mqtt.PublishMessage{Payload: payload}); err != nil {
 			return errors.Wrap(err, "failed to publish")
 		}
+		d.log.V(4).Info("Sent payload", "type", "AttributedMessage")
 	}
 
 	return nil
 }
 
+// refreshAsAttributedTopic treats each property as a JSON payload.
+// When subscribing, it will use the property `path` and `operator.read` to render the topic,
+// and then subscribe to the rendered topic.
+// When publishing, it will use the property `path` and `operator.write` to render the topic,
+// and the publish to the rendered topic.
+// It is worth noting that in order to reduce publishing,
+// only when the value of the writable property changes will be pushed.
 func (d *mqttDevice) refreshAsAttributedTopic(staleSpecPropsIndex map[string]v1alpha1.MQTTDeviceProperty, newSpecProps []v1alpha1.MQTTDeviceProperty) error {
 	// subscribes spec properties
 	var subscribeTopics = make([]mqtt.SubscribeTopic, 0, len(newSpecProps))
@@ -221,6 +246,8 @@ func (d *mqttDevice) refreshAsAttributedTopic(staleSpecPropsIndex map[string]v1a
 		})
 	}
 	var subscribeHandler = func(msg mqtt.SubscribeMessage) {
+		defer runtime.HandleCrash(handler.NewPanicsCleanupSocketHandler(metadata.Endpoint))
+
 		// receives and updates status properties
 		d.Lock()
 		defer d.Unlock()
@@ -237,8 +264,11 @@ func (d *mqttDevice) refreshAsAttributedTopic(staleSpecPropsIndex map[string]v1a
 		var prop = &d.instance.Status.Properties[msg.Index]
 		prop.Value = &propValue
 		prop.UpdatedAt = now()
+		d.log.V(4).Info("Received payload", "type", "AttributedTopic", "property", prop.Name)
 		// TODO should we debounce here?
-		d.toLimb(d.instance)
+		if err := d.sync(); err != nil {
+			d.log.Error(err, "failed to sync")
+		}
 	}
 	if err := d.mqttClient.Subscribe(subscribeTopics, subscribeHandler); err != nil {
 		return errors.Wrap(err, "failed to subscribe")
@@ -259,6 +289,7 @@ func (d *mqttDevice) refreshAsAttributedTopic(staleSpecPropsIndex map[string]v1a
 				if err != nil {
 					return errors.Wrapf(err, "failed to publish property %s", newSpecProp.Name)
 				}
+				d.log.V(4).Info("Sent payload", "type", "AttributedTopic", "property", newSpecProp.Name)
 			}
 		}
 	}
@@ -266,6 +297,18 @@ func (d *mqttDevice) refreshAsAttributedTopic(staleSpecPropsIndex map[string]v1a
 	return nil
 }
 
+// sync combines all synchronization operations.
+func (d *mqttDevice) sync() error {
+	if d.toLimb != nil {
+		if err := d.toLimb(d.instance); err != nil {
+			return err
+		}
+	}
+	d.log.V(1).Info("Synced")
+	return nil
+}
+
+// getPath returns the name as path if the path parameter is blank.
 func getPath(name, path string) string {
 	if path != "" {
 		return path
@@ -273,6 +316,8 @@ func getPath(name, path string) string {
 	return name
 }
 
+// getPublishRender returns the render map for published topic rendering.
+// It is worth noting that the `operator.write: "null"` will be treated as blank string.
 func getPublishRender(prop *v1alpha1.MQTTDeviceProperty) map[string]string {
 	var render = make(map[string]string, 2)
 
@@ -281,12 +326,18 @@ func getPublishRender(prop *v1alpha1.MQTTDeviceProperty) map[string]string {
 
 	// gets operator rendering value
 	if prop.Operator != nil {
-		render["operator"] = prop.Operator.Write
+		var write = prop.Operator.Write
+		if write == "null" {
+			write = ""
+		}
+		render["operator"] = write
 	}
 
 	return render
 }
 
+// getSubscribeRender returns the render map for subscribed topic rendering.
+// It is worth noting that the `operator.read: "null"` will be treated as blank string.
 func getSubscribeRender(prop *v1alpha1.MQTTDeviceProperty) map[string]string {
 	var render = make(map[string]string, 2)
 
@@ -295,7 +346,11 @@ func getSubscribeRender(prop *v1alpha1.MQTTDeviceProperty) map[string]string {
 
 	// gets operator rendering value
 	if prop.Operator != nil {
-		render["operator"] = prop.Operator.Read
+		var read = prop.Operator.Read
+		if read == "null" {
+			read = ""
+		}
+		render["operator"] = read
 	}
 
 	return render
