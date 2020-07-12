@@ -77,11 +77,18 @@ func (in MQTTDevicePropertyValue) MarshalJSON() ([]byte, error) {
 	return nil, nil
 }
 
+// ToUnstructured implements the value.UnstructuredConverter interface.
+func (in MQTTDevicePropertyValue) ToUnstructured() interface{} {
+	if len(in.Raw) > 0 {
+		return in.Raw
+	}
+	return nil
+}
+
 // OpenAPISchemaType is used by the kube-openapi generator when constructing
 // the OpenAPI spec of this type.
 // See: https://github.com/kubernetes/kube-openapi/tree/master/pkg/generators
 func (MQTTDevicePropertyValue) OpenAPISchemaType() []string {
-	// TODO: return actual types when anyOf is supported
 	return nil
 }
 
