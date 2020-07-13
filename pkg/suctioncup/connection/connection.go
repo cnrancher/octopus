@@ -2,6 +2,9 @@ package connection
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"time"
 
 	"go.uber.org/atomic"
 	"google.golang.org/grpc"
@@ -82,26 +85,41 @@ func (c *connection) Send(model *metav1.TypeMeta, device []byte, references map[
 	}()
 
 	go func() {
+		defer func() {
+			if recover() != nil {
+				// nothing to do
+			}
+		}()
 		c.interruptSignal <- struct{}{}
 	}()
 	if err = c.conn.Send(&api.ConnectRequest{
 		Model:      model,
 		Device:     device,
 		References: references,
-	}); err == nil {
-		err = <-c.interruptError
+	}); err != nil {
+		return
 	}
 
-	return err
+	// TODO should we parameterize the sending timeout?
+	var timeoutDuration = 90 * time.Second
+	var timeout = time.NewTimer(timeoutDuration)
+	defer timeout.Stop()
+	select {
+	case err = <-c.interruptError:
+		return
+	case <-timeout.C:
+		return fmt.Errorf("timeout to send data in %v", timeoutDuration)
+	}
 }
 
 func (c *connection) stop() error {
+	var err error
 	if c.stopped.CAS(false, true) {
+		err = c.conn.CloseSend()
 		close(c.interruptSignal)
 		close(c.interruptError)
-		return c.conn.CloseSend()
 	}
-	return nil
+	return err
 }
 
 func (c *connection) receive() {
@@ -119,13 +137,21 @@ func (c *connection) receive() {
 				c.interruptError <- err
 				return
 			}
+			if resp == nil {
+				c.interruptError <- errors.New("failed to receive data")
+				return
+			}
 
-			c.notifier.NoticeConnectionReceivedData(
-				c.adaptorName,
-				c.name,
-				resp.GetDevice(),
-			)
-			c.interruptError <- nil
+			if resp.GetErrorMessage() != "" {
+				c.interruptError <- errors.New(resp.GetErrorMessage())
+			} else {
+				c.notifier.NoticeConnectionReceivedData(
+					c.adaptorName,
+					c.name,
+					resp.GetDevice(),
+				)
+				c.interruptError <- nil
+			}
 			continue
 		default:
 		}
@@ -153,10 +179,22 @@ func (c *connection) receive() {
 			return
 		}
 
-		c.notifier.NoticeConnectionReceivedData(
-			c.adaptorName,
-			c.name,
-			resp.GetDevice(),
-		)
+		if resp == nil {
+			return
+		}
+
+		if resp.GetErrorMessage() != "" {
+			c.notifier.NoticeConnectionReceivedError(
+				c.adaptorName,
+				c.name,
+				errors.New(resp.GetErrorMessage()),
+			)
+		} else {
+			c.notifier.NoticeConnectionReceivedData(
+				c.adaptorName,
+				c.name,
+				resp.GetDevice(),
+			)
+		}
 	}
 }
