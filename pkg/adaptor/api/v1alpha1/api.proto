@@ -19,41 +19,48 @@ message Empty {
 // Registration is the service advertised by the Limb,
 // any adaptor start its service until Limb approved this register request.
 service Registration {
-    rpc Register (RegisterRequest) returns (Empty) {
-    }
+  // Register is used to register the adaptor with limb.
+  rpc Register (RegisterRequest) returns (Empty) {}
 }
 
+// RegisterRequest is the request used during registration
+// and is used to uniquely identify an adaptor.
 message RegisterRequest {
-    // Name of the adaptor in the form `adaptor-vendor.com/adaptor-name`.
-    string name = 1;
-    // Version of the API the adaptor was built against.
-    string version = 2;
-    // Name of the unix socket the adaptor is listening on, it's in the form `*.sock`.
-    string endpoint = 3;
+  // Name of the adaptor in the form `adaptor-vendor.com/adaptor-name`.
+  string name = 1;
+  // Version of the API the adaptor was built against.
+  string version = 2;
+  // Name of the unix socket the adaptor is listening on, it's in the form `*.sock`.
+  string endpoint = 3;
 }
 
 // Connection is the service advertised by the adaptor.
 service Connection {
-    rpc Connect (stream ConnectRequest) returns (stream ConnectResponse) {
-    }
+  // Connect is for communication between the adaptor and limb.
+  rpc Connect (stream ConnectRequest) returns (stream ConnectResponse) {}
 }
 
 message ConnectRequestReferenceEntry {
-    map<string, bytes> items = 1;
+  map<string, bytes> items = 1;
 }
 
+// ConnectRequest is the request used during connection
+// and is used to send desired device data to an adaptor.
 message ConnectRequest {
-    // [Deprecated] Parameters for the connection, it's in form JSON bytes.
-    bytes parameters = 1;
-    // Model for the device.
-    k8s.io.apimachinery.pkg.apis.meta.v1.TypeMeta model = 2;
-    // Desired device, it's in form JSON bytes.
-    bytes device = 3;
-    // References for the device, i.e: Secret, ConfigMap and Downward API.
-    map<string, ConnectRequestReferenceEntry> references = 4;
+  // Model for the device.
+  k8s.io.apimachinery.pkg.apis.meta.v1.TypeMeta model = 1;
+  // Desired device, it's in form JSON bytes.
+  bytes device = 2;
+  // References for the device, i.e: Secret, ConfigMap and Downward API.
+  map<string, ConnectRequestReferenceEntry> references = 3;
 }
 
+// ConnectResponse is the response used during connection
+// and is used to return observed device data to the limb.
 message ConnectResponse {
-    // Observed device, it's in form JSON bytes.
-    bytes device = 1;
+  // Observed device, it's in form JSON bytes.
+  bytes device = 1;
+  // The unhandled error message indicates that the connection cannot be interrupted
+  // and the user needs to choose to recreate or ignore it.
+  string errorMessage = 2;
 }
