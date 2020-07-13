@@ -2,6 +2,8 @@ package connection
 
 import (
 	"context"
+	"errors"
+	"time"
 
 	"go.uber.org/atomic"
 	"google.golang.org/grpc"
@@ -88,20 +90,28 @@ func (c *connection) Send(model *metav1.TypeMeta, device []byte, references map[
 		Model:      model,
 		Device:     device,
 		References: references,
-	}); err == nil {
-		err = <-c.interruptError
+	}); err != nil {
+		return
 	}
 
-	return err
+	var timeout = time.NewTimer(1 * time.Minute)
+	defer timeout.Stop()
+	select {
+	case err = <-c.interruptError:
+		return
+	case <-timeout.C:
+		return errors.New("timeout to send data in 60s")
+	}
 }
 
 func (c *connection) stop() error {
+	var err error
 	if c.stopped.CAS(false, true) {
+		err = c.conn.CloseSend()
 		close(c.interruptSignal)
 		close(c.interruptError)
-		return c.conn.CloseSend()
 	}
-	return nil
+	return err
 }
 
 func (c *connection) receive() {
@@ -119,13 +129,21 @@ func (c *connection) receive() {
 				c.interruptError <- err
 				return
 			}
+			if resp == nil {
+				c.interruptError <- errors.New("failed to receive data")
+				return
+			}
 
-			c.notifier.NoticeConnectionReceivedData(
-				c.adaptorName,
-				c.name,
-				resp.GetDevice(),
-			)
-			c.interruptError <- nil
+			if resp.GetErrorMessage() != "" {
+				c.interruptError <- errors.New(resp.GetErrorMessage())
+			} else {
+				c.notifier.NoticeConnectionReceivedData(
+					c.adaptorName,
+					c.name,
+					resp.GetDevice(),
+				)
+				c.interruptError <- nil
+			}
 			continue
 		default:
 		}
@@ -153,10 +171,22 @@ func (c *connection) receive() {
 			return
 		}
 
-		c.notifier.NoticeConnectionReceivedData(
-			c.adaptorName,
-			c.name,
-			resp.GetDevice(),
-		)
+		if resp == nil {
+			return
+		}
+
+		if resp.GetErrorMessage() != "" {
+			c.notifier.NoticeConnectionReceivedError(
+				c.adaptorName,
+				c.name,
+				errors.New(resp.GetErrorMessage()),
+			)
+		} else {
+			c.notifier.NoticeConnectionReceivedData(
+				c.adaptorName,
+				c.name,
+				resp.GetDevice(),
+			)
+		}
 	}
 }

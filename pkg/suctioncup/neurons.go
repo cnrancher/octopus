@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
@@ -61,7 +62,7 @@ func (m *manager) Connect(referencesData map[string]map[string][]byte, device *u
 
 	var sendModel = by.Status.Model
 	var sendDevice []byte
-	sendDevice, sentErr = device.MarshalJSON()
+	sendDevice, sentErr = cleanupDevice(device).MarshalJSON()
 	if sentErr != nil {
 		return errors.Wrapf(sentErr, "cannot marshal device %s as JSON", deviceName)
 	}
@@ -103,4 +104,19 @@ func (m *manager) Disconnect(by *edgev1alpha1.DeviceLink) {
 	}()
 
 	exist = adaptor.DeleteConnection(object.GetNamespacedName(by))
+}
+
+func cleanupDevice(device *unstructured.Unstructured) *unstructured.Unstructured {
+	device.SetGenerateName("")
+	device.SetSelfLink("")
+	device.SetResourceVersion("")
+	device.SetGeneration(0)
+	device.SetCreationTimestamp(metav1.Time{})
+	device.SetDeletionTimestamp(nil)
+	device.SetDeletionGracePeriodSeconds(nil)
+	device.SetFinalizers(nil)
+	device.SetClusterName("")
+	device.SetManagedFields(nil)
+	unstructured.RemoveNestedField(device.Object, "status")
+	return device
 }
