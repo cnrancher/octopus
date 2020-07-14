@@ -38,10 +38,20 @@ For more details please refer to the [official documentation](https://cnrancher.
 
 ## Quick-start
 
-There are two ways to deploy the Octopus, for quick-start, you can use the manifest YAML file to bring up the Octopus. 
-The installer YAML file is under the [deploy/e2e](./deploy/e2e) directory on Github:
+There are two ways to deploy the Octopus, for quick-start, you can use the manifest YAML file to bring up the Octopus. The installer YAML file is under the [deploy/e2e](./deploy/e2e) directory on Github.
 ```shell script
-$ kubectl apply -f https://raw.githubusercontent.com/cnrancher/octopus/master/deploy/e2e/all_in_one_without_webhook.yaml
+# install octopus
+$ kubectl apply -f https://raw.githubusercontent.com/cnrancher/octopus/master/deploy/e2e/all_in_one.yaml
+
+# install ui
+$ kubectl apply -f https://raw.githubusercontent.com/cnrancher/octopus-api-server/master/deploy/e2e/all_in_one.yaml
+
+# install adaptors
+$ kubectl apply -f https://raw.githubusercontent.com/cnrancher/octopus/master/adaptors/modbus/deploy/e2e/all_in_one.yaml
+$ kubectl apply -f https://raw.githubusercontent.com/cnrancher/octopus/master/adaptors/opcua/deploy/e2e/all_in_one.yaml
+$ kubectl apply -f https://raw.githubusercontent.com/cnrancher/octopus/master/adaptors/mqtt/deploy/e2e/all_in_one.yaml
+$ kubectl apply -f https://raw.githubusercontent.com/cnrancher/octopus/master/adaptors/ble/deploy/e2e/all_in_one.yaml
+$ kubectl apply -f https://raw.githubusercontent.com/cnrancher/octopus/master/adaptors/dummy/deploy/e2e/all_in_one.yaml
 ```
 
 Optionally, you can use this [repository](https://github.com/cnrancher/octopus-chart) hosts official Helm charts for Octopus. These charts are used to deploy Octopus to the Kubernetes/k3s Cluster.
@@ -53,7 +63,7 @@ $ helm repo update
 # create octopus-system namespace
 $ kubectl create ns octopus-system
 
-# install octopus
+# install octopus, ui and adaptors
 $ helm install --namespace octopus-system octopus octopus/octopus
 ```
 
@@ -64,7 +74,6 @@ Octopus is 100% open source software. Project source code is spread across a num
 1. Octopus API Server --  https://github.com/cnrancher/octopus-api-server
 1. Octopus Chart -- https://github.com/cnrancher/octopus-chart
 1. Octopus Docs -- https://github.com/cnrancher/docs-octopus
-
 
 ## License
 Copyright (c) 2020 [Rancher Labs, Inc.](http://rancher.com)
