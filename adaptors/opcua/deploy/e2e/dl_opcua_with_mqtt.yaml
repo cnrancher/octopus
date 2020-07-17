@@ -26,7 +26,7 @@ spec:
             topic: "cattle.io/octopus/:namespace/:name"
       protocol:
         # replace the address if needed
-        endpoint: opc.tcp://10.43.29.71:4840/
+        endpoint: opc.tcp://octopus-simulator-opcua.octopus-simulator-system:4840/
       properties:
         - name: datetime
           description: the current datetime

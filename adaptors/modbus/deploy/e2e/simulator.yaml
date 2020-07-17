@@ -1,0 +1,142 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    app.kubernetes.io/name: octopus
+    app.kubernetes.io/version: master
+  name: octopus-simulator-system
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: modbus-tcp
+    app.kubernetes.io/name: octopus
+    app.kubernetes.io/version: master
+  name: octopus-simulator-modbus-tcp
+  namespace: octopus-simulator-system
+spec:
+  ports:
+    - name: tcp
+      port: 5020
+      targetPort: tcp
+  selector:
+    app.kubernetes.io/component: modbus-tcp
+    app.kubernetes.io/name: octopus
+    app.kubernetes.io/version: master
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: modbus-tcp
+    app.kubernetes.io/name: octopus
+    app.kubernetes.io/version: master
+  name: octopus-simulator-modbus-tcp
+  namespace: octopus-simulator-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: modbus-tcp
+      app.kubernetes.io/name: octopus
+      app.kubernetes.io/version: master
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: modbus-tcp
+        app.kubernetes.io/name: octopus
+        app.kubernetes.io/version: master
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: beta.kubernetes.io/os
+                    operator: In
+                    values:
+                      - linux
+              - matchExpressions:
+                  - key: kubernetes.io/os
+                    operator: In
+                    values:
+                      - linux
+      containers:
+        - args:
+            - modbus
+            - tcp
+          image: cnrancher/octopus-simulator:master
+          imagePullPolicy: Always
+          name: simulator
+          ports:
+            - containerPort: 5020
+              name: tcp
+      terminationGracePeriodSeconds: 30
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app.kubernetes.io/component: modbus-rtu
+    app.kubernetes.io/name: octopus
+    app.kubernetes.io/version: master
+  name: octopus-simulator-modbus-rtu
+  namespace: octopus-simulator-system
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: modbus-rtu
+      app.kubernetes.io/name: octopus
+      app.kubernetes.io/version: master
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: modbus-rtu
+        app.kubernetes.io/name: octopus
+        app.kubernetes.io/version: master
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: beta.kubernetes.io/os
+                    operator: In
+                    values:
+                      - linux
+              - matchExpressions:
+                  - key: kubernetes.io/os
+                    operator: In
+                    values:
+                      - linux
+      containers:
+        - args:
+            - -d
+            - -d
+            - pty,raw,echo=0,link=/dev/ttyS001
+            - pty,raw,echo=0,link=/dev/ttyS002
+          image: alpine/socat:1.7.3.4-r0
+          name: socat
+          volumeMounts:
+            - mountPath: /dev
+              name: dev
+        - args:
+            - modbus
+            - rtu
+          image: cnrancher/octopus-simulator:master
+          imagePullPolicy: Always
+          name: simulator
+          volumeMounts:
+            - mountPath: /dev
+              name: dev
+      terminationGracePeriodSeconds: 30
+      tolerations:
+        - operator: Exists
+      volumes:
+        - hostPath:
+            path: /dev
+            type: Directory
+          name: dev
