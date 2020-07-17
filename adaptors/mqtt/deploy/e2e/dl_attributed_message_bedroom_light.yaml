@@ -17,14 +17,13 @@ spec:
       protocol:
         pattern: "AttributedMessage"
         client:
-          server: "tcp://test.mosquitto.org:1883"
+          server: "tcp://octopus-simulator-mqtt.octopus-simulator-system:1883"
         message:
           topic: "cattle.io/octopus/home/bedroom/light/:operator"
           operator:
             write: "set"
       properties:
         - name: "switch"
-          path: "switch"
           description: "The switch of light"
           type: "boolean"
           readOnly: false

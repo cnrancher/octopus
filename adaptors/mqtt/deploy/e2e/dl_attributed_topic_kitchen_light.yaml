@@ -17,7 +17,7 @@ spec:
       protocol:
         pattern: "AttributedTopic"
         client:
-          server: "tcp://test.mosquitto.org:1883"
+          server: "tcp://octopus-simulator-mqtt.octopus-simulator-system:1883"
         message:
           topic: "cattle.io/octopus/home/:operator/kitchen/light/:path"
           operator:
@@ -25,19 +25,20 @@ spec:
             write: "set"
       properties:
         - name: "switch"
-          path: "switch"
           description: "The switch of light"
           type: "boolean"
           readOnlye: false
           qos: 2
         - name: "gear"
-          path: "gear"
           description: "The gear of light"
           type: "string"
           readOnlye: false
           annotations:
             type: "enum"
             format: "low,mid,high"
+          operator:
+            read: "get"
+            write: "control"
         - name: "power"
           path: "parameter_power"
           description: "The power of light"
@@ -75,63 +76,3 @@ spec:
             type: "duration"
             standard: "ISO 8601"
             format: "PYYMMDD"
-    # status:
-    #   properties:
-    #     - name: "switch"
-    #       path: "switch"
-    #       description: "The switch of light"
-    #       type: "boolean"
-    #       value: "false"
-    #       readOnlye: false
-    #       qos: 2
-    #     - name: "gear"
-    #       path: "gear"
-    #       description: "The gear of light"
-    #       type: "string"
-    #       value: "low"
-    #       readOnlye: false
-    #       annotations:
-    #         type: "enum"
-    #         format: "low,mid,high"
-    #     - name: "power"
-    #       path: "parameter_power"
-    #       description: "The power of light"
-    #       type: "float"
-    #       value: "3.0"
-    #       annotations:
-    #         group: "parameter"
-    #         unit: "watt"
-    #     - name: "luminance"
-    #       path: "parameter_luminance"
-    #       description: "The luminance of light"
-    #       type: "int"
-    #       value: "245"
-    #       annotations:
-    #         group: "parameter"
-    #         unit: "luminance"
-    #     - name: "manufacturer"
-    #       description: "The manufacturer of light"
-    #       type: "string"
-    #       value: "Rancher Octopus Fake Device"
-    #       annotations:
-    #         group: "production"
-    #     - name: "productionDate"
-    #       path: "production_date"
-    #       description: "The production date of light"
-    #       type: "string"
-    #       value: "2020-07-08T13:24:00.00Z"
-    #       annotations:
-    #         group: "production"
-    #         type: "datetime"
-    #         standard: "ISO 8601"
-    #         format: "YYYY-MM-DDThh:mm:ss.SSZ"
-    #     - name: "serviceLife"
-    #       path: "service_life"
-    #       description: "The service life of light"
-    #       type: "string"
-    #       value: "P1Y0M0D"
-    #       annotations:
-    #         group: "production"
-    #         type: "duration"
-    #         standard: "ISO 8601"
-    #         format: "PYYMMDD"

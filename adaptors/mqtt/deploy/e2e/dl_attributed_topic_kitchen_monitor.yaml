@@ -17,7 +17,7 @@ spec:
       protocol:
         pattern: "AttributedTopic"
         client:
-          server: "tcp://test.mosquitto.org:1883"
+          server: "tcp://octopus-simulator-mqtt.octopus-simulator-system:1883"
         message:
           topic: "cattle.io/octopus/home/status/kitchen/:path"
       properties:
@@ -32,19 +32,3 @@ spec:
           description: "The state of light"
           path: "light/switch"
           type: "boolean"
-    # status:
-    #   properties:
-    #     - name: "doorState"
-    #       path: "door/state"
-    #       description: "The state of door"
-    #       type: "string"
-    #       value: "open"
-    #       annotations:
-    #         type: "enum"
-    #         format: "open,close"
-    #     - name: "isLightOn"
-    #       description: "The state of light"
-    #       path: "light/switch"
-    #       type: "boolean"
-    #       value: "false"
-          

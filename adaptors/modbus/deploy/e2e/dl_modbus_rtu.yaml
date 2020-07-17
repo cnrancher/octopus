@@ -1,7 +1,7 @@
 apiVersion: edge.cattle.io/v1alpha1
 kind: DeviceLink
 metadata:
-  name: modbus-rtu
+  name: thermometer-rtu
 spec:
   adaptor:
     node: edge-worker
@@ -20,52 +20,65 @@ spec:
       protocol:
         rtu:
           # replace the serial port if needed
-          endpoint: /dev/pts/0
+          endpoint: /dev/ttyS001
           workerID: 1
           parity: "N"
-          stopBits: 1
+          stopBits: 2
           dataBits: 8
-          baudRate: 9600
+          baudRate: 19200
       properties:
         - name: temperature
-          description: temperature value, should be divided by 10
+          description: temperature value in celsius degree.
           readOnly: true
           visitor:
             register: HoldingRegister
             offset: 0
-            quantity: 1
+            quantity: 2
             orderOfOperations:
+              # the source is integer value with 2 quantity,
+              # change to float value.
               - type: Divide
-                value: "10"
+                value: "100"
+              # the source is kevin temperature,
+              # change to celsius degree.
+              - type: Subtract
+                value: "273.15"
           type: float
-        - name: humidity
-          description: humidity value, should be divided by 10
+        - name: humidity-percent
+          description: humidity value, the source is relative humidity.
           readOnly: true
           visitor:
             register: HoldingRegister
             offset: 1
             quantity: 1
             orderOfOperations:
+              # the source is integer value with 2 quantity,
+              # change to float value.
               - type: Divide
-                value: "10"
+                value: "100"
           type: float
-        - name: alert
-          description: the value reaches alert limitation
+        - name: hight-temperature-alarm
+          description: reports alarm if the temperature reaches temperature-limitation.
           readOnly: true
           visitor:
             register: CoilRegister
             offset: 0
             quantity: 1
           type: boolean
-        - name: limitation
-          description: the limitation
+        - name: temperature-limitation
+          description: the limiation of temperature value in celsius degree.
           readOnly: false
-          value: "200"
           visitor:
             register: HoldingRegister
             offset: 5
-            quantity: 1
+            quantity: 2
             orderOfOperations:
+              # the source is integer value with 2 quantity,
+              # change to float value.
               - type: Divide
-                value: "10"
+                value: "100"
+              # the source is kevin temperature,
+              # change to celsius degree.
+              - type: Subtract
+                value: "273.15"
           type: float

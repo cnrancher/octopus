@@ -70,10 +70,13 @@ $ helm install --namespace octopus-system octopus octopus/octopus
 ## Source code
 Octopus is 100% open source software. Project source code is spread across a number of repos:
 
-1. Octopus UI -- https://github.com/cnrancher/octopus-ui
-1. Octopus API Server --  https://github.com/cnrancher/octopus-api-server
-1. Octopus Chart -- https://github.com/cnrancher/octopus-chart
-1. Octopus Docs -- https://github.com/cnrancher/docs-octopus
+| Name | Repo Address |
+|:---|:---|
+| Octopus UI | https://github.com/cnrancher/octopus-ui |
+| Octopus API Server | https://github.com/cnrancher/octopus-api-server |
+| Octopus Chart | https://github.com/cnrancher/octopus-chart |
+| Octopus Simulator | https://github.com/cnrancher/octopus-simulator |
+| Octopus Docs | https://github.com/cnrancher/docs-octopus |
 
 ## License
 Copyright (c) 2020 [Rancher Labs, Inc.](http://rancher.com)
