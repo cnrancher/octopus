@@ -16,7 +16,6 @@ import (
 	api "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
 	"github.com/rancher/octopus/pkg/adaptor/socket/handler"
 	"github.com/rancher/octopus/pkg/mqtt"
-	"github.com/rancher/octopus/pkg/util/converter"
 	"github.com/rancher/octopus/pkg/util/object"
 )
 
@@ -165,29 +164,31 @@ func (d *mqttDevice) refreshAsAttributedMessage(staleSpecPropsIndex map[string]v
 	// subscribes
 	var subscribeTopics = []mqtt.SubscribeTopic{{}}
 	var subscribeHandler = func(msg mqtt.SubscribeMessage) {
-		defer runtime.HandleCrash(handler.NewPanicsCleanupSocketHandler(metadata.Endpoint))
+		go func() {
+			defer runtime.HandleCrash(handler.NewPanicsCleanupSocketHandler(metadata.Endpoint))
 
-		// receives and updates status properties
-		d.Lock()
-		defer d.Unlock()
+			// receives and updates status properties
+			d.Lock()
+			defer d.Unlock()
 
-		var payload = msg.Payload
-		for idx, prop := range d.instance.Status.Properties {
-			var propValue = &v1alpha1.MQTTDevicePropertyValue{}
-			var result = gjson.GetBytes(payload, getPath(prop.Name, prop.Path))
-			if result.Index > 0 {
-				propValue.Raw = payload[result.Index : result.Index+len(result.Raw)]
-			} else {
-				propValue.Raw = []byte(result.Raw)
+			var payload = msg.Payload
+			for idx, prop := range d.instance.Status.Properties {
+				var propValue = &v1alpha1.MQTTDevicePropertyValue{}
+				var result = gjson.GetBytes(payload, getPath(prop.Name, prop.Path))
+				if result.Index > 0 {
+					propValue.Raw = payload[result.Index : result.Index+len(result.Raw)]
+				} else {
+					propValue.Raw = []byte(result.Raw)
+				}
+				prop.Value = propValue
+				prop.UpdatedAt = now()
+				d.instance.Status.Properties[idx] = prop
 			}
-			prop.Value = propValue
-			prop.UpdatedAt = now()
-			d.instance.Status.Properties[idx] = prop
-		}
-		d.log.V(4).Info("Received payload", "type", "AttributedMessage")
-		if err := d.sync(); err != nil {
-			d.log.Error(err, "failed to sync")
-		}
+			d.log.V(4).Info("Received payload", "type", "AttributedMessage")
+			if err := d.sync(); err != nil {
+				d.log.Error(err, "failed to sync")
+			}
+		}()
 	}
 	if err := d.mqttClient.Subscribe(subscribeTopics, subscribeHandler); err != nil {
 		return errors.Wrap(err, "failed to subscribe")
@@ -217,7 +218,7 @@ func (d *mqttDevice) refreshAsAttributedMessage(staleSpecPropsIndex map[string]v
 			}
 		}
 	}
-	if !reflect.DeepEqual(stalePayload, payload) {
+	if len(payload) != 0 && !reflect.DeepEqual(stalePayload, payload) {
 		if err := d.mqttClient.Publish(mqtt.PublishMessage{Payload: payload}); err != nil {
 			return errors.Wrap(err, "failed to publish")
 		}
@@ -246,29 +247,26 @@ func (d *mqttDevice) refreshAsAttributedTopic(staleSpecPropsIndex map[string]v1a
 		})
 	}
 	var subscribeHandler = func(msg mqtt.SubscribeMessage) {
-		defer runtime.HandleCrash(handler.NewPanicsCleanupSocketHandler(metadata.Endpoint))
+		go func() {
+			defer runtime.HandleCrash(handler.NewPanicsCleanupSocketHandler(metadata.Endpoint))
 
-		// receives and updates status properties
-		d.Lock()
-		defer d.Unlock()
+			// receives and updates status properties
+			d.Lock()
+			defer d.Unlock()
 
-		if msg.Index > len(d.instance.Status.Properties) {
-			return
-		}
+			if msg.Index > len(d.instance.Status.Properties) {
+				return
+			}
 
-		var propValue v1alpha1.MQTTDevicePropertyValue
-		if err := converter.UnmarshalJSON(msg.Payload, &propValue); err != nil {
-			d.log.Error(err, "Failed to unmarshal subscribed payload", "topic", msg.Topic)
-			return
-		}
-		var prop = &d.instance.Status.Properties[msg.Index]
-		prop.Value = &propValue
-		prop.UpdatedAt = now()
-		d.log.V(4).Info("Received payload", "type", "AttributedTopic", "property", prop.Name)
-		// TODO should we debounce here?
-		if err := d.sync(); err != nil {
-			d.log.Error(err, "failed to sync")
-		}
+			var prop = &d.instance.Status.Properties[msg.Index]
+			prop.Value = &v1alpha1.MQTTDevicePropertyValue{Raw: msg.Payload}
+			prop.UpdatedAt = now()
+			d.log.V(4).Info("Received payload", "type", "AttributedTopic", "property", prop.Name)
+			// TODO should we debounce here?
+			if err := d.sync(); err != nil {
+				d.log.Error(err, "failed to sync")
+			}
+		}()
 	}
 	if err := d.mqttClient.Subscribe(subscribeTopics, subscribeHandler); err != nil {
 		return errors.Wrap(err, "failed to subscribe")
