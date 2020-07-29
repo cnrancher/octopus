@@ -1,6 +1,7 @@
 # Octopus
 
 [![Build Status](http://drone-pandaria.cnrancher.com/api/badges/cnrancher/octopus/status.svg)](http://drone-pandaria.cnrancher.com/cnrancher/octopus)
+[![Go Report Card](https://goreportcard.com/badge/github.com/cnrancher/octopus)](https://goreportcard.com/report/github.com/cnrancher/octopus)
 
 Octopus is a light-weight and cloud-native device management system for Kubernetes and k3s, it does not need to replace any basic components of the Kubernetes cluster. After Octopus deployed, the cluster can have the ability to manage edge devices as custom k8s resources.
 
@@ -57,7 +58,7 @@ $ kubectl apply -f https://raw.githubusercontent.com/cnrancher/octopus/master/ad
 Optionally, you can use this [repository](https://github.com/cnrancher/octopus-chart) hosts official Helm charts for Octopus. These charts are used to deploy Octopus to the Kubernetes/k3s Cluster.
 ```shell script
 # add octopus helm repo
-$ helm repo add octopus http://charts.cnrancher.cn/octopus
+$ helm repo add octopus http://charts.cnrancher.com/octopus
 $ helm repo update
 
 # create octopus-system namespace
