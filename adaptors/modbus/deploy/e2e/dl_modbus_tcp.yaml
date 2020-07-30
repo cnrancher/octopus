@@ -44,7 +44,7 @@ spec:
           readOnly: true
           visitor:
             register: HoldingRegister
-            offset: 1
+            offset: 2
             quantity: 1
             orderOfOperations:
               # the source is integer value with 2 quantity,
