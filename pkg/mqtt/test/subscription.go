@@ -32,7 +32,10 @@ func (s *SubscriptionStream) Intercept(wait time.Duration, interception Subscrip
 		select {
 		case <-deadline:
 			return errors.Errorf("timeout after %v", wait)
-		case msg := <-s.messages:
+		case msg, ok := <-s.messages:
+			if !ok {
+				return nil
+			}
 			switch m := msg.(type) {
 			case packet.Message:
 				if interception(&m) {
@@ -46,7 +49,7 @@ func (s *SubscriptionStream) Intercept(wait time.Duration, interception Subscrip
 }
 
 func NewSubscriptionStream(address, topic string, qos byte) (*SubscriptionStream, error) {
-	var messages = make(chan interface{})
+	var messages = make(chan interface{}, 10)
 
 	var c = cli.New()
 	c.Callback = func(msg *packet.Message, err error) error {
