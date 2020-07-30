@@ -279,7 +279,7 @@ function e2e() {
 
   octopus::log::info "running E2E tests for adaptor ${adaptor}..."
 
-  octopus::ginkgo::test "${CURR_DIR}/test/e2e"
+  octopus::ginkgo::test -slowSpecThreshold=120 -timeout=30m "${CURR_DIR}/test/e2e"
 
   octopus::log::info "...done"
 }
