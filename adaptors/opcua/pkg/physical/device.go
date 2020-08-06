@@ -22,6 +22,7 @@ import (
 	"github.com/rancher/octopus/pkg/mqtt"
 	"github.com/rancher/octopus/pkg/util/critical"
 	"github.com/rancher/octopus/pkg/util/object"
+	"github.com/rancher/octopus/pkg/util/safechan"
 )
 
 // Device is an interface for device operations set.
@@ -50,7 +51,7 @@ type opcuaDevice struct {
 	log         logr.Logger
 	instance    *v1alpha1.OPCUADevice
 	toLimb      OPCUADeviceLimbSyncer
-	stop        chan struct{}
+	stop        *safechan.SafeCloseChannel
 	opcuaClient *opcua.Client
 
 	mqttClient mqtt.Client
@@ -266,14 +267,14 @@ func (d *opcuaDevice) subscribe(ctx context.Context, notifyCh chan *opcua.Publis
 
 func (d *opcuaDevice) stopSubscribe() {
 	if d.stop != nil {
-		close(d.stop)
+		d.stop.Close()
 		d.stop = nil
 	}
 }
 
 func (d *opcuaDevice) startSubscribe(subscribeInterval time.Duration, properties []v1alpha1.OPCUADeviceProperty) error {
 	if d.stop == nil {
-		d.stop = make(chan struct{})
+		d.stop = safechan.NewSafeCloseChannel()
 
 		// creates subscription
 		var notifyCh = make(chan *opcua.PublishNotificationData)
@@ -303,7 +304,7 @@ func (d *opcuaDevice) startSubscribe(subscribeInterval time.Duration, properties
 		}
 
 		// subscribes
-		var ctx = critical.Context(d.stop, func() {
+		var ctx = critical.Context(d.stop.C, func() {
 			var err = sub.Cancel()
 			if err != nil {
 				if err != io.EOF {

@@ -16,6 +16,7 @@ import (
 	"github.com/rancher/octopus/pkg/adaptor/socket/handler"
 	"github.com/rancher/octopus/pkg/mqtt"
 	"github.com/rancher/octopus/pkg/util/object"
+	"github.com/rancher/octopus/pkg/util/safechan"
 )
 
 func NewSpecialDevice(log logr.Logger, meta metav1.ObjectMeta, toLimb DummySpecialDeviceLimbSyncer) Device {
@@ -35,7 +36,7 @@ type specialDevice struct {
 	log      logr.Logger
 	instance *v1alpha1.DummySpecialDevice
 	toLimb   DummySpecialDeviceLimbSyncer
-	stop     chan struct{}
+	stop     *safechan.SafeCloseChannel
 
 	mqttClient mqtt.Client
 }
@@ -177,26 +178,20 @@ func (d *specialDevice) mock(gear v1alpha1.DummySpecialDeviceGear, stop <-chan s
 				d.log.Error(err, "failed to sync")
 			}
 		}()
-
-		select {
-		case <-stop:
-			return
-		default:
-		}
 	}
 }
 
 func (d *specialDevice) stopMock() {
 	if d.stop != nil {
-		close(d.stop)
+		d.stop.Close()
 		d.stop = nil
 	}
 }
 
 func (d *specialDevice) startMock(gear v1alpha1.DummySpecialDeviceGear) {
 	if d.stop == nil {
-		d.stop = make(chan struct{})
-		go d.mock(gear, d.stop)
+		d.stop = safechan.NewSafeCloseChannel()
+		go d.mock(gear, d.stop.C)
 	}
 }
 

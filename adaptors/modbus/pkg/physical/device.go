@@ -17,6 +17,7 @@ import (
 	"github.com/rancher/octopus/pkg/adaptor/socket/handler"
 	"github.com/rancher/octopus/pkg/mqtt"
 	"github.com/rancher/octopus/pkg/util/object"
+	"github.com/rancher/octopus/pkg/util/safechan"
 )
 
 // Device is an interface for device operations set.
@@ -49,7 +50,7 @@ type modbusDevice struct {
 	log           logr.Logger
 	instance      *v1alpha1.ModbusDevice
 	toLimb        ModbusDeviceLimbSyncer
-	stop          chan struct{}
+	stop          *safechan.SafeCloseChannel
 	modbusHandler ModbusClientHandler
 
 	mqttClient mqtt.Client
@@ -221,12 +222,6 @@ func (d *modbusDevice) fetch(interval time.Duration, stop <-chan struct{}) {
 				d.log.Error(err, "failed to sync")
 			}
 		}()
-
-		select {
-		case <-d.stop:
-			return
-		default:
-		}
 	}
 }
 
@@ -312,15 +307,15 @@ func (d *modbusDevice) readProperty(dataType v1alpha1.ModbusDevicePropertyType, 
 
 func (d *modbusDevice) stopFetch() {
 	if d.stop != nil {
-		close(d.stop)
+		d.stop.Close()
 		d.stop = nil
 	}
 }
 
 func (d *modbusDevice) startFetch(fetchInterval time.Duration) {
 	if d.stop == nil {
-		d.stop = make(chan struct{})
-		go d.fetch(fetchInterval, d.stop)
+		d.stop = safechan.NewSafeCloseChannel()
+		go d.fetch(fetchInterval, d.stop.C)
 	}
 }
 

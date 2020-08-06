@@ -13,6 +13,7 @@ import (
 	"github.com/rancher/octopus/pkg/adaptor/socket/handler"
 	"github.com/rancher/octopus/pkg/mqtt"
 	"github.com/rancher/octopus/pkg/util/object"
+	"github.com/rancher/octopus/pkg/util/safechan"
 
 	"github.com/bettercap/gatt"
 	"github.com/go-logr/logr"
@@ -47,7 +48,7 @@ func NewDevice(log logr.Logger, meta metav1.ObjectMeta, toLimb BluetoothDeviceLi
 type bleDevice struct {
 	sync.Mutex
 
-	stop chan struct{}
+	stop *safechan.SafeCloseChannel
 	wg   sync.WaitGroup
 
 	log        logr.Logger
@@ -169,12 +170,6 @@ func (d *bleDevice) fetch(interval time.Duration, stop <-chan struct{}) {
 				d.log.Error(err, "failed to sync")
 			}
 		}()
-
-		select {
-		case <-d.stop:
-			return
-		default:
-		}
 	}
 }
 
@@ -213,15 +208,15 @@ func (d *bleDevice) scanDevice(spec v1alpha1.BluetoothDeviceSpec) ([]v1alpha1.Bl
 
 func (d *bleDevice) stopFetch() {
 	if d.stop != nil {
-		close(d.stop)
+		d.stop.Close()
 		d.stop = nil
 	}
 }
 
 func (d *bleDevice) startFetch(interval time.Duration) {
 	if d.stop == nil {
-		d.stop = make(chan struct{})
-		go d.fetch(interval, d.stop)
+		d.stop = safechan.NewSafeCloseChannel()
+		go d.fetch(interval, d.stop.C)
 	}
 }
 
