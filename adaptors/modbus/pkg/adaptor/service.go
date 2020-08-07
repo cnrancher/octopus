@@ -95,7 +95,7 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 					// send device by {name, namespace, status} tuple
 					var resp = &v1alpha1.ModbusDevice{}
 					resp.Namespace = in.Namespace
-					resp.Name = in.Namespace
+					resp.Name = in.Name
 					resp.Status = in.Status
 
 					// convert device to json bytes
