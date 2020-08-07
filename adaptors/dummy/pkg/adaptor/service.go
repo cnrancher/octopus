@@ -95,7 +95,7 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 					// send device by {name, namespace, status} tuple
 					var resp = &v1alpha1.DummySpecialDevice{}
 					resp.Namespace = in.Namespace
-					resp.Name = in.Namespace
+					resp.Name = in.Name
 					resp.Status = in.Status
 
 					// convert device to json bytes
@@ -138,7 +138,7 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 					// send device by {name, namespace, status} tuple
 					var resp = &v1alpha1.DummyProtocolDevice{}
 					resp.Namespace = in.Namespace
-					resp.Name = in.Namespace
+					resp.Name = in.Name
 					resp.Status = in.Status
 
 					// convert device to json bytes
