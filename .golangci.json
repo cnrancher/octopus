@@ -20,5 +20,12 @@
 		"build-tags": [
 			"test"
 		]
+	},
+	"linters-settings": {
+		"misspell": {
+			"ignore-words": [
+				"mosquitto"
+			]
+		}
 	}
 }
