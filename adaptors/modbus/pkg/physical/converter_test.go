@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
+
 	"github.com/rancher/octopus/adaptors/modbus/api/v1alpha1"
 )
 
@@ -51,6 +52,26 @@ func TestByteArrayToString(t *testing.T) {
 			expect: expect{
 				result: "",
 				err:    errors.New("invalid data type"),
+			},
+		},
+		{
+			given: given{
+				input:    []byte{0, 0, 0, 0, 0, 0, 4, 210},
+				dataType: "int",
+			},
+			expect: expect{
+				result: "1234",
+				err:    nil,
+			},
+		},
+		{
+			given: given{
+				input:    []byte{64, 9, 33, 251, 84, 68, 45, 24},
+				dataType: "float",
+			},
+			expect: expect{
+				result: "3.141592653589793",
+				err:    nil,
 			},
 		},
 	}
@@ -99,6 +120,28 @@ func TestStringToByteArray(t *testing.T) {
 			expect: expect{
 				result: nil,
 				err:    errors.New("input is longer than target length"),
+			},
+		},
+		{
+			given: given{
+				input:    "1234",
+				dataType: "int",
+				length:   8,
+			},
+			expect: expect{
+				result: []byte{0, 0, 0, 0, 0, 0, 4, 210},
+				err:    nil,
+			},
+		},
+		{
+			given: given{
+				input:    "3.141592653589793",
+				dataType: "float",
+				length:   8,
+			},
+			expect: expect{
+				result: []byte{64, 9, 33, 251, 84, 68, 45, 24},
+				err:    nil,
 			},
 		},
 	}

@@ -4,10 +4,12 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 
-	"github.com/rancher/octopus/adaptors/modbus/api/v1alpha1"
 	"github.com/sirupsen/logrus"
+
+	"github.com/rancher/octopus/adaptors/modbus/api/v1alpha1"
 )
 
 // convert read data to string value
@@ -16,17 +18,22 @@ func ByteArrayToString(input []byte, dataType v1alpha1.ModbusDevicePropertyType,
 	switch dataType {
 	case v1alpha1.ModbusDevicePropertyTypeString:
 		result = string(input)
-	case v1alpha1.ModbusDevicePropertyTypeInt, v1alpha1.ModbusDevicePropertyTypeFloat:
+	case v1alpha1.ModbusDevicePropertyTypeInt:
 		arr, err := toTargetLength(input, 8)
 		if err != nil {
 			return "", err
 		}
 		value := binary.BigEndian.Uint64(arr)
 		converted := convertReadData(float64(value), operations)
-		result = fmt.Sprint(converted)
-		if dataType == v1alpha1.ModbusDevicePropertyTypeInt {
-			result = fmt.Sprint(int(converted))
+		result = fmt.Sprint(int(converted))
+	case v1alpha1.ModbusDevicePropertyTypeFloat:
+		arr, err := toTargetLength(input, 8)
+		if err != nil {
+			return "", err
 		}
+		value := binary.BigEndian.Uint64(arr)
+		converted := convertReadData(math.Float64frombits(value), operations)
+		result = fmt.Sprint(converted)
 	case v1alpha1.ModbusDevicePropertyTypeBoolean:
 		b := input[len(input)-1]
 		if b == 0 {
@@ -58,13 +65,20 @@ func StringToByteArray(input string, dataType v1alpha1.ModbusDevicePropertyType,
 		} else {
 			data = []byte{0}
 		}
-	case v1alpha1.ModbusDevicePropertyTypeInt, v1alpha1.ModbusDevicePropertyTypeFloat:
+	case v1alpha1.ModbusDevicePropertyTypeInt:
 		data = make([]byte, 8)
 		i, err := strconv.ParseUint(input, 10, 64)
 		if err != nil {
 			return nil, err
 		}
 		binary.BigEndian.PutUint64(data, i)
+	case v1alpha1.ModbusDevicePropertyTypeFloat:
+		data = make([]byte, 8)
+		f, err := strconv.ParseFloat(input, 64)
+		if err != nil {
+			return nil, err
+		}
+		binary.BigEndian.PutUint64(data, math.Float64bits(f))
 	default:
 		return nil, errors.New("invalid data type")
 	}
