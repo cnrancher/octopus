@@ -14,6 +14,8 @@ import (
 
 	apiv1alpha1 "github.com/rancher/octopus/adaptors/dummy/api/v1alpha1"
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
+	"github.com/rancher/octopus/test/framework"
+	. "github.com/rancher/octopus/test/framework/ginkgo"
 	"github.com/rancher/octopus/test/util/content"
 	"github.com/rancher/octopus/test/util/exec"
 	"github.com/rancher/octopus/test/util/node"
@@ -120,7 +122,7 @@ var _ = Describe("verify usability", func() {
 		})
 	})
 
-	Context("restart limbs/adaptors pods", func() {
+	Context("interfere deployment environment", func() {
 
 		Specify("if delete dummy adaptor pods", func() {
 
@@ -141,29 +143,34 @@ var _ = Describe("verify usability", func() {
 			By("then the dummy adaptor pods become error", isDummyAdaptorPodsError)
 
 		})
-	})
 
-	Specify("if delete dummy device model", func() {
+		Specify("if delete dummy device model", func() {
 
-		By("given the device link is connected", isDeviceConnectedTrue)
+			By("given the device link is connected", isDeviceConnectedTrue)
 
-		By("when delete dummy device model", deleteDummyDeviceModel)
+			By("when delete dummy device model", deleteDummyDeviceModel)
 
-		By("then model of the device link is not found", isModelExistedFalse)
+			By("then model of the device link is not found", isModelExistedFalse)
 
-		By("when redeploy dummy device model", redeployDummyDeviceModel)
+			By("when redeploy dummy device model", redeployDummyDeviceModel)
 
-		By("then the device link is connected", isDeviceConnectedTrue)
+			By("then the device link is connected", isDeviceConnectedTrue)
 
-	})
+		})
 
-	Specify("if delete cluster node", func() {
+		K3dSpecify("if delete cluster node", func() {
 
-		By("given the device link is connected", isDeviceConnectedTrue)
+			By("given the device link is connected", isDeviceConnectedTrue)
 
-		By("when delete corresponding cluster node", deleteCorrespondingNode)
+			By("when delete corresponding cluster node", deleteCorrespondingNode)
 
-		By("then node of the device link is not found", isNodeExistedFalse)
+			By("then node of the device link is not found", isNodeExistedFalse)
+
+			By("when redeploy corresponding cluster node", redeployCorrespondingNode)
+
+			By("then the device link is connected", isDeviceConnectedTrue)
+
+		})
 
 	})
 })
@@ -482,6 +489,10 @@ func deleteCorrespondingNode() {
 		},
 	}
 	Expect(k8sCli.Delete(testCtx, &correspondingNode)).Should(Succeed())
+}
+
+func redeployCorrespondingNode() {
+	Expect(framework.GetCluster().AddWorker(testRootDir, GinkgoWriter, testDeviceLink.Spec.Adaptor.Node)).Should(Succeed())
 }
 
 func deleteDummyDeviceModel() {
