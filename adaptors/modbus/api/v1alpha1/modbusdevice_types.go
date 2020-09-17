@@ -19,15 +19,188 @@ const (
 )
 
 // ModbusDevicePropertyType defines the type of the property value.
-// +kubebuilder:validation:Enum=int;float;string;boolean
+// +kubebuilder:validation:Enum=int16;int;int32;int64;uint16;uint;uint32;uint64;float;double;boolean;hexString
 type ModbusDevicePropertyType string
 
 const (
-	ModbusDevicePropertyTypeInt     ModbusDevicePropertyType = "int"
-	ModbusDevicePropertyTypeFloat   ModbusDevicePropertyType = "float"
-	ModbusDevicePropertyTypeString  ModbusDevicePropertyType = "string"
-	ModbusDevicePropertyTypeBoolean ModbusDevicePropertyType = "boolean"
+	ModbusDevicePropertyTypeInt16     ModbusDevicePropertyType = "int16"
+	ModbusDevicePropertyTypeInt       ModbusDevicePropertyType = "int" // as same as int32
+	ModbusDevicePropertyTypeInt32     ModbusDevicePropertyType = "int32"
+	ModbusDevicePropertyTypeInt64     ModbusDevicePropertyType = "int64"
+	ModbusDevicePropertyTypeUint16    ModbusDevicePropertyType = "uint16"
+	ModbusDevicePropertyTypeUint      ModbusDevicePropertyType = "uint" // as same as uint32
+	ModbusDevicePropertyTypeUint32    ModbusDevicePropertyType = "uint32"
+	ModbusDevicePropertyTypeUint64    ModbusDevicePropertyType = "uint64"
+	ModbusDevicePropertyTypeFloat     ModbusDevicePropertyType = "float"
+	ModbusDevicePropertyTypeDouble    ModbusDevicePropertyType = "double"
+	ModbusDevicePropertyTypeHexString ModbusDevicePropertyType = "hexString"
+	ModbusDevicePropertyTypeBoolean   ModbusDevicePropertyType = "boolean"
 )
+
+// ModbusDevicePropertyValueEndianness defines the endianness of the property value.
+// +kubebuilder:validation:Enum=BigEndian;BigEndianSwap;LittleEndian;LittleEndianSwap
+type ModbusDevicePropertyValueEndianness string
+
+const (
+	ModbusDevicePropertyValueEndiannessBigEndian        ModbusDevicePropertyValueEndianness = "BigEndian"
+	ModbusDevicePropertyValueEndiannessBigEndianSwap    ModbusDevicePropertyValueEndianness = "BigEndianSwap"
+	ModbusDevicePropertyValueEndiannessLittleEndian     ModbusDevicePropertyValueEndianness = "LittleEndian"
+	ModbusDevicePropertyValueEndiannessLittleEndianSwap ModbusDevicePropertyValueEndianness = "LittleEndianSwap"
+)
+
+func (e ModbusDevicePropertyValueEndianness) PutUint16(b []byte, v uint16) {
+	_ = b[1]
+
+	switch e {
+	case ModbusDevicePropertyValueEndiannessLittleEndianSwap, ModbusDevicePropertyValueEndiannessLittleEndian:
+		// BA
+		b[0] = byte(v)
+		b[1] = byte(v >> 8)
+	default:
+		// AB
+		b[0] = byte(v >> 8)
+		b[1] = byte(v)
+	}
+}
+
+func (e ModbusDevicePropertyValueEndianness) PutUint32(b []byte, v uint32) {
+	_ = b[3]
+
+	switch e {
+	case ModbusDevicePropertyValueEndiannessBigEndianSwap:
+		// BADC
+		b[0] = byte(v >> 16)
+		b[1] = byte(v >> 24)
+		b[2] = byte(v)
+		b[3] = byte(v >> 8)
+	case ModbusDevicePropertyValueEndiannessLittleEndianSwap:
+		// DCBA
+		b[0] = byte(v >> 8)
+		b[1] = byte(v)
+		b[2] = byte(v >> 24)
+		b[3] = byte(v >> 16)
+	case ModbusDevicePropertyValueEndiannessLittleEndian:
+		// CDAB
+		b[0] = byte(v)
+		b[1] = byte(v >> 8)
+		b[2] = byte(v >> 16)
+		b[3] = byte(v >> 24)
+	default:
+		// ABCD
+		b[0] = byte(v >> 24)
+		b[1] = byte(v >> 16)
+		b[2] = byte(v >> 8)
+		b[3] = byte(v)
+	}
+}
+
+func (e ModbusDevicePropertyValueEndianness) PutUint64(b []byte, v uint64) {
+	_ = b[7]
+
+	switch e {
+	case ModbusDevicePropertyValueEndiannessBigEndianSwap:
+		// BADCFEHG
+		b[0] = byte(v >> 48)
+		b[1] = byte(v >> 56)
+		b[2] = byte(v >> 32)
+		b[3] = byte(v >> 40)
+		b[4] = byte(v >> 16)
+		b[5] = byte(v >> 24)
+		b[6] = byte(v)
+		b[7] = byte(v >> 8)
+	case ModbusDevicePropertyValueEndiannessLittleEndianSwap:
+		// HGFEDCBA
+		b[0] = byte(v >> 8)
+		b[1] = byte(v)
+		b[2] = byte(v >> 24)
+		b[3] = byte(v >> 16)
+		b[4] = byte(v >> 40)
+		b[5] = byte(v >> 32)
+		b[6] = byte(v >> 56)
+		b[7] = byte(v >> 48)
+	case ModbusDevicePropertyValueEndiannessLittleEndian:
+		// GHEFCDAB
+		b[0] = byte(v)
+		b[1] = byte(v >> 8)
+		b[2] = byte(v >> 16)
+		b[3] = byte(v >> 24)
+		b[4] = byte(v >> 32)
+		b[5] = byte(v >> 40)
+		b[6] = byte(v >> 48)
+		b[7] = byte(v >> 56)
+	default:
+		// ABCDEFGH
+		b[0] = byte(v >> 56)
+		b[1] = byte(v >> 48)
+		b[2] = byte(v >> 40)
+		b[3] = byte(v >> 32)
+		b[4] = byte(v >> 24)
+		b[5] = byte(v >> 16)
+		b[6] = byte(v >> 8)
+		b[7] = byte(v)
+	}
+}
+
+func (e ModbusDevicePropertyValueEndianness) Uint16(b []byte) uint16 {
+	_ = b[1]
+
+	var ret uint16
+	switch e {
+	case ModbusDevicePropertyValueEndiannessLittleEndianSwap, ModbusDevicePropertyValueEndiannessLittleEndian:
+		// BA
+		ret = uint16(b[0]) | uint16(b[1])<<8
+	default:
+		// AB
+		ret = uint16(b[1]) | uint16(b[0])<<8
+	}
+	return ret
+}
+
+func (e ModbusDevicePropertyValueEndianness) Uint32(b []byte) uint32 {
+	_ = b[3]
+
+	var ret uint32
+	switch e {
+	case ModbusDevicePropertyValueEndiannessBigEndianSwap:
+		// BADC
+		ret = uint32(b[2]) | uint32(b[3])<<8 | uint32(b[0])<<16 | uint32(b[1])<<24
+	case ModbusDevicePropertyValueEndiannessLittleEndianSwap:
+		// DCBA
+		ret = uint32(b[1]) | uint32(b[0])<<8 | uint32(b[3])<<16 | uint32(b[2])<<24
+	case ModbusDevicePropertyValueEndiannessLittleEndian:
+		// CDAB
+		ret = uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24
+	default:
+		// ABCD
+		ret = uint32(b[3]) | uint32(b[2])<<8 | uint32(b[1])<<16 | uint32(b[0])<<24
+	}
+	return ret
+}
+
+func (e ModbusDevicePropertyValueEndianness) Uint64(b []byte) uint64 {
+	_ = b[7]
+
+	var ret uint64
+	switch e {
+	case ModbusDevicePropertyValueEndiannessBigEndianSwap:
+		// BADCFEHG
+		ret = uint64(b[8]) | uint64(b[7])<<8 | uint64(b[4])<<16 | uint64(b[5])<<24 |
+			uint64(b[2])<<32 | uint64(b[3])<<40 | uint64(b[0])<<48 | uint64(b[1])<<56
+	case ModbusDevicePropertyValueEndiannessLittleEndianSwap:
+		// HGFEDCBA
+		ret = uint64(b[1]) | uint64(b[0])<<8 | uint64(b[3])<<16 | uint64(b[2])<<24 |
+			uint64(b[5])<<32 | uint64(b[4])<<40 | uint64(b[7])<<48 | uint64(b[6])<<56
+	case ModbusDevicePropertyValueEndiannessLittleEndian:
+		// GHEFCDAB
+		ret = uint64(b[0]) | uint64(b[1])<<8 | uint64(b[2])<<16 | uint64(b[3])<<24 |
+			uint64(b[4])<<32 | uint64(b[5])<<40 | uint64(b[6])<<48 | uint64(b[7])<<56
+	default:
+		// ABCDEFGH
+		ret = uint64(b[7]) | uint64(b[6])<<8 | uint64(b[5])<<16 | uint64(b[4])<<24 |
+			uint64(b[3])<<32 | uint64(b[2])<<40 | uint64(b[1])<<48 | uint64(b[0])<<56
+	}
+	return ret
+}
 
 // ModbusDeviceParameters defines the desired parameters of ModbusDevice.
 type ModbusDeviceParameters struct {
@@ -78,7 +251,10 @@ type ModbusDeviceProtocolTCP struct {
 	// +kubebuilder:validation:Required
 	Endpoint string `json:"endpoint"`
 
-	// Specifies the worker ID of device.
+	// Specifies the worker ID of device,
+	// it's from 1 to 247.
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=247
 	// +kubebuilder:validation:Required
 	WorkerID int `json:"workerID"`
 }
@@ -91,7 +267,10 @@ type ModbusDeviceProtocolRTU struct {
 	// +kubebuilder:validation:Required
 	Endpoint string `json:"endpoint"`
 
-	// Specifies the worker ID of device.
+	// Specifies the worker ID of device,
+	// it's from 1 to 247.
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=247
 	// +kubebuilder:validation:Required
 	WorkerID int `json:"workerID"`
 
@@ -154,9 +333,17 @@ type ModbusDevicePropertyVisitor struct {
 	// +kubebuilder:validation:Required
 	Offset uint16 `json:"offset"`
 
-	// Specifies the quantity of register.
-	// +kubebuilder:validation:Required
-	Quantity uint16 `json:"quantity"`
+	// Specifies the quantity of register,
+	// the corresponding type restrictions are as follows:
+	// - when the register is CoilRegister, quantity is not longer than 1968;
+	// - when the register is HoldingRegister, quantity is not longer than 123.
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:default=1
+	Quantity uint16 `json:"quantity,omitempty"`
+
+	// Specifies the endianness of value.
+	// +kubebuilder:default="BigEndian"
+	Endianness ModbusDevicePropertyValueEndianness `json:"endianness,omitempty"`
 
 	// Specifies the operations in order if needed.
 	// +listType=atomic
@@ -233,6 +420,10 @@ type ModbusDeviceStatusProperty struct {
 	// Reports the value of property.
 	// +optional
 	Value string `json:"value,omitempty"`
+
+	// Reports the operated value of property.
+	// +optional
+	OperatedValue string `json:"operatedValue,omitempty"`
 
 	// Reports the updated timestamp of property.
 	// +optional

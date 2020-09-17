@@ -103,11 +103,11 @@ func (d *modbusDevice) Configure(references api.ReferencesHandler, device *v1alp
 			d.modbusHandler = nil
 		}
 
-		var handler, err = NewModbusClientHandler(newSpec.Protocol, newSpec.Parameters.GetTimeout())
+		var modbusHandler, err = NewModbusClientHandler(newSpec.Protocol, newSpec.Parameters.GetTimeout())
 		if err != nil {
 			return errors.Wrap(err, "failed to connect Modbus endpoint")
 		}
-		d.modbusHandler = handler
+		d.modbusHandler = modbusHandler
 	}
 
 	return d.refresh(newSpec)
@@ -145,21 +145,22 @@ func (d *modbusDevice) refresh(newSpec v1alpha1.ModbusDeviceSpec) error {
 		var statusProps = make([]v1alpha1.ModbusDeviceStatusProperty, 0, len(specProps))
 		for _, prop := range specProps {
 			if !prop.ReadOnly {
-				if err := d.writeProperty(prop.Type, prop.Visitor, prop.Value); err != nil {
+				if err := d.writeProperty(&prop); err != nil {
 					return errors.Wrapf(err, "failed to write property %s", prop.Name)
 				}
 				d.log.V(4).Info("Write property", "property", prop.Name, "type", prop.Type)
 			}
-			value, err := d.readProperty(prop.Type, prop.Visitor)
+			var value, operatedValue, err = d.readProperty(&prop)
 			if err != nil {
 				return errors.Wrapf(err, "failed to read property %s", prop.Name)
 			}
 			d.log.V(4).Info("Read property", "property", prop.Name, "type", prop.Type)
 			statusProps = append(statusProps, v1alpha1.ModbusDeviceStatusProperty{
-				Name:      prop.Name,
-				Value:     value,
-				Type:      prop.Type,
-				UpdatedAt: now(),
+				Name:          prop.Name,
+				Value:         value,
+				OperatedValue: operatedValue,
+				Type:          prop.Type,
+				UpdatedAt:     now(),
 			})
 		}
 		status = v1alpha1.ModbusDeviceStatus{Properties: statusProps}
@@ -203,17 +204,18 @@ func (d *modbusDevice) fetch(interval time.Duration, stop <-chan struct{}) {
 			var specProps = d.instance.Spec.Properties
 			var statusProps = make([]v1alpha1.ModbusDeviceStatusProperty, 0, len(specProps))
 			for _, prop := range specProps {
-				var value, err = d.readProperty(prop.Type, prop.Visitor)
+				var value, operatedValue, err = d.readProperty(&prop)
 				if err != nil {
 					// TODO give a way to feedback this to limb.
 					d.log.Error(err, "Error fetching device property", "property", prop.Name)
 				}
 				d.log.V(4).Info("Read property", "property", prop.Name, "type", prop.Type)
 				statusProps = append(statusProps, v1alpha1.ModbusDeviceStatusProperty{
-					Name:      prop.Name,
-					Value:     value,
-					Type:      prop.Type,
-					UpdatedAt: now(),
+					Name:          prop.Name,
+					Value:         value,
+					OperatedValue: operatedValue,
+					Type:          prop.Type,
+					UpdatedAt:     now(),
 				})
 			}
 			d.instance.Status.Properties = statusProps
@@ -231,83 +233,36 @@ func (d *modbusDevice) fetch(interval time.Duration, stop <-chan struct{}) {
 }
 
 // writeProperty writes data of a property to CoilRegister or HoldingRegister.
-func (d *modbusDevice) writeProperty(dataType v1alpha1.ModbusDevicePropertyType, visitor v1alpha1.ModbusDevicePropertyVisitor, value string) error {
+func (d *modbusDevice) writeProperty(prop *v1alpha1.ModbusDeviceProperty) error {
 	var client = d.modbusHandler.Connect()
 
-	// NB(thxCode) don't write the property if the value is blank.
-	if value == "" {
-		return nil
-	}
-
-	switch visitor.Register {
+	switch prop.Visitor.Register {
 	case v1alpha1.ModbusDeviceCoilRegister:
-		// one bit per register
-		var quantity = visitor.Quantity
-		var length = quantity / bits
-		if quantity%bits != 0 {
-			length++
-		}
-
-		var data, err = StringToByteArray(value, dataType, int(length))
-		if err != nil {
-			return errors.Wrapf(err, "failed to convert %s string to %s byte array", value, dataType)
-		}
-		_, err = client.WriteMultipleCoils(visitor.Offset, quantity, data)
-		if err != nil {
-			return errors.Wrapf(err, "failed to write %s to %s register", data, visitor.Register)
-		}
+		return write1BitRegister(prop, client.WriteMultipleCoils)
 	case v1alpha1.ModbusDeviceHoldingRegister:
-		// two bytes per register
-		var quantity = visitor.Quantity
-		var length = quantity * 2
-
-		var data, err = StringToByteArray(value, dataType, int(length))
-		if err != nil {
-			return errors.Wrapf(err, "failed to convert %s string to %s byte array", value, dataType)
-		}
-		_, err = client.WriteMultipleRegisters(visitor.Offset, quantity, data)
-		if err != nil {
-			return errors.Wrapf(err, "failed to write %s to %s register", data, visitor.Register)
-		}
+		return write16BitsRegister(prop, client.WriteMultipleRegisters)
+	default:
+		return errors.Errorf("invalid writable register %s", prop.Visitor.Register)
 	}
-	return nil
 }
 
 // readProperty reads data of a property from its corresponding register.
-func (d *modbusDevice) readProperty(dataType v1alpha1.ModbusDevicePropertyType, visitor v1alpha1.ModbusDevicePropertyVisitor) (result string, err error) {
+// boolean/hex type is not supported to operate.
+func (d *modbusDevice) readProperty(prop *v1alpha1.ModbusDeviceProperty) (value string, operatedValue string, err error) {
 	var client = d.modbusHandler.Connect()
 
-	var data []byte
-	switch visitor.Register {
+	switch prop.Visitor.Register {
 	case v1alpha1.ModbusDeviceCoilRegister:
-		data, err = client.ReadCoils(visitor.Offset, visitor.Quantity)
-		if err != nil {
-			return "", errors.Wrapf(err, "failed to read property from %s register", visitor.Register)
-		}
+		return read1BitRegister(prop, client.ReadCoils)
 	case v1alpha1.ModbusDeviceDiscreteInputRegister:
-		data, err = client.ReadDiscreteInputs(visitor.Offset, visitor.Quantity)
-		if err != nil {
-			return "", errors.Wrapf(err, "failed to read property from %s register", visitor.Register)
-		}
+		return read1BitRegister(prop, client.ReadDiscreteInputs)
 	case v1alpha1.ModbusDeviceHoldingRegister:
-		data, err = client.ReadHoldingRegisters(visitor.Offset, visitor.Quantity)
-		if err != nil {
-			return "", errors.Wrapf(err, "failed to read property from %s register", visitor.Register)
-		}
+		return read16BitsRegister(prop, client.ReadHoldingRegisters)
 	case v1alpha1.ModbusDeviceInputRegister:
-		data, err = client.ReadInputRegisters(visitor.Offset, visitor.Quantity)
-		if err != nil {
-			return "", errors.Wrapf(err, "failed to read property from %s register", visitor.Register)
-		}
+		return read16BitsRegister(prop, client.ReadInputRegisters)
 	default:
-		return "", errors.Errorf("invalid readable register %s", visitor.Register)
+		return "", "", errors.Errorf("invalid readable register %s", prop.Visitor.Register)
 	}
-
-	result, err = ByteArrayToString(data, dataType, visitor.OrderOfOperations)
-	if err != nil {
-		return "", errors.Wrapf(err, "failed to convert %s byte array to string", dataType)
-	}
-	return result, nil
 }
 
 func (d *modbusDevice) stopFetch() {

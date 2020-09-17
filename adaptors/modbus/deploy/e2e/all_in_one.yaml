@@ -420,10 +420,18 @@ spec:
                     type:
                       description: Specifies the type of property.
                       enum:
+                      - int16
                       - int
+                      - int32
+                      - int64
+                      - uint16
+                      - uint
+                      - uint32
+                      - uint64
                       - float
-                      - string
+                      - double
                       - boolean
+                      - hexString
                       type: string
                     value:
                       description: Specifies the value of property, only available
@@ -432,6 +440,15 @@ spec:
                     visitor:
                       description: Specifies the visitor of property.
                       properties:
+                        endianness:
+                          default: BigEndian
+                          description: Specifies the endianness of value.
+                          enum:
+                          - BigEndian
+                          - BigEndianSwap
+                          - LittleEndian
+                          - LittleEndianSwap
+                          type: string
                         offset:
                           description: Specifies the starting offset of register for
                             read/write data.
@@ -461,7 +478,13 @@ spec:
                           type: array
                           x-kubernetes-list-type: atomic
                         quantity:
-                          description: Specifies the quantity of register.
+                          default: 1
+                          description: 'Specifies the quantity of register, the corresponding
+                            type restrictions are as follows: - when the register
+                            is CoilRegister, quantity is not longer than 1968; - when
+                            the register is HoldingRegister, quantity is not longer
+                            than 123.'
+                          minimum: 1
                           type: integer
                         register:
                           description: Specifies the register to visit.
@@ -473,7 +496,6 @@ spec:
                           type: string
                       required:
                       - offset
-                      - quantity
                       - register
                       type: object
                   required:
@@ -531,7 +553,10 @@ spec:
                         - 2
                         type: integer
                       workerID:
-                        description: Specifies the worker ID of device.
+                        description: Specifies the worker ID of device, it's from
+                          1 to 247.
+                        maximum: 247
+                        minimum: 1
                         type: integer
                     required:
                     - endpoint
@@ -545,7 +570,10 @@ spec:
                           in form of "ip:port".
                         type: string
                       workerID:
-                        description: Specifies the worker ID of device.
+                        description: Specifies the worker ID of device, it's from
+                          1 to 247.
+                        maximum: 247
+                        minimum: 1
                         type: integer
                     required:
                     - endpoint
@@ -567,13 +595,24 @@ spec:
                     name:
                       description: Reports the name of property.
                       type: string
+                    operatedValue:
+                      description: Reports the operated value of property.
+                      type: string
                     type:
                       description: Reports the type of property.
                       enum:
+                      - int16
                       - int
+                      - int32
+                      - int64
+                      - uint16
+                      - uint
+                      - uint32
+                      - uint64
                       - float
-                      - string
+                      - double
                       - boolean
+                      - hexString
                       type: string
                     updatedAt:
                       description: Reports the updated timestamp of property.

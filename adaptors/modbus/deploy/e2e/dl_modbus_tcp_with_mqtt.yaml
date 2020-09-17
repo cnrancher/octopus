@@ -31,17 +31,13 @@ spec:
           workerID: 1
       properties:
         - name: temperature
-          description: temperature value in celsius degree.
+          description: temperature value, the source is in kevin degree.
           readOnly: true
           visitor:
             register: HoldingRegister
             offset: 0
             quantity: 2
             orderOfOperations:
-              # the source is integer value with 2 quantity,
-              # change to float value.
-              - type: Divide
-                value: "100"
               # the source is kevin temperature,
               # change to celsius degree.
               - type: Subtract
@@ -53,13 +49,16 @@ spec:
           visitor:
             register: HoldingRegister
             offset: 2
-            quantity: 1
-            orderOfOperations:
-              # the source is integer value with 2 quantity,
-              # change to float value.
-              - type: Divide
-                value: "100"
+            quantity: 2
           type: float
+        - name: temperature-limitation
+          description: the limiation of temperature value.
+          readOnly: false
+          visitor:
+            register: HoldingRegister
+            offset: 4
+            quantity: 2
+          type: int
         - name: hight-temperature-alarm
           description: reports alarm if the temperature reaches temperature-limitation.
           readOnly: true
@@ -68,20 +67,3 @@ spec:
             offset: 0
             quantity: 1
           type: boolean
-        - name: temperature-limitation
-          description: the limiation of temperature value in celsius degree.
-          readOnly: false
-          visitor:
-            register: HoldingRegister
-            offset: 5
-            quantity: 2
-            orderOfOperations:
-              # the source is integer value with 2 quantity,
-              # change to float value.
-              - type: Divide
-                value: "100"
-              # the source is kevin temperature,
-              # change to celsius degree.
-              - type: Subtract
-                value: "273.15"
-          type: float
