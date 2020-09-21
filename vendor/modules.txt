@@ -13,6 +13,19 @@ github.com/Azure/go-ansiterm
 github.com/Azure/go-ansiterm/winterm
 # github.com/BurntSushi/toml v0.3.1
 github.com/BurntSushi/toml
+# github.com/JuulLabs-OSS/ble v0.0.0-20200716215611-d4fcc9d598bb
+github.com/JuulLabs-OSS/ble
+github.com/JuulLabs-OSS/ble/darwin
+github.com/JuulLabs-OSS/ble/linux
+github.com/JuulLabs-OSS/ble/linux/adv
+github.com/JuulLabs-OSS/ble/linux/att
+github.com/JuulLabs-OSS/ble/linux/gatt
+github.com/JuulLabs-OSS/ble/linux/hci
+github.com/JuulLabs-OSS/ble/linux/hci/cmd
+github.com/JuulLabs-OSS/ble/linux/hci/evt
+github.com/JuulLabs-OSS/ble/linux/hci/socket
+# github.com/JuulLabs-OSS/cbgo v0.0.1
+github.com/JuulLabs-OSS/cbgo
 # github.com/Masterminds/goutils v1.1.0
 github.com/Masterminds/goutils
 # github.com/Masterminds/semver v1.5.0
@@ -46,16 +59,6 @@ github.com/Microsoft/hcsshim/osversion
 github.com/alessio/shellescape
 # github.com/beorn7/perks v1.0.1
 github.com/beorn7/perks/quantile
-# github.com/bettercap/gatt v0.0.0-20191018133023-569d3d9372bb
-github.com/bettercap/gatt
-github.com/bettercap/gatt/examples/option
-github.com/bettercap/gatt/linux
-github.com/bettercap/gatt/linux/cmd
-github.com/bettercap/gatt/linux/evt
-github.com/bettercap/gatt/linux/gioctl
-github.com/bettercap/gatt/linux/socket
-github.com/bettercap/gatt/linux/util
-github.com/bettercap/gatt/xpc
 # github.com/containerd/cgroups v0.0.0-20200824123100-0b889c03f102
 github.com/containerd/cgroups/stats/v1
 # github.com/containerd/containerd v1.4.1
@@ -246,7 +249,7 @@ github.com/jpillora/backoff
 github.com/json-iterator/go
 # github.com/konsorten/go-windows-terminal-sequences v1.0.3
 github.com/konsorten/go-windows-terminal-sequences
-# github.com/mattn/go-colorable v0.0.9
+# github.com/mattn/go-colorable v0.1.6
 github.com/mattn/go-colorable
 # github.com/mattn/go-isatty v0.0.12
 github.com/mattn/go-isatty
@@ -347,6 +350,8 @@ github.com/prometheus/common/model
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
+# github.com/raff/goble v0.0.0-20190909174656-72afc67d6a99
+github.com/raff/goble/xpc
 # github.com/rancher/k3d/v3 v3.0.2
 github.com/rancher/k3d/v3/pkg/cluster
 github.com/rancher/k3d/v3/pkg/runtimes

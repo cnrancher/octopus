@@ -1,0 +1,80 @@
+apiVersion: edge.cattle.io/v1alpha1
+kind: DeviceLink
+metadata:
+  name: xiaomi-thermometer
+spec:
+  adaptor:
+    node: edge-worker
+    name: adaptors.edge.cattle.io/ble
+  model:
+    apiVersion: "devices.edge.cattle.io/v1alpha1"
+    kind: "BluetoothDevice"
+  template:
+    metadata:
+      labels:
+        device: xiaomi-thermometer
+    spec:
+      protocol:
+        endpoint: "MJ_HT_V1"
+      properties:
+        ## Standard Device Information 180A
+        - name: model
+          type: string
+          accessModes:
+            - ReadOnce
+          visitor:
+            characteristic: 2A24
+            contentType: text
+        - name: serial
+          type: string
+          accessModes:
+            - ReadOnce
+          visitor:
+            characteristic: 2A25
+            contentType: text
+        - name: firmware
+          type: string
+          accessModes:
+            - ReadOnce
+          visitor:
+            characteristic: 2A26
+            contentType: text
+        - name: hardware
+          type: string
+          accessModes:
+            - ReadOnce
+          visitor:
+            characteristic: 2A27
+            contentType: text
+        - name: manufacturer
+          type: string
+          accessModes:
+            - ReadOnce
+          visitor:
+            characteristic: 2A29
+            contentType: text
+        ## Standard Battery Service 180F
+        - name: battery
+          type: int8
+          accessModes:
+            - ReadMany
+          visitor:
+            characteristic: 2A19
+        ## Temperature & Humidity Service 226c0000-6476-4566-7562-66734470666d
+        - name: temperature_and_humidity
+          type: string
+          accessModes:
+            - Notify
+          visitor:
+            service: 226c0000-6476-4566-7562-66734470666d
+            characteristic: 226caa55-6476-4566-7562-66734470666d
+            contentType: text
+        - name: message
+          type: string
+          accessModes:
+            - Notify
+            - WriteOnce
+          visitor:
+            service: 226c0000-6476-4566-7562-66734470666d
+            characteristic: 226cbb55-6476-4566-7562-66734470666d
+            contentType: text

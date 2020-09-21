@@ -1,10 +1,7 @@
 package adaptor
 
 import (
-	"github.com/bettercap/gatt"
-	"github.com/bettercap/gatt/examples/option"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,21 +24,18 @@ func NewService() (*Service, error) {
 	var scheme = k8sruntime.NewScheme()
 	utilruntime.Must(v1alpha1.AddToScheme(scheme))
 
-	var gattDevice gatt.Device
-	gattDevice, err := gatt.NewDevice(option.DefaultClientOptions...)
+	var err = physical.EstablishGATT()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to start BLE gatt")
+		return nil, err
 	}
 
 	return &Service{
-		scheme:     scheme,
-		gattDevice: gattDevice,
+		scheme: scheme,
 	}, nil
 }
 
 type Service struct {
-	scheme     *k8sruntime.Scheme
-	gattDevice gatt.Device
+	scheme *k8sruntime.Scheme
 }
 
 func (s *Service) toJSON(in metav1.Object) []byte {
@@ -99,31 +93,36 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 				}
 
 				// gets log
-				var logger = log.WithValues("ble device", deviceName)
+				var logger = log.WithValues("bluetooth device", deviceName)
 
-				var toLimb = func(in *v1alpha1.BluetoothDevice) error {
-					// send device by {name, namespace, status} tuple
-					var resp = &v1alpha1.BluetoothDevice{}
-					resp.Namespace = in.Namespace
-					resp.Name = in.Name
-					resp.Status = in.Status
-
-					// convert device to json bytes
-					var respBytes = s.toJSON(resp)
-
+				var toLimb = func(in *v1alpha1.BluetoothDevice, internalError error) error {
+					var resp *api.ConnectResponse
+					if internalError != nil {
+						// feedback error message
+						resp = &api.ConnectResponse{ErrorMessage: internalError.Error()}
+					} else {
+						// send device by {name, namespace, status} tuple
+						var device = &v1alpha1.BluetoothDevice{}
+						device.Namespace = in.Namespace
+						device.Name = in.Name
+						device.Status = in.Status
+						// convert device to json bytes
+						var deviceBytes = s.toJSON(device)
+						resp = &api.ConnectResponse{Device: deviceBytes}
+					}
 					// send device to limb
-					if err := server.Send(&api.ConnectResponse{Device: respBytes}); err != nil {
+					if err := server.Send(resp); err != nil {
 						return status.Errorf(codes.Unknown, "failed to send device to limb, %v", err)
 					}
 					return nil
 				}
 
-				holder = physical.NewDevice(logger, device.ObjectMeta, toLimb, s.gattDevice)
+				holder = physical.NewDevice(logger, device.ObjectMeta, toLimb)
 			}
 
 			// configures device
 			if err := holder.Configure(req.GetReferences(), &device); err != nil {
-				return status.Errorf(codes.InvalidArgument, "failed to connect to BLE device: %v", err)
+				return status.Errorf(codes.InvalidArgument, "failed to connect to Bluetooth device: %v", err)
 			}
 		default:
 			return status.Errorf(codes.InvalidArgument, "invalid model kind: %s", modelGVK.Kind)
@@ -131,8 +130,6 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 	}
 }
 
-func (s *Service) Close() {
-	if err := s.gattDevice.Stop(); err != nil {
-		log.Error(err, "Failed to close gatt device")
-	}
+func (s *Service) Close() error {
+	return physical.CloseGATT()
 }

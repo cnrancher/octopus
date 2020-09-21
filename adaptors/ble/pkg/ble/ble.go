@@ -27,7 +27,11 @@ func Run() error {
 	if err != nil {
 		return err
 	}
-	defer svc.Close()
+	defer func() {
+		if err := svc.Close(); err != nil {
+			log.Error(err, "failed to stop service")
+		}
+	}()
 	eg.Go(func() error {
 		// start adaptor to receive requests from Limb
 		return connection.Serve(metadata.Endpoint, svc, stop)
