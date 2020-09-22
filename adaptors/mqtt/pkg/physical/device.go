@@ -1,9 +1,11 @@
 package physical
 
 import (
+	"io"
 	"reflect"
 	"sync"
 
+	MQTT "github.com/eclipse/paho.mqtt.golang"
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	"github.com/tidwall/gjson"
@@ -80,7 +82,32 @@ func (d *mqttDevice) Configure(references api.ReferencesHandler, configuration i
 			d.log.V(1).Info("Disconnected stale connection")
 		}
 
-		var cli, err = mqtt.NewClient(newSpec.Protocol.MQTTOptions, object.GetControlledOwnerObjectReference(device), references)
+		var clientBuilder = mqtt.NewClientBuilder(newSpec.Protocol.MQTTOptions, object.GetControlledOwnerObjectReference(device))
+		clientBuilder.Render(references)
+		clientBuilder.ConfigureOptions(func(options *MQTT.ClientOptions) error {
+			var autoReconnect = options.AutoReconnect
+			options.SetConnectionLostHandler(func(_ MQTT.Client, cerr error) {
+				if autoReconnect {
+					d.log.Error(cerr, "MQTT broker connection is closed, please turn off the AutoReconnect if want to know this at the first time")
+					return
+				}
+
+				// NB(thxCode) feedbacks the EOF of MQTT broker connection if turn off the auto reconnection.
+				var feedbackErr error
+				if cerr != io.EOF {
+					feedbackErr = errors.Wrapf(cerr, "error for MQTT broker connection")
+				} else {
+					feedbackErr = errors.New("MQTT broker connection is closed")
+				}
+				if d.toLimb != nil {
+					if err := d.toLimb(nil, feedbackErr); err != nil {
+						d.log.Error(err, "failed to feedback the lost error of MQTT broker connection")
+					}
+				}
+			})
+			return nil
+		})
+		var cli, err = clientBuilder.Build()
 		if err != nil {
 			return errors.Wrap(err, "failed to create MQTT client")
 		}
@@ -298,7 +325,7 @@ func (d *mqttDevice) refreshAsAttributedTopic(staleSpecPropsIndex map[string]v1a
 // sync combines all synchronization operations.
 func (d *mqttDevice) sync() error {
 	if d.toLimb != nil {
-		if err := d.toLimb(d.instance); err != nil {
+		if err := d.toLimb(d.instance, nil); err != nil {
 			return err
 		}
 	}

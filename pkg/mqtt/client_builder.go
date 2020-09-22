@@ -17,14 +17,17 @@ import (
 	"github.com/rancher/octopus/pkg/util/uuid"
 )
 
+type CustomMQTTOptionFunc func(options *mqtt.ClientOptions) error
+
 type ClientBuilder struct {
 	ref    corev1.ObjectReference
 	spec   *api.MQTTOptions
 	status *mqtt.ClientOptions
+	err    error
 }
 
 // Render renders the MQTT client options with expected options.
-func (b *ClientBuilder) Render(handler adaptorapi.ReferencesHandler) error {
+func (b *ClientBuilder) Render(handler adaptorapi.ReferencesHandler) {
 	var ref = b.ref
 	var clientSpec = b.spec.Client
 	var messageSpec = b.spec.Message
@@ -39,7 +42,8 @@ func (b *ClientBuilder) Render(handler adaptorapi.ReferencesHandler) error {
 			username = basicAuthSpec.Username
 		} else if ref := basicAuthSpec.UsernameRef; ref != nil {
 			if handler == nil {
-				return errors.Errorf("references handler is nil")
+				b.err = errors.Errorf("references handler is nil")
+				return
 			}
 			username = converter.UnsafeBytesToString(handler.GetData(ref.Name, ref.Item))
 		}
@@ -49,13 +53,15 @@ func (b *ClientBuilder) Render(handler adaptorapi.ReferencesHandler) error {
 			password = basicAuthSpec.Password
 		} else if ref := basicAuthSpec.PasswordRef; ref != nil {
 			if handler == nil {
-				return errors.Errorf("references handler is nil")
+				b.err = errors.Errorf("references handler is nil")
+				return
 			}
 			password = converter.UnsafeBytesToString(handler.GetData(ref.Name, ref.Item))
 		}
 
 		if username == "" || password == "" {
-			return errors.Errorf("illegal basic auth account as blank username or password")
+			b.err = errors.Errorf("illegal basic auth account as blank username or password")
+			return
 		}
 		status.SetUsername(username).SetPassword(password)
 	}
@@ -83,7 +89,8 @@ func (b *ClientBuilder) Render(handler adaptorapi.ReferencesHandler) error {
 			return caPool, nil
 		}()
 		if caPoolErr != nil {
-			return caPoolErr
+			b.err = caPoolErr
+			return
 		}
 
 		var certs, certsErr = func() ([]tls.Certificate, error) {
@@ -122,7 +129,8 @@ func (b *ClientBuilder) Render(handler adaptorapi.ReferencesHandler) error {
 			return certs, nil
 		}()
 		if certsErr != nil {
-			return certsErr
+			b.err = certsErr
+			return
 		}
 
 		status.SetTLSConfig(&tls.Config{
@@ -210,8 +218,6 @@ func (b *ClientBuilder) Render(handler adaptorapi.ReferencesHandler) error {
 	if len(clientSpec.HTTPHeaders) != 0 {
 		status.SetHTTPHeaders(clientSpec.HTTPHeaders)
 	}
-
-	return nil
 }
 
 // GetOptions returns the MQTT client options, call it after called `Render`.
@@ -219,8 +225,19 @@ func (b *ClientBuilder) GetOptions() *mqtt.ClientOptions {
 	return b.status
 }
 
+// ConfigureOptions allows to customize the MQTT client options.
+func (b *ClientBuilder) ConfigureOptions(customFunc CustomMQTTOptionFunc) {
+	if b.err == nil && customFunc != nil {
+		b.err = customFunc(b.status)
+	}
+}
+
 // Build returns a MQTT client wrapper.
-func (b *ClientBuilder) Build() Client {
+func (b *ClientBuilder) Build() (Client, error) {
+	if b.err != nil {
+		return nil, b.err
+	}
+
 	var ref = b.ref
 	var clientSpec = b.spec.Client
 	var messageSpec = b.spec.Message
@@ -259,10 +276,10 @@ func (b *ClientBuilder) Build() Client {
 		),
 	)
 
-	return cli
+	return cli, nil
 }
 
 // NewClientBuilder creates the MQTT client builder.
-func NewClientBuilder(spec api.MQTTOptions, ref corev1.ObjectReference) ClientBuilder {
-	return ClientBuilder{ref: ref, spec: &spec, status: mqtt.NewClientOptions()}
+func NewClientBuilder(spec api.MQTTOptions, ref corev1.ObjectReference) *ClientBuilder {
+	return &ClientBuilder{ref: ref, spec: &spec, status: mqtt.NewClientOptions()}
 }

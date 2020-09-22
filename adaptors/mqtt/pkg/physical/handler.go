@@ -5,4 +5,4 @@ import (
 )
 
 // MQTTDeviceLimbSyncer is used to sync mqtt device to limb.
-type MQTTDeviceLimbSyncer func(in *v1alpha1.MQTTDevice) error
+type MQTTDeviceLimbSyncer func(in *v1alpha1.MQTTDevice, internalError error) error

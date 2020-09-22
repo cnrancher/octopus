@@ -92,18 +92,23 @@ func (s *Service) Connect(server api.Connection_ConnectServer) error {
 				var logger = log.WithValues("mqtt device", deviceName)
 
 				// creates handler for syncing to limb
-				var toLimb = func(in *v1alpha1.MQTTDevice) error {
-					// send device by {name, namespace, status} tuple
-					var resp = &v1alpha1.MQTTDevice{}
-					resp.Namespace = in.Namespace
-					resp.Name = in.Name
-					resp.Status = in.Status
-
-					// convert device to json bytes
-					var respBytes = s.toJSON(resp)
-
+				var toLimb = func(in *v1alpha1.MQTTDevice, internalError error) error {
+					var resp *api.ConnectResponse
+					if internalError != nil {
+						// feedback error message
+						resp = &api.ConnectResponse{ErrorMessage: internalError.Error()}
+					} else {
+						// send device by {name, namespace, status} tuple
+						var device = &v1alpha1.MQTTDevice{}
+						device.Namespace = in.Namespace
+						device.Name = in.Name
+						device.Status = in.Status
+						// convert device to json bytes
+						var deviceBytes = s.toJSON(device)
+						resp = &api.ConnectResponse{Device: deviceBytes}
+					}
 					// send device to limb
-					if err := server.Send(&api.ConnectResponse{Device: respBytes}); err != nil {
+					if err := server.Send(resp); err != nil {
 						return status.Errorf(codes.Unknown, "failed to send device to limb, %v", err)
 					}
 					return nil
