@@ -262,7 +262,8 @@ func TestClientBuilder_Render(t *testing.T) {
 
 	for _, tc := range testCases {
 		var cb = NewClientBuilder(tc.given.spec, tc.given.ref)
-		var err = cb.Render(tc.given.handler)
+		cb.Render(tc.given.handler)
+		var _, err = cb.Build()
 		if assert.Nil(t, err, "case %q", tc.name) {
 			var actual = cb.GetOptions()
 			assert.Equal(t, cleanFuncs(tc.expected.ret), cleanFuncs(actual), "case %q", tc.name)

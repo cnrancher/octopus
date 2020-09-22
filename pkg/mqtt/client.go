@@ -230,9 +230,7 @@ func (c *client) Publish(message PublishMessage) error {
 
 // NewClient creates the MQTT client with expected options.
 func NewClient(spec api.MQTTOptions, ref corev1.ObjectReference, handler adaptorapi.ReferencesHandler) (Client, error) {
-	var cb = NewClientBuilder(spec, ref)
-	if err := cb.Render(handler); err != nil {
-		return nil, err
-	}
-	return cb.Build(), nil
+	var clientBuilder = NewClientBuilder(spec, ref)
+	clientBuilder.Render(handler)
+	return clientBuilder.Build()
 }
