@@ -8,7 +8,7 @@
 #    K8S_VERSION     -  The Kubernetes version for the cluster, default is v1.18.2.
 #    CLUSTER_NAME    -  The name for the cluster, default is edge.
 #    CONTROL_PLANES  -  The number of the control-plane, default is 1.
-#    WORKERS         -  The number of the workers, default is 3.
+#    WORKERS         -  The number of the workers, default is 2.
 #    IMAGE_SUFFIX    -  The suffix for k3s image, default is k3s1, ref to: https://hub.docker.com/r/rancher/k3s/tags.
 
 K8S_VERSION=${K8S_VERSION:-"v1.18.2"}
@@ -106,7 +106,7 @@ function octopus::cluster_k3d::startup() {
   done
 
   # setup workers
-  local workers=${WORKERS:-3}
+  local workers=${WORKERS:-2}
   if [[ ${workers} -lt 1 ]]; then
     workers=1
   fi

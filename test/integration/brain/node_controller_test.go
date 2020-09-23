@@ -10,8 +10,7 @@ import (
 
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
 	"github.com/rancher/octopus/pkg/util/object"
-	. "github.com/rancher/octopus/test/framework"
-	. "github.com/rancher/octopus/test/framework/ginkgo"
+	. "github.com/rancher/octopus/test/framework/envtest/dsl"
 	"github.com/rancher/octopus/test/util/node"
 )
 
@@ -80,7 +79,7 @@ var _ = Describe("verify Node controller", func() {
 			})
 
 			By("when add the target node", func() {
-				Expect(GetCluster().AddWorker(testRootDir, GinkgoWriter, targetItem.Spec.Adaptor.Node)).Should(Succeed())
+				Expect(testEnv.AddWorker(targetItem.Spec.Adaptor.Node)).Should(Succeed())
 			})
 
 			By("then it succeeded on node verification", func() {

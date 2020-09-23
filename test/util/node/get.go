@@ -4,11 +4,16 @@ package node
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
+	"strings"
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/rancher/octopus/test/util/fuzz"
 )
 
 func GetValidWorker(ctx context.Context, k8sCli client.Client) (string, error) {
@@ -39,27 +44,23 @@ func GetInvalidWorker(ctx context.Context, k8sCli client.Client) (string, error)
 		return "", err
 	}
 
-	var workers []string
+	var workers = sets.NewString()
 	for _, node := range list.Items {
 		if IsOnlyWorker(&node) {
-			workers = append(workers, node.Name)
+			workers.Insert(node.Name)
 		}
 	}
 
-	if len(workers) == 0 {
+	if workers.Len() == 0 {
 		return "", errors.New("no workers")
 	}
 
-	var idx = rand.Intn(len(workers))
-	var name = workers[idx]
-
-	// reserve
-	var nameRunes = []rune(name)
-	var nameRunesSize = len(nameRunes)
-	for i := nameRunesSize/2 - 1; i >= 0; i-- {
-		var opp = nameRunesSize - 1 - i
-		nameRunes[i], nameRunes[opp] = nameRunes[opp], nameRunes[i]
+	var invalidWorker string
+	for {
+		invalidWorker = fmt.Sprintf("i-%s", strings.ToLower(fuzz.String(6)))
+		if !workers.Has(invalidWorker) {
+			break
+		}
 	}
-
-	return "i-" + string(nameRunes), nil
+	return invalidWorker, nil
 }

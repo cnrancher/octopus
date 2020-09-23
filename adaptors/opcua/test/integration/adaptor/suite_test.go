@@ -6,7 +6,8 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
+
+	"github.com/rancher/octopus/test/framework/envtest/printer"
 )
 
 var (
@@ -25,12 +26,14 @@ func TestAdaptor(t *testing.T) {
 }
 
 var _ = BeforeSuite(func(done Done) {
-	testCtx, testCtxCancel = context.WithCancel(context.Background())
+	defer close(done)
 
-	close(done)
+	testCtx, testCtxCancel = context.WithCancel(context.Background())
 }, 600)
 
-var _ = AfterSuite(func() {
+var _ = AfterSuite(func(done Done) {
+	defer close(done)
+
 	if testCtxCancel != nil {
 		testCtxCancel()
 	}

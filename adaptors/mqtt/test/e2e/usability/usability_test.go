@@ -1,4 +1,4 @@
-package usability_test
+package usability
 
 import (
 	"fmt"
@@ -18,8 +18,7 @@ import (
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
 	"github.com/rancher/octopus/pkg/util/converter"
 	"github.com/rancher/octopus/pkg/util/object"
-	"github.com/rancher/octopus/test/framework"
-	. "github.com/rancher/octopus/test/framework/ginkgo"
+	. "github.com/rancher/octopus/test/framework/envtest/dsl"
 	"github.com/rancher/octopus/test/util/content"
 	"github.com/rancher/octopus/test/util/exec"
 	"github.com/rancher/octopus/test/util/node"
@@ -789,7 +788,7 @@ func deleteCorrespondingNode() {
 }
 
 func redeployCorrespondingNode() {
-	Expect(framework.GetCluster().AddWorker(testRootDir, GinkgoWriter, testDeviceLink.Spec.Adaptor.Node)).Should(Succeed())
+	Expect(testEnv.AddWorker(testDeviceLink.Spec.Adaptor.Node)).Should(Succeed())
 }
 
 func deleteMQTTDeviceModel() {

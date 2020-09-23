@@ -10,17 +10,15 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	clientsetscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/envtest"
-	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/rancher/octopus/pkg/brain"
 	"github.com/rancher/octopus/pkg/brain/controller"
 	"github.com/rancher/octopus/pkg/util/log/zap"
-	"github.com/rancher/octopus/test/framework"
+	"github.com/rancher/octopus/test/framework/envtest"
+	"github.com/rancher/octopus/test/framework/envtest/printer"
 )
 
 var (
@@ -45,6 +43,8 @@ func TestBrain(t *testing.T) {
 }
 
 var _ = BeforeSuite(func(done Done) {
+	defer close(done)
+
 	testCtx, testCtxCancel = context.WithCancel(context.Background())
 
 	// sets the log of controller-runtime as dev mode
@@ -54,9 +54,10 @@ var _ = BeforeSuite(func(done Done) {
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
-		UseExistingCluster: pointer.BoolPtr(true),
-		CRDDirectoryPaths: []string{
-			filepath.Join(testRootDir, "deploy", "manifests", "crd", "base"),
+		CRDInstallOptions: envtest.CRDInstallOptions{
+			Paths: []string{
+				filepath.Join(testRootDir, "deploy", "manifests", "crd", "base"),
+			},
 		},
 	}
 
@@ -66,7 +67,7 @@ var _ = BeforeSuite(func(done Done) {
 	err = brain.RegisterScheme(k8sSchema)
 	Expect(err).NotTo(HaveOccurred())
 
-	k8sCfg, err = framework.StartEnv(testRootDir, testEnv, GinkgoWriter)
+	k8sCfg, err = testEnv.Start()
 	Expect(err).ToNot(HaveOccurred())
 	Expect(k8sCfg).ToNot(BeNil())
 
@@ -107,14 +108,12 @@ var _ = BeforeSuite(func(done Done) {
 		err = controllerMgr.Start(testCtx.Done())
 		Expect(err).ToNot(HaveOccurred())
 	}()
-
-	close(done)
 }, 600)
 
 var _ = AfterSuite(func() {
 
 	By("tearing down test environment")
-	var err = framework.StopEnv(testRootDir, testEnv, GinkgoWriter)
+	var err = testEnv.Stop()
 	Expect(err).ToNot(HaveOccurred())
 
 	if testCtxCancel != nil {
