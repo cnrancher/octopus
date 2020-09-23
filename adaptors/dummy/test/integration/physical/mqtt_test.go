@@ -19,14 +19,10 @@ import (
 	"github.com/rancher/octopus/pkg/util/converter"
 	"github.com/rancher/octopus/pkg/util/log/zap"
 	"github.com/rancher/octopus/pkg/util/object"
-	"github.com/rancher/octopus/test/util/testdata"
 )
 
 var _ = Describe("verify MQTT extension", func() {
 	var (
-		testUnencryptedBrokerAddress              = "tcp://test.mosquitto.org:1883"
-		testEncryptedAndClientAuthedBrokerAddress = "tcps://test.mosquitto.org:8884"
-
 		testNamespace = "default"
 
 		err error
@@ -70,7 +66,7 @@ var _ = Describe("verify MQTT extension", func() {
 			*/
 
 			var testSubscriptionStream *mqtttest.SubscriptionStream
-			testSubscriptionStream, err = mqtttest.NewSubscriptionStream(testUnencryptedBrokerAddress, fmt.Sprintf("cattle.io/octopus/%s", testInstanceNamespacedName), 0)
+			testSubscriptionStream, err = mqtttest.NewSubscriptionStream(testMQTTBrokerAddress, fmt.Sprintf("cattle.io/octopus/%s", testInstanceNamespacedName), 0)
 			Expect(err).ToNot(HaveOccurred())
 			defer testSubscriptionStream.Close()
 
@@ -85,7 +81,7 @@ var _ = Describe("verify MQTT extension", func() {
 				Extension: &v1alpha1.DummyDeviceExtension{
 					MQTT: &mqttapi.MQTTOptions{
 						Client: mqttapi.MQTTClientOptions{
-							Server: testUnencryptedBrokerAddress,
+							Server: testMQTTBrokerAddress,
 						},
 						Message: mqttapi.MQTTMessageOptions{
 							// dynamic topic with namespaced name
@@ -115,61 +111,6 @@ var _ = Describe("verify MQTT extension", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("should publish the status changes via SSL/TLS", func() {
-
-			/*
-				since test.mosquitto.org provides a public CA, we can download it and generate the client cert key pair
-				via https://test.mosquitto.org/ssl/index.php.
-			*/
-
-			var testSubscriptionStream *mqtttest.SubscriptionStream
-			// subscribe via unencrypted endpoint
-			testSubscriptionStream, err = mqtttest.NewSubscriptionStream(testUnencryptedBrokerAddress, fmt.Sprintf("cattle.io/octopus/%s", testInstance.OwnerReferences[0].UID), 0)
-			Expect(err).ToNot(HaveOccurred())
-			defer testSubscriptionStream.Close()
-
-			var testDevice = physical.NewSpecialDevice(
-				log.WithValues("device", testInstanceNamespacedName),
-				testInstance.ObjectMeta,
-				nil,
-			)
-			defer testDevice.Shutdown()
-
-			testInstance.Spec = v1alpha1.DummySpecialDeviceSpec{
-				Extension: &v1alpha1.DummyDeviceExtension{
-					MQTT: &mqttapi.MQTTOptions{
-						Client: mqttapi.MQTTClientOptions{
-							// publish via encrypted endpoint
-							Server: testEncryptedAndClientAuthedBrokerAddress,
-							TLSConfig: &mqttapi.MQTTClientTLS{
-								CAFilePEM:   testdata.MustLoadString("mosquitto.org.crt", GinkgoT()),
-								CertFilePEM: testdata.MustLoadString("client.crt", GinkgoT()),
-								KeyFilePEM:  testdata.MustLoadString("client-key.pem", GinkgoT()),
-								ServerName:  "test.mosquitto.org",
-							},
-						},
-						Message: mqttapi.MQTTMessageOptions{
-							// dynamic topic with uid
-							Topic: "cattle.io/octopus/:uid",
-						},
-					},
-				},
-				Protocol: v1alpha1.DummySpecialDeviceProtocol{
-					Location: "living-room",
-				},
-				On:   true,
-				Gear: v1alpha1.DummySpecialDeviceGearFast,
-			}
-			err = testDevice.Configure(nil, testInstance)
-			Expect(err).ToNot(HaveOccurred())
-
-			err = testSubscriptionStream.Intercept(15*time.Second, func(actual *packet.Message) bool {
-				GinkgoT().Logf("topic: %s, qos: %d, retain: %v, payload: %s", actual.Topic, actual.QOS, actual.Retain, converter.UnsafeBytesToString(actual.Payload))
-				return true
-			})
-			Expect(err).ToNot(HaveOccurred())
-		})
-
 		It("should work if modified extension settings", func() {
 
 			/*
@@ -181,7 +122,7 @@ var _ = Describe("verify MQTT extension", func() {
 			*/
 
 			var testSubscriptionStream *mqtttest.SubscriptionStream
-			testSubscriptionStream, err = mqtttest.NewSubscriptionStream(testUnencryptedBrokerAddress, fmt.Sprintf("cattle.io/octopus/%s", testInstanceNamespacedName), 0)
+			testSubscriptionStream, err = mqtttest.NewSubscriptionStream(testMQTTBrokerAddress, fmt.Sprintf("cattle.io/octopus/%s", testInstanceNamespacedName), 0)
 			Expect(err).ToNot(HaveOccurred())
 
 			var testDevice = physical.NewSpecialDevice(
@@ -195,7 +136,7 @@ var _ = Describe("verify MQTT extension", func() {
 				Extension: &v1alpha1.DummyDeviceExtension{
 					MQTT: &mqttapi.MQTTOptions{
 						Client: mqttapi.MQTTClientOptions{
-							Server: testUnencryptedBrokerAddress,
+							Server: testMQTTBrokerAddress,
 						},
 						Message: mqttapi.MQTTMessageOptions{
 							Topic: "cattle.io/octopus/:namespace/:name",
@@ -222,14 +163,14 @@ var _ = Describe("verify MQTT extension", func() {
 				change to static topic
 			*/
 
-			testSubscriptionStream, err = mqtttest.NewSubscriptionStream(testUnencryptedBrokerAddress, "cattle.io/octopus/default/test3/static", 0)
+			testSubscriptionStream, err = mqtttest.NewSubscriptionStream(testMQTTBrokerAddress, "cattle.io/octopus/default/test3/static", 0)
 			Expect(err).ToNot(HaveOccurred())
 
 			testInstance.Spec = v1alpha1.DummySpecialDeviceSpec{
 				Extension: &v1alpha1.DummyDeviceExtension{
 					MQTT: &mqttapi.MQTTOptions{
 						Client: mqttapi.MQTTClientOptions{
-							Server: testUnencryptedBrokerAddress,
+							Server: testMQTTBrokerAddress,
 						},
 						Message: mqttapi.MQTTMessageOptions{
 							Topic: "cattle.io/octopus/default/test3/static",
@@ -287,7 +228,7 @@ var _ = Describe("verify MQTT extension", func() {
 			*/
 
 			var testSubscriptionStream *mqtttest.SubscriptionStream
-			testSubscriptionStream, err = mqtttest.NewSubscriptionStream(testUnencryptedBrokerAddress, fmt.Sprintf("cattle.io/octopus/%s", testInstanceNamespacedName), 0)
+			testSubscriptionStream, err = mqtttest.NewSubscriptionStream(testMQTTBrokerAddress, fmt.Sprintf("cattle.io/octopus/%s", testInstanceNamespacedName), 0)
 			Expect(err).ToNot(HaveOccurred())
 			defer testSubscriptionStream.Close()
 
@@ -302,7 +243,7 @@ var _ = Describe("verify MQTT extension", func() {
 				Extension: &v1alpha1.DummyDeviceExtension{
 					MQTT: &mqttapi.MQTTOptions{
 						Client: mqttapi.MQTTClientOptions{
-							Server: testUnencryptedBrokerAddress,
+							Server: testMQTTBrokerAddress,
 						},
 						Message: mqttapi.MQTTMessageOptions{
 							// dynamic topic

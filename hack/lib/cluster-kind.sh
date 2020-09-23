@@ -8,7 +8,7 @@
 #    K8S_VERSION     -  The Kubernetes version for the cluster, default is v1.18.2.
 #    CLUSTER_NAME    -  The name for the cluster, default is edge.
 #    CONTROL_PLANES  -  The number of the control-plane, default is 1.
-#    WORKERS         -  The number of the workers, default is 3.
+#    WORKERS         -  The number of the workers, default is 2.
 
 K8S_VERSION=${K8S_VERSION:-"v1.18.2"}
 CLUSTER_NAME=${CLUSTER_NAME:-"edge"}
@@ -83,7 +83,7 @@ EOF
     fi
   done
 
-  local workers=${WORKERS:-3}
+  local workers=${WORKERS:-2}
   if [[ ${workers} -lt 1 ]]; then
     workers=1
   fi
