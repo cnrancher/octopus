@@ -36,8 +36,8 @@ type K3d struct {
 
 	// Specify the name of cluster,
 	// configure in "K3S_CLUSTER_NAME" env,
-	// default is "edge".
-	ClusterName string `env:"name=K3S_CLUSTER_NAME,default=edge"`
+	// default is created randomly.
+	ClusterName string `env:"name=K3S_CLUSTER_NAME,fuzzString"`
 
 	// Specify the amount of control-plane nodes,
 	// configure in "K3S_CONTROL_PLANES" env,
@@ -200,10 +200,10 @@ func renderK3sClusterConfiguration(config *K3d) (*types.Cluster, error) {
 			Image: config.Image,
 		}
 		if i == 0 {
-			node.Args = []string{fmt.Sprintf("--node-name=%s-control-plane", config.ClusterName)}
+			node.Args = []string{"--node-name=edge-control-plane"}
 			node.Ports = []string{fmt.Sprintf("%d:80", config.ExportIngressHTTPPort), fmt.Sprintf("%d:443", config.ExportIngressHTTPSPort)}
 		} else {
-			node.Args = []string{fmt.Sprintf("--node-name=%s-control-plane%d", config.ClusterName, i)}
+			node.Args = []string{fmt.Sprintf("--node-name=edge-control-plane%d", i)}
 		}
 		cls.Nodes = append(cls.Nodes, node)
 	}
@@ -214,9 +214,9 @@ func renderK3sClusterConfiguration(config *K3d) (*types.Cluster, error) {
 			Image: config.Image,
 		}
 		if i == 0 {
-			node.Args = []string{fmt.Sprintf("--node-name=%s-worker", config.ClusterName)}
+			node.Args = []string{"--node-name=edge-worker"}
 		} else {
-			node.Args = []string{fmt.Sprintf("--node-name=%s-worker%d", config.ClusterName, i)}
+			node.Args = []string{fmt.Sprintf("--node-name=edge-worker%d", i)}
 		}
 		cls.Nodes = append(cls.Nodes, node)
 	}
