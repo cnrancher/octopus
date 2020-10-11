@@ -44,7 +44,7 @@ func TestDecodeBase64String(t *testing.T) {
 			name:  "error string",
 			given: "%%%",
 			expected: expected{
-				ret: []byte{},
+				ret: nil,
 				err: base64.CorruptInputError(0),
 			},
 		},

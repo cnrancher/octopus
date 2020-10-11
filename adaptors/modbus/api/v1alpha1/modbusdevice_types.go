@@ -4,248 +4,129 @@ import (
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	endianapi "github.com/rancher/octopus/pkg/endian/api"
 )
 
-// ModbusDeviceRegisterType defines the type for the register to read a device property.
-// +kubebuilder:validation:Enum=CoilRegister;DiscreteInputRegister;InputRegister;HoldingRegister
-type ModbusDeviceRegisterType string
+// ModbusDevicePropertyAccessMode defines the mode for accessing a device property,
+// default is "ReadMany".
+// +kubebuilder:validation:Enum=WriteOnce;WriteMany;ReadOnce;ReadMany
+type ModbusDevicePropertyAccessMode string
 
 const (
-	ModbusDeviceCoilRegister          ModbusDeviceRegisterType = "CoilRegister"
-	ModbusDeviceDiscreteInputRegister ModbusDeviceRegisterType = "DiscreteInputRegister"
-	ModbusDeviceInputRegister         ModbusDeviceRegisterType = "InputRegister"
-	ModbusDeviceHoldingRegister       ModbusDeviceRegisterType = "HoldingRegister"
+	ModbusDevicePropertyAccessModeWriteOnce ModbusDevicePropertyAccessMode = "WriteOnce"
+	ModbusDevicePropertyAccessModeWriteMany ModbusDevicePropertyAccessMode = "WriteMany"
+	ModbusDevicePropertyAccessModeReadOnce  ModbusDevicePropertyAccessMode = "ReadOnce"
+	ModbusDevicePropertyAccessModeReadMany  ModbusDevicePropertyAccessMode = "ReadMany"
+)
+
+// ModbusDevicePropertyRegisterType defines the type for the register to read a device property.
+// +kubebuilder:validation:Enum=CoilRegister;DiscreteInputRegister;InputRegister;HoldingRegister
+type ModbusDevicePropertyRegisterType string
+
+const (
+	ModbusDevicePropertyRegisterTypeCoilRegister          ModbusDevicePropertyRegisterType = "CoilRegister"
+	ModbusDevicePropertyRegisterTypeDiscreteInputRegister ModbusDevicePropertyRegisterType = "DiscreteInputRegister"
+	ModbusDevicePropertyRegisterTypeInputRegister         ModbusDevicePropertyRegisterType = "InputRegister"
+	ModbusDevicePropertyRegisterTypeHoldingRegister       ModbusDevicePropertyRegisterType = "HoldingRegister"
 )
 
 // ModbusDevicePropertyType defines the type of the property value.
-// +kubebuilder:validation:Enum=int16;int;int32;int64;uint16;uint;uint32;uint64;float;double;boolean;hexString
+// +kubebuilder:validation:Enum=int8;int16;int;int32;int64;uint8;uint16;uint;uint32;uint64;float;float32;double;float64;boolean;string;hexString;binaryString;base64String
 type ModbusDevicePropertyType string
 
 const (
-	ModbusDevicePropertyTypeInt16     ModbusDevicePropertyType = "int16"
-	ModbusDevicePropertyTypeInt       ModbusDevicePropertyType = "int" // as same as int32
-	ModbusDevicePropertyTypeInt32     ModbusDevicePropertyType = "int32"
-	ModbusDevicePropertyTypeInt64     ModbusDevicePropertyType = "int64"
-	ModbusDevicePropertyTypeUint16    ModbusDevicePropertyType = "uint16"
-	ModbusDevicePropertyTypeUint      ModbusDevicePropertyType = "uint" // as same as uint32
-	ModbusDevicePropertyTypeUint32    ModbusDevicePropertyType = "uint32"
-	ModbusDevicePropertyTypeUint64    ModbusDevicePropertyType = "uint64"
-	ModbusDevicePropertyTypeFloat     ModbusDevicePropertyType = "float"
-	ModbusDevicePropertyTypeDouble    ModbusDevicePropertyType = "double"
-	ModbusDevicePropertyTypeHexString ModbusDevicePropertyType = "hexString"
-	ModbusDevicePropertyTypeBoolean   ModbusDevicePropertyType = "boolean"
+	/*
+		arithmetic types
+	*/
+
+	ModbusDevicePropertyTypeInt8    ModbusDevicePropertyType = "int8"
+	ModbusDevicePropertyTypeInt16   ModbusDevicePropertyType = "int16"
+	ModbusDevicePropertyTypeInt     ModbusDevicePropertyType = "int" // as same as int32
+	ModbusDevicePropertyTypeInt32   ModbusDevicePropertyType = "int32"
+	ModbusDevicePropertyTypeInt64   ModbusDevicePropertyType = "int64"
+	ModbusDevicePropertyTypeUint8   ModbusDevicePropertyType = "uint8"
+	ModbusDevicePropertyTypeUint16  ModbusDevicePropertyType = "uint16"
+	ModbusDevicePropertyTypeUint    ModbusDevicePropertyType = "uint" // as same as uint32
+	ModbusDevicePropertyTypeUint32  ModbusDevicePropertyType = "uint32"
+	ModbusDevicePropertyTypeUint64  ModbusDevicePropertyType = "uint64"
+	ModbusDevicePropertyTypeFloat   ModbusDevicePropertyType = "float" // as same as float32
+	ModbusDevicePropertyTypeFloat32 ModbusDevicePropertyType = "float32"
+	ModbusDevicePropertyTypeDouble  ModbusDevicePropertyType = "double" // as same as float64
+	ModbusDevicePropertyTypeFloat64 ModbusDevicePropertyType = "float64"
+
+	/*
+		none arithmetic types
+	*/
+
+	ModbusDevicePropertyTypeBoolean ModbusDevicePropertyType = "boolean"
+	ModbusDevicePropertyTypeString  ModbusDevicePropertyType = "string"
+
+	/*
+		for bytes
+	*/
+	ModbusDevicePropertyTypeHexString    ModbusDevicePropertyType = "hexString"
+	ModbusDevicePropertyTypeBinaryString ModbusDevicePropertyType = "binaryString"
+	ModbusDevicePropertyTypeBase64String ModbusDevicePropertyType = "base64String"
 )
 
-// ModbusDevicePropertyValueEndianness defines the endianness of the property value.
-// +kubebuilder:validation:Enum=BigEndian;BigEndianSwap;LittleEndian;LittleEndianSwap
-type ModbusDevicePropertyValueEndianness string
+// ModbusDeviceProtocol defines the desired protocol of ModbusDevice.
+type ModbusDeviceProtocol struct {
+	// Specifies the connection protocol as RTU.
+	// +optional
+	RTU *ModbusDeviceProtocolRTU `json:"rtu,omitempty"`
 
-const (
-	ModbusDevicePropertyValueEndiannessBigEndian        ModbusDevicePropertyValueEndianness = "BigEndian"
-	ModbusDevicePropertyValueEndiannessBigEndianSwap    ModbusDevicePropertyValueEndianness = "BigEndianSwap"
-	ModbusDevicePropertyValueEndiannessLittleEndian     ModbusDevicePropertyValueEndianness = "LittleEndian"
-	ModbusDevicePropertyValueEndiannessLittleEndianSwap ModbusDevicePropertyValueEndianness = "LittleEndianSwap"
-)
-
-func (e ModbusDevicePropertyValueEndianness) PutUint16(b []byte, v uint16) {
-	_ = b[1]
-
-	switch e {
-	case ModbusDevicePropertyValueEndiannessLittleEndianSwap, ModbusDevicePropertyValueEndiannessLittleEndian:
-		// BA
-		b[0] = byte(v)
-		b[1] = byte(v >> 8)
-	default:
-		// AB
-		b[0] = byte(v >> 8)
-		b[1] = byte(v)
-	}
+	// Specifies the connection protocol as TCP.
+	// +optional
+	TCP *ModbusDeviceProtocolTCP `json:"tcp,omitempty"`
 }
 
-func (e ModbusDevicePropertyValueEndianness) PutUint32(b []byte, v uint32) {
-	_ = b[3]
-
-	switch e {
-	case ModbusDevicePropertyValueEndiannessBigEndianSwap:
-		// BADC
-		b[0] = byte(v >> 16)
-		b[1] = byte(v >> 24)
-		b[2] = byte(v)
-		b[3] = byte(v >> 8)
-	case ModbusDevicePropertyValueEndiannessLittleEndianSwap:
-		// DCBA
-		b[0] = byte(v >> 8)
-		b[1] = byte(v)
-		b[2] = byte(v >> 24)
-		b[3] = byte(v >> 16)
-	case ModbusDevicePropertyValueEndiannessLittleEndian:
-		// CDAB
-		b[0] = byte(v)
-		b[1] = byte(v >> 8)
-		b[2] = byte(v >> 16)
-		b[3] = byte(v >> 24)
-	default:
-		// ABCD
-		b[0] = byte(v >> 24)
-		b[1] = byte(v >> 16)
-		b[2] = byte(v >> 8)
-		b[3] = byte(v)
-	}
-}
-
-func (e ModbusDevicePropertyValueEndianness) PutUint64(b []byte, v uint64) {
-	_ = b[7]
-
-	switch e {
-	case ModbusDevicePropertyValueEndiannessBigEndianSwap:
-		// BADCFEHG
-		b[0] = byte(v >> 48)
-		b[1] = byte(v >> 56)
-		b[2] = byte(v >> 32)
-		b[3] = byte(v >> 40)
-		b[4] = byte(v >> 16)
-		b[5] = byte(v >> 24)
-		b[6] = byte(v)
-		b[7] = byte(v >> 8)
-	case ModbusDevicePropertyValueEndiannessLittleEndianSwap:
-		// HGFEDCBA
-		b[0] = byte(v >> 8)
-		b[1] = byte(v)
-		b[2] = byte(v >> 24)
-		b[3] = byte(v >> 16)
-		b[4] = byte(v >> 40)
-		b[5] = byte(v >> 32)
-		b[6] = byte(v >> 56)
-		b[7] = byte(v >> 48)
-	case ModbusDevicePropertyValueEndiannessLittleEndian:
-		// GHEFCDAB
-		b[0] = byte(v)
-		b[1] = byte(v >> 8)
-		b[2] = byte(v >> 16)
-		b[3] = byte(v >> 24)
-		b[4] = byte(v >> 32)
-		b[5] = byte(v >> 40)
-		b[6] = byte(v >> 48)
-		b[7] = byte(v >> 56)
-	default:
-		// ABCDEFGH
-		b[0] = byte(v >> 56)
-		b[1] = byte(v >> 48)
-		b[2] = byte(v >> 40)
-		b[3] = byte(v >> 32)
-		b[4] = byte(v >> 24)
-		b[5] = byte(v >> 16)
-		b[6] = byte(v >> 8)
-		b[7] = byte(v)
-	}
-}
-
-func (e ModbusDevicePropertyValueEndianness) Uint16(b []byte) uint16 {
-	_ = b[1]
-
-	var ret uint16
-	switch e {
-	case ModbusDevicePropertyValueEndiannessLittleEndianSwap, ModbusDevicePropertyValueEndiannessLittleEndian:
-		// BA
-		ret = uint16(b[0]) | uint16(b[1])<<8
-	default:
-		// AB
-		ret = uint16(b[1]) | uint16(b[0])<<8
-	}
-	return ret
-}
-
-func (e ModbusDevicePropertyValueEndianness) Uint32(b []byte) uint32 {
-	_ = b[3]
-
-	var ret uint32
-	switch e {
-	case ModbusDevicePropertyValueEndiannessBigEndianSwap:
-		// BADC
-		ret = uint32(b[2]) | uint32(b[3])<<8 | uint32(b[0])<<16 | uint32(b[1])<<24
-	case ModbusDevicePropertyValueEndiannessLittleEndianSwap:
-		// DCBA
-		ret = uint32(b[1]) | uint32(b[0])<<8 | uint32(b[3])<<16 | uint32(b[2])<<24
-	case ModbusDevicePropertyValueEndiannessLittleEndian:
-		// CDAB
-		ret = uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24
-	default:
-		// ABCD
-		ret = uint32(b[3]) | uint32(b[2])<<8 | uint32(b[1])<<16 | uint32(b[0])<<24
-	}
-	return ret
-}
-
-func (e ModbusDevicePropertyValueEndianness) Uint64(b []byte) uint64 {
-	_ = b[7]
-
-	var ret uint64
-	switch e {
-	case ModbusDevicePropertyValueEndiannessBigEndianSwap:
-		// BADCFEHG
-		ret = uint64(b[8]) | uint64(b[7])<<8 | uint64(b[4])<<16 | uint64(b[5])<<24 |
-			uint64(b[2])<<32 | uint64(b[3])<<40 | uint64(b[0])<<48 | uint64(b[1])<<56
-	case ModbusDevicePropertyValueEndiannessLittleEndianSwap:
-		// HGFEDCBA
-		ret = uint64(b[1]) | uint64(b[0])<<8 | uint64(b[3])<<16 | uint64(b[2])<<24 |
-			uint64(b[5])<<32 | uint64(b[4])<<40 | uint64(b[7])<<48 | uint64(b[6])<<56
-	case ModbusDevicePropertyValueEndiannessLittleEndian:
-		// GHEFCDAB
-		ret = uint64(b[0]) | uint64(b[1])<<8 | uint64(b[2])<<16 | uint64(b[3])<<24 |
-			uint64(b[4])<<32 | uint64(b[5])<<40 | uint64(b[6])<<48 | uint64(b[7])<<56
-	default:
-		// ABCDEFGH
-		ret = uint64(b[7]) | uint64(b[6])<<8 | uint64(b[5])<<16 | uint64(b[4])<<24 |
-			uint64(b[3])<<32 | uint64(b[2])<<40 | uint64(b[1])<<48 | uint64(b[0])<<56
-	}
-	return ret
-}
-
-// ModbusDeviceParameters defines the desired parameters of ModbusDevice.
-type ModbusDeviceParameters struct {
-	// Specifies the amount of interval that synchronized to limb.
-	// The default value is "15s".
-	// +kubebuilder:default="15s"
-	SyncInterval v1.Duration `json:"syncInterval,omitempty"`
-
-	// Specifies the amount of timeout.
-	// The default value is "10s".
-	// +kubebuilder:default="10s"
-	Timeout v1.Duration `json:"timeout,omitempty"`
-}
-
-func (in *ModbusDeviceParameters) GetSyncInterval() time.Duration {
+func (in *ModbusDeviceProtocol) GetSyncInterval() time.Duration {
 	if in != nil {
-		if duration := in.SyncInterval.Duration; duration > 0 {
-			return duration
+		if in.TCP != nil {
+			return in.TCP.GetSyncInterval()
+		}
+		if in.RTU != nil {
+			return in.RTU.GetSyncInterval()
 		}
 	}
-	return 15 * time.Second
+	return 10 * time.Second
 }
 
-func (in *ModbusDeviceParameters) GetTimeout() time.Duration {
+type ModbusDeviceProtocolParameters struct {
+	// Specifies the amount of interval for synchronizing the device.
+	// The default value is "10s".
+	// +kubebuilder:default="10s"
+	SyncInterval metav1.Duration `json:"syncInterval,omitempty"`
+
+	// Specifies the amount of timeout for connecting to the device.
+	// The default value is "10s".
+	// +kubebuilder:default="10s"
+	ConnectTimeout metav1.Duration `json:"connectTimeout,omitempty"`
+}
+
+func (in *ModbusDeviceProtocolParameters) GetSyncInterval() time.Duration {
 	if in != nil {
-		if duration := in.Timeout.Duration; duration > 0 {
+		if duration := in.SyncInterval.Duration; duration > 0 {
 			return duration
 		}
 	}
 	return 10 * time.Second
 }
 
-// ModbusDeviceProtocol defines the desired protocol of ModbusDevice.
-type ModbusDeviceProtocol struct {
-	// Specifies the connection protocol as RTU
-	// +optional
-	RTU *ModbusDeviceProtocolRTU `json:"rtu,omitempty"`
-
-	// Specifies the connection protocol as TCP
-	// +optional
-	TCP *ModbusDeviceProtocolTCP `json:"tcp,omitempty"`
+func (in *ModbusDeviceProtocolParameters) GetConnectTimeout() time.Duration {
+	if in != nil {
+		if duration := in.ConnectTimeout.Duration; duration > 0 {
+			return duration
+		}
+	}
+	return 10 * time.Second
 }
 
 // ModbusDeviceProtocolTCP defines the TCP protocol of ModbusDevice.
 type ModbusDeviceProtocolTCP struct {
+	ModbusDeviceProtocolParameters `json:",inline"`
+
 	// Specifies the IP address of device,
 	// which is in form of "ip:port".
 	// +kubebuilder:validation:Required
@@ -261,6 +142,8 @@ type ModbusDeviceProtocolTCP struct {
 
 // ModbusDeviceProtocolRTU defines the RTU protocol of ModbusDevice.
 type ModbusDeviceProtocolRTU struct {
+	ModbusDeviceProtocolParameters `json:",inline"`
+
 	// Specifies the serial port of device,
 	// which is in form of "/dev/ttyS0".
 	// +kubebuilder:validation:Pattern="^/.*[^/]$"
@@ -301,22 +184,22 @@ type ModbusDeviceProtocolRTU struct {
 	StopBits int `json:"stopBits,omitempty"`
 }
 
-// ModbusDeviceArithmeticOperationType defines the type of arithmetic operation.
+// ModbusDevicePropertyValueArithmeticOperationType defines the type of arithmetic operation.
 // +kubebuilder:validation:Enum=Add;Subtract;Multiply;Divide
-type ModbusDeviceArithmeticOperationType string
+type ModbusDevicePropertyValueArithmeticOperationType string
 
 const (
-	ModbusDeviceArithmeticAdd      ModbusDeviceArithmeticOperationType = "Add"
-	ModbusDeviceArithmeticSubtract ModbusDeviceArithmeticOperationType = "Subtract"
-	ModbusDeviceArithmeticMultiply ModbusDeviceArithmeticOperationType = "Multiply"
-	ModbusDeviceArithmeticDivide   ModbusDeviceArithmeticOperationType = "Divide"
+	ModbusDevicePropertyValueArithmeticAdd      ModbusDevicePropertyValueArithmeticOperationType = "Add"
+	ModbusDevicePropertyValueArithmeticSubtract ModbusDevicePropertyValueArithmeticOperationType = "Subtract"
+	ModbusDevicePropertyValueArithmeticMultiply ModbusDevicePropertyValueArithmeticOperationType = "Multiply"
+	ModbusDevicePropertyValueArithmeticDivide   ModbusDevicePropertyValueArithmeticOperationType = "Divide"
 )
 
-// ModbusDeviceArithmeticOperation defines the arithmetic operation of ModbusDevice.
-type ModbusDeviceArithmeticOperation struct {
+// ModbusDevicePropertyValueArithmeticOperation defines the arithmetic operation of ModbusDevice.
+type ModbusDevicePropertyValueArithmeticOperation struct {
 	// Specifies the type of arithmetic operation.
 	// +kubebuilder:validation:Required
-	Type ModbusDeviceArithmeticOperationType `json:"type"`
+	Type ModbusDevicePropertyValueArithmeticOperationType `json:"type"`
 
 	// Specifies the value for arithmetic operation, which is in form of float string.
 	// +kubebuilder:validation:Required
@@ -327,7 +210,7 @@ type ModbusDeviceArithmeticOperation struct {
 type ModbusDevicePropertyVisitor struct {
 	// Specifies the register to visit.
 	// +kubebuilder:validation:Required
-	Register ModbusDeviceRegisterType `json:"register"`
+	Register ModbusDevicePropertyRegisterType `json:"register"`
 
 	// Specifies the starting offset of register for read/write data.
 	// +kubebuilder:validation:Required
@@ -341,14 +224,33 @@ type ModbusDevicePropertyVisitor struct {
 	// +kubebuilder:default=1
 	Quantity uint16 `json:"quantity,omitempty"`
 
-	// Specifies the endianness of value.
+	// Specifies the endianness of value, only available in basic types.
 	// +kubebuilder:default="BigEndian"
-	Endianness ModbusDevicePropertyValueEndianness `json:"endianness,omitempty"`
+	Endianness endianapi.DevicePropertyValueEndianness `json:"endianness,omitempty"`
 
-	// Specifies the operations in order if needed.
+	// Specifies the arithmetic operations in order if needed, only available in arithmetic types.
 	// +listType=atomic
 	// +optional
-	OrderOfOperations []ModbusDeviceArithmeticOperation `json:"orderOfOperations,omitempty"`
+	ArithmeticOperations []ModbusDevicePropertyValueArithmeticOperation `json:"arithmeticOperations,omitempty"`
+
+	// Specifies the precision of the arithmetic operation result.
+	// The default is "2".
+	// +optional
+	ArithmeticOperationPrecision *int `json:"arithmeticOperationPrecision,omitempty"`
+}
+
+func (in *ModbusDevicePropertyVisitor) GetArithmeticOperationPrecision() int {
+	if in != nil && in.ArithmeticOperationPrecision != nil {
+		return *in.ArithmeticOperationPrecision
+	}
+	return 2
+}
+
+func (in *ModbusDevicePropertyVisitor) GetEndianness() endianapi.DevicePropertyValueEndianness {
+	if in != nil && string(in.Endianness) != "" {
+		return in.Endianness
+	}
+	return endianapi.DevicePropertyValueEndiannessBigEndian
 }
 
 // ModbusDeviceProperty defines the desired property of ModbusDevice.
@@ -365,18 +267,66 @@ type ModbusDeviceProperty struct {
 	// +kubebuilder:validation:Required
 	Type ModbusDevicePropertyType `json:"type"`
 
+	// Specifies the access mode of property.
+	// The default value is "ReadMany".
+	// +listType=set
+	// +kubebuilder:default={ReadMany}
+	AccessModes []ModbusDevicePropertyAccessMode `json:"accessModes,omitempty"`
+
 	// Specifies the visitor of property.
 	// +kubebuilder:validation:Required
 	Visitor ModbusDevicePropertyVisitor `json:"visitor"`
 
-	// Specifies if the property is readonly.
-	// The default value is "false".
-	// +optional
-	ReadOnly bool `json:"readOnly,omitempty"`
-
 	// Specifies the value of property, only available in the writable property.
 	// +optional
 	Value string `json:"value,omitempty"`
+}
+
+// MergeAccessModes merges the duplicated modes and then returns the access mode array.
+func (in *ModbusDeviceProperty) MergeAccessModes() []ModbusDevicePropertyAccessMode {
+	if in != nil && len(in.AccessModes) != 0 {
+		// NB(thxCode) if both "*Once" and "*Many" are specified,
+		// we can merge "*Once" to "*Many" via bitmap,
+		// and keep "Write*" before "Read*".
+		var mode byte
+		for _, accessMode := range in.AccessModes {
+			switch accessMode {
+			case ModbusDevicePropertyAccessModeWriteOnce:
+				mode = mode | 0x04
+			case ModbusDevicePropertyAccessModeWriteMany:
+				mode = mode | 0x08
+			case ModbusDevicePropertyAccessModeReadOnce:
+				mode = mode | 0x01
+			default: // ModbusDevicePropertyAccessModeReadMany
+				mode = mode | 0x02
+			}
+		}
+		if mode&0x08 == 0x08 {
+			mode = mode & 0xfb
+		}
+		if mode&0x02 == 0x02 {
+			mode = mode & 0xfe
+		}
+
+		switch mode {
+		case 0x0a: // 1010
+			return []ModbusDevicePropertyAccessMode{ModbusDevicePropertyAccessModeWriteMany, ModbusDevicePropertyAccessModeReadMany}
+		case 0x09: // 1001
+			return []ModbusDevicePropertyAccessMode{ModbusDevicePropertyAccessModeWriteMany, ModbusDevicePropertyAccessModeReadOnce}
+		case 0x06: // 0110
+			return []ModbusDevicePropertyAccessMode{ModbusDevicePropertyAccessModeWriteOnce, ModbusDevicePropertyAccessModeReadMany}
+		case 0x05: // 0101
+			return []ModbusDevicePropertyAccessMode{ModbusDevicePropertyAccessModeWriteOnce, ModbusDevicePropertyAccessModeReadOnce}
+		case 0x04: // 0100
+			return []ModbusDevicePropertyAccessMode{ModbusDevicePropertyAccessModeWriteOnce}
+		case 0x08: // 1000
+			return []ModbusDevicePropertyAccessMode{ModbusDevicePropertyAccessModeWriteMany}
+		case 0x01: // 0001
+			return []ModbusDevicePropertyAccessMode{ModbusDevicePropertyAccessModeReadOnce}
+		default: // 0010
+		}
+	}
+	return []ModbusDevicePropertyAccessMode{ModbusDevicePropertyAccessModeReadMany}
 }
 
 // ModbusDeviceSpec defines the desired state of ModbusDevice.
@@ -384,10 +334,6 @@ type ModbusDeviceSpec struct {
 	// Specifies the extension of device.
 	// +optional
 	Extension *ModbusDeviceExtension `json:"extension,omitempty"`
-
-	// Specifies the parameters of device.
-	// +optional
-	Parameters *ModbusDeviceParameters `json:"parameters,omitempty"`
 
 	// Specifies the protocol for accessing the device.
 	// +kubebuilder:validation:Required
@@ -417,13 +363,17 @@ type ModbusDeviceStatusProperty struct {
 	// +optional
 	Type ModbusDevicePropertyType `json:"type,omitempty"`
 
+	// Reports the access mode of property.
+	// +optional
+	AccessModes []ModbusDevicePropertyAccessMode `json:"accessModes,omitempty"`
+
 	// Reports the value of property.
 	// +optional
 	Value string `json:"value,omitempty"`
 
-	// Reports the operated value of property.
+	// Reports the operation result of property if configured `arithmeticOperations`.
 	// +optional
-	OperatedValue string `json:"operatedValue,omitempty"`
+	OperationResult string `json:"operationResult,omitempty"`
 
 	// Reports the updated timestamp of property.
 	// +optional
