@@ -1,7 +1,7 @@
 apiVersion: edge.cattle.io/v1alpha1
 kind: DeviceLink
 metadata:
-  name: living-room-light
+  name: simulate-living-room-light
 spec:
   adaptor:
     node: edge-worker
@@ -25,23 +25,29 @@ spec:
             write: "set"
       properties:
         - name: "switch"
-          path: "switch"
           description: "The switch of light"
           type: "boolean"
-          readOnly: false
+          accessModes:
+            - WriteOnce
+            - Notify
+          value: true
         - name: "gear"
-          path: "gear"
           description: "The gear of light"
           type: "string"
-          readOnly: false
+          accessModes:
+            - WriteMany
+            - Notify
           annotations:
             type: "enum"
             format: "low,mid,high"
+          value: "high"
         - name: "parameter"
-          path: "parameter"
           description: "The parameter information of light"
-          type: "array"
+          type: "string"
+          accessModes:
+            - Notify
         - name: "production"
-          path: "production"
           description: "The production information of light"
-          type: "object"
+          type: "string"
+          accessModes:
+            - ReadOnce

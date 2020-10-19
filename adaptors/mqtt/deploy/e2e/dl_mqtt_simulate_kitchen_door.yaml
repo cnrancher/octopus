@@ -1,0 +1,52 @@
+apiVersion: edge.cattle.io/v1alpha1
+kind: DeviceLink
+metadata:
+  name: simulate-kitchen-door
+spec:
+  adaptor:
+    node: edge-worker
+    name: adaptors.edge.cattle.io/mqtt
+  model:
+    apiVersion: "devices.edge.cattle.io/v1alpha1"
+    kind: "MQTTDevice"
+  template:
+    metadata:
+      labels:
+        device: kitchen-door
+    spec:
+      protocol:
+        pattern: "AttributedTopic"
+        client:
+          server: "tcp://octopus-simulator-mqtt.octopus-simulator-system:1883"
+        message:
+          topic: "cattle.io/octopus/home/status/kitchen/door/:path"
+      properties:
+        - name: "state"
+          description: "The state of door"
+          type: "string"
+          annotations:
+            type: "enum"
+            format: "open,close"
+          accessModes:
+            - ReadOnce
+        - name: "width"
+          description: "The width of door"
+          type: "float"
+          annotations:
+            unit: "meter"
+          accessModes:
+            - ReadOnce
+        - name: "height"
+          description: "The height of door"
+          type: "float"
+          annotations:
+            unit: "meter"
+          accessModes:
+            - ReadOnce
+        - name: "material"
+          description: "The material of light"
+          type: "string"
+          accessModes:
+            - ReadOnce
+          visitor:
+            path: "production_material"

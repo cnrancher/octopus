@@ -1,7 +1,7 @@
 apiVersion: edge.cattle.io/v1alpha1
 kind: DeviceLink
 metadata:
-  name: bedroom-light
+  name: simulate-bedroom-light
 spec:
   adaptor:
     node: edge-worker
@@ -26,37 +26,51 @@ spec:
         - name: "switch"
           description: "The switch of light"
           type: "boolean"
-          readOnly: false
+          accessModes:
+            - WriteOnce
+            - Notify
+          value: true
         - name: "gear"
-          path: "action.gear"
           description: "The gear of light"
           type: "string"
-          readOnly: false
           annotations:
             type: "enum"
             format: "low,mid,high"
+          accessModes:
+            - WriteOnce
+            - Notify
+          visitor:
+            path: "action.gear"
         - name: "power"
-          path: "parameter.power"
           description: "The power of light"
           type: "float"
           annotations:
             group: "parameter"
             unit: "watt"
+          accessModes:
+            - Notify
+          visitor:
+            path: "parameter.power"
         - name: "luminance"
-          path: "parameter.luminance"
           description: "The luminance of light"
           type: "int"
           annotations:
             group: "parameter"
             unit: "luminance"
+          accessModes:
+            - Notify
+          visitor:
+            path: "parameter.luminance"
         - name: "manufacturer"
-          path: "production.manufacturer"
           description: "The manufacturer of light"
           type: "string"
           annotations:
             group: "production"
+          accessModes:
+            - ReadOnce
+          visitor:
+            path: "production.manufacturer"
         - name: "productionDate"
-          path: "production.date"
           description: "The production date of light"
           type: "string"
           annotations:
@@ -64,8 +78,11 @@ spec:
             type: "datetime"
             standard: "ISO 8601"
             format: "YYYY-MM-DDThh:mm:ss.SSZ"
+          accessModes:
+            - ReadOnce
+          visitor:
+            path: "production.date"
         - name: "serviceLife"
-          path: "production.serviceLife"
           description: "The service life of light"
           type: "string"
           annotations:
@@ -73,3 +90,7 @@ spec:
             type: "duration"
             standard: "ISO 8601"
             format: "PYYMMDD"
+          accessModes:
+            - ReadOnce
+          visitor:
+            path: "production.serviceLife"

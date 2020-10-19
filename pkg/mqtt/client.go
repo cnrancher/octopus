@@ -59,6 +59,9 @@ type SubscribeTopic struct {
 	// Specifies the QoS for publishing,
 	// otherwise uses the global value.
 	QoSPointer *byte
+
+	// Specifies to subscribe the topic only once.
+	Once bool
 }
 
 // SubscribeTopicIndex is an index of SubscribeTopic, which inspired by sets.String.
@@ -80,6 +83,21 @@ func (i SubscribeTopicIndex) DifferenceIndexes(o SubscribeTopicIndex) []string {
 	return result.List()
 }
 
+// Len returns the amount of topics.
+func (i SubscribeTopicIndex) Len() int {
+	return len(i)
+}
+
+// PopAll pops the slice with topics in random order.
+func (i SubscribeTopicIndex) PopAll() []string {
+	var res = make([]string, 0, len(i))
+	for key := range i {
+		delete(i, key)
+		res = append(res, key)
+	}
+	return res
+}
+
 type Client interface {
 	// Connect will create a connection to the message broker.
 	Connect() error
@@ -93,9 +111,14 @@ type Client interface {
 	// Publish publishes the message to corresponding topic.
 	Publish(message PublishMessage) error
 
-	// Subscribe subscribes the corresponding topic and handle in the same handler,
-	// and deals with the unsubscribe actions automatically.
-	Subscribe(topics []SubscribeTopic, handler SubscribeHandler) error
+	// Subscribe subscribes the corresponding topic.
+	Subscribe(topics ...SubscribeTopic) error
+
+	// StartSubscriptions starts all subscriptions and handle in the same handler.
+	StartSubscriptions(handler SubscribeHandler) error
+
+	// StopSubscriptions stops all subscriptions.
+	StopSubscriptions() error
 }
 
 type client struct {
@@ -137,65 +160,6 @@ func (c *client) RawClient() mqtt.Client {
 	return c.raw
 }
 
-func (c *client) Subscribe(topics []SubscribeTopic, handler SubscribeHandler) error {
-	if len(topics) == 0 {
-		return nil
-	}
-
-	// indexes new topics
-	var topicIndexer = make(SubscribeTopicIndex, len(topics))
-	for _, topic := range topics {
-		var topicName = c.topic.RenderForSubscribe(topic.Render)
-		topicIndexer.Index(topicName, &topic)
-	}
-
-	// unsubscribes topics
-	var unsubscribeTopics = c.subscribeTopicIndexer.DifferenceIndexes(topicIndexer)
-	if len(unsubscribeTopics) != 0 {
-		log.Println("Unsubscribe  ", "topics: ", unsubscribeTopics)
-		var token = c.raw.Unsubscribe(unsubscribeTopics...)
-		if err := c.wait(token); err != nil {
-			return err
-		}
-	}
-
-	// subscribes new topics
-	var callback = func(cli mqtt.Client, msg mqtt.Message) {
-		if handler == nil {
-			return
-		}
-		var topicName = msg.Topic()
-		var topic, exist = topicIndexer[topicName]
-		if !exist {
-			return
-		}
-
-		log.Println("Receive Subscribe  ", "topic: ", topicName)
-
-		handler(SubscribeMessage{
-			Index:   topic.Index,
-			Topic:   topicName,
-			Payload: msg.Payload(),
-		})
-	}
-	var topicFilters = make(map[string]byte, len(topicIndexer))
-	for topicName, topic := range topicIndexer {
-		var qos = c.qos
-		if topic.QoSPointer != nil {
-			qos = *topic.QoSPointer
-		}
-		topicFilters[topicName] = qos
-	}
-	var token = c.raw.SubscribeMultiple(topicFilters, callback)
-	if err := c.wait(token); err != nil {
-		return err
-	}
-	log.Println("Subscribe  ", "topics: ", topicFilters)
-
-	c.subscribeTopicIndexer = topicIndexer
-	return nil
-}
-
 func (c *client) Publish(message PublishMessage) error {
 	if message.Payload == nil {
 		return nil
@@ -226,6 +190,83 @@ func (c *client) Publish(message PublishMessage) error {
 
 	var token = c.raw.Publish(topicName, qos, retained, payload)
 	return c.wait(token)
+}
+
+func (c *client) Subscribe(topics ...SubscribeTopic) error {
+	for _, topic := range topics {
+		var topicName = c.topic.RenderForSubscribe(topic.Render)
+		c.subscribeTopicIndexer.Index(topicName, &topic)
+	}
+	return nil
+}
+
+func (c *client) StartSubscriptions(h SubscribeHandler) error {
+	var topicIndexer = c.subscribeTopicIndexer
+	if topicIndexer.Len() == 0 {
+		return nil
+	}
+
+	// subscribes new topics
+	var callback = func(cli mqtt.Client, msg mqtt.Message) {
+		if h == nil {
+			return
+		}
+		var topicName = msg.Topic()
+		var topic, exist = topicIndexer[topicName]
+		if !exist {
+			return
+		}
+
+		log.Println("Receive message from topic: ", topicName)
+
+		// unsubscribe if only subscribes once
+		if topic.Once {
+			go func() {
+				var token = cli.Unsubscribe(topicName)
+				_ = c.wait(token)
+				log.Println("Unsubscribe topic: ", topicName)
+			}()
+		}
+
+		// handles
+		go h(SubscribeMessage{
+			Index:   topic.Index,
+			Topic:   topicName,
+			Payload: msg.Payload(),
+		})
+	}
+
+	var topicFilters = make(map[string]byte, len(topicIndexer))
+	for topicName, topic := range topicIndexer {
+		var qos = c.qos
+		if topic.QoSPointer != nil {
+			qos = *topic.QoSPointer
+		}
+		topicFilters[topicName] = qos
+	}
+	var token = c.raw.SubscribeMultiple(topicFilters, callback)
+	if err := c.wait(token); err != nil {
+		return err
+	}
+
+	log.Println("Subscribed topics: ", topicFilters)
+	return nil
+}
+
+func (c *client) StopSubscriptions() error {
+	var topicIndexer = c.subscribeTopicIndexer
+	if topicIndexer.Len() == 0 {
+		return nil
+	}
+
+	var topics = topicIndexer.PopAll()
+	var token = c.raw.Unsubscribe(topics...)
+	if err := c.wait(token); err != nil {
+		return err
+	}
+
+	log.Println("Stop subscribed topics: ", topics)
+	return nil
 }
 
 // NewClient creates the MQTT client with expected options.
