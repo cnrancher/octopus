@@ -64,71 +64,143 @@ spec:
                   description: MQTTDeviceProperty defines the specified property of
                     MQTTDevice.
                   properties:
+                    accessModes:
+                      default:
+                      - Notify
+                      description: Specifies the access mode of property. The default
+                        value is "Notify".
+                      items:
+                        description: MQTTDevicePropertyAccessMode defines the mode
+                          for accessing a device property, default is "Notify".
+                        enum:
+                        - WriteOnce
+                        - WriteMany
+                        - ReadOnce
+                        - Notify
+                        type: string
+                      type: array
+                      x-kubernetes-list-type: set
                     annotations:
                       additionalProperties:
                         type: string
                       description: Specifies the annotations of property.
                       type: object
-                    contentType:
-                      description: Specifies the MIME of property value.
-                      type: string
                     description:
                       description: Specifies the description of property.
                       type: string
                     name:
                       description: Specifies the name of property.
                       type: string
-                    operator:
-                      description: Specifies the operator for rendering the `:operator`
-                        keyword of topic.
-                      properties:
-                        read:
-                          description: Specifies the operator for rendering the `:operator`
-                            keyword of topic during subscribing.
-                          type: string
-                        write:
-                          description: Specifies the operator for rendering the `:operator`
-                            keyword of topic during publishing.
-                          type: string
-                      type: object
-                    path:
-                      description: Specifies the path for rendering the `:path` keyword
-                        of topic.
-                      type: string
-                    qos:
-                      default: 1
-                      description: Specifies the QoS of the message. The default value
-                        is "1".
-                      enum:
-                      - 0
-                      - 1
-                      - 2
-                      type: integer
-                    readOnly:
-                      default: true
-                      description: Specifies if the property is read-only. The default
-                        value is "true".
-                      type: boolean
-                    retained:
-                      default: true
-                      description: Specifies if the last published message to be retained.
-                        The default value is "true".
-                      type: boolean
                     type:
                       description: Specifies the type of property.
                       enum:
+                      - int8
+                      - int16
                       - int
-                      - string
+                      - int32
+                      - int64
+                      - uint8
+                      - uint16
+                      - uint
+                      - uint32
+                      - uint64
                       - float
+                      - float32
+                      - double
+                      - float64
                       - boolean
-                      - object
-                      - array
+                      - hexString
+                      - binaryString
+                      - base64String
+                      - string
                       type: string
                     value:
                       description: Specifies the value of property.
                       x-kubernetes-preserve-unknown-fields: true
+                    visitor:
+                      description: Specifies the visitor of property.
+                      properties:
+                        arithmeticOperationPrecision:
+                          description: Specifies the precision of the arithmetic operation
+                            result. The default is "2".
+                          type: integer
+                        arithmeticOperations:
+                          description: Specifies the arithmetic operations in order
+                            if needed, only available in arithmetic types.
+                          items:
+                            description: MQTTDevicePropertyValueArithmeticOperation
+                              defines the arithmetic operation of property value.
+                            properties:
+                              type:
+                                description: Specifies the type of arithmetic operation.
+                                enum:
+                                - Add
+                                - Subtract
+                                - Multiply
+                                - Divide
+                                type: string
+                              value:
+                                description: Specifies the value for arithmetic operation,
+                                  which is in form of float string.
+                                type: string
+                            required:
+                            - type
+                            - value
+                            type: object
+                          type: array
+                          x-kubernetes-list-type: atomic
+                        contentType:
+                          default: text
+                          description: Specifies the content type of property value.
+                            The default is "text".
+                          enum:
+                          - text
+                          - bytes
+                          type: string
+                        endianness:
+                          description: Specifies the endianness of value, only available
+                            in basic bytes(content-type) type. The default is "BigEndian".
+                          enum:
+                          - BigEndian
+                          - BigEndianSwap
+                          - LittleEndian
+                          - LittleEndianSwap
+                          type: string
+                        operator:
+                          description: Specifies the operator for rendering the `:operator`
+                            keyword of topic.
+                          properties:
+                            read:
+                              description: Specifies the operator for rendering the
+                                `:operator` keyword of topic during subscribing.
+                              type: string
+                            write:
+                              description: Specifies the operator for rendering the
+                                `:operator` keyword of topic during publishing.
+                              type: string
+                          type: object
+                        path:
+                          description: Specifies the path for rendering the `:path`
+                            keyword of topic.
+                          type: string
+                        qos:
+                          default: 1
+                          description: Specifies the QoS of the message. The default
+                            value is "1".
+                          enum:
+                          - 0
+                          - 1
+                          - 2
+                          type: integer
+                        retained:
+                          default: true
+                          description: Specifies if the last published message to
+                            be retained. The default value is "true".
+                          type: boolean
+                      type: object
                   required:
                   - name
+                  - type
                   type: object
                 type: array
                 x-kubernetes-list-map-keys:
@@ -453,16 +525,11 @@ spec:
                     - AttributedMessage
                     - AttributedTopic
                     type: string
-                  schema:
-                    description: Specifies the schema of the pattern.
-                    properties:
-                      reference:
-                        description: Specifies the reference for schema.
-                        type: string
-                      type:
-                        description: Specifies the type of schema.
-                        type: string
-                    type: object
+                  syncInterval:
+                    default: 10s
+                    description: Specifies the amount of interval for synchronizing
+                      the MQTT device. The default value is "10s".
+                    type: string
                 required:
                 - client
                 - message
@@ -480,75 +547,55 @@ spec:
                   description: MQTTDeviceStatusProperty defines the observed property
                     of MQTTDevice.
                   properties:
-                    annotations:
-                      additionalProperties:
+                    accessModes:
+                      description: Reports the access mode of property.
+                      items:
+                        description: MQTTDevicePropertyAccessMode defines the mode
+                          for accessing a device property, default is "Notify".
+                        enum:
+                        - WriteOnce
+                        - WriteMany
+                        - ReadOnce
+                        - Notify
                         type: string
-                      description: Specifies the annotations of property.
-                      type: object
-                    contentType:
-                      description: Specifies the MIME of property value.
-                      type: string
-                    description:
-                      description: Specifies the description of property.
-                      type: string
+                      type: array
                     name:
-                      description: Specifies the name of property.
+                      description: Reports the name of property.
                       type: string
-                    operator:
-                      description: Specifies the operator for rendering the `:operator`
-                        keyword of topic.
-                      properties:
-                        read:
-                          description: Specifies the operator for rendering the `:operator`
-                            keyword of topic during subscribing.
-                          type: string
-                        write:
-                          description: Specifies the operator for rendering the `:operator`
-                            keyword of topic during publishing.
-                          type: string
-                      type: object
-                    path:
-                      description: Specifies the path for rendering the `:path` keyword
-                        of topic.
+                    operationResult:
+                      description: Reports the operation result of property if configured
+                        `arithmeticOperations`.
                       type: string
-                    qos:
-                      default: 1
-                      description: Specifies the QoS of the message. The default value
-                        is "1".
-                      enum:
-                      - 0
-                      - 1
-                      - 2
-                      type: integer
-                    readOnly:
-                      default: true
-                      description: Specifies if the property is read-only. The default
-                        value is "true".
-                      type: boolean
-                    retained:
-                      default: true
-                      description: Specifies if the last published message to be retained.
-                        The default value is "true".
-                      type: boolean
                     type:
-                      description: Specifies the type of property.
+                      description: Reports the type of property.
                       enum:
+                      - int8
+                      - int16
                       - int
-                      - string
+                      - int32
+                      - int64
+                      - uint8
+                      - uint16
+                      - uint
+                      - uint32
+                      - uint64
                       - float
+                      - float32
+                      - double
+                      - float64
                       - boolean
-                      - object
-                      - array
+                      - hexString
+                      - binaryString
+                      - base64String
+                      - string
                       type: string
                     updateAt:
                       description: Reports the updated timestamp of property.
                       format: date-time
                       type: string
                     value:
-                      description: Specifies the value of property.
-                      x-kubernetes-preserve-unknown-fields: true
-                  required:
-                  - name
+                      description: Reports the value of property.
+                      type: string
                   type: object
                 type: array
             type: object

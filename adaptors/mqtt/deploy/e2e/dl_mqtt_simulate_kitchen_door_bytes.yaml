@@ -1,7 +1,7 @@
 apiVersion: edge.cattle.io/v1alpha1
 kind: DeviceLink
 metadata:
-  name: kitchen-door
+  name: simulate-kitchen-door-bytes
 spec:
   adaptor:
     node: edge-worker
@@ -12,14 +12,14 @@ spec:
   template:
     metadata:
       labels:
-        device: kitchen-door
+        device: kitchen-door-bytes
     spec:
       protocol:
         pattern: "AttributedTopic"
         client:
           server: "tcp://octopus-simulator-mqtt.octopus-simulator-system:1883"
         message:
-          topic: "cattle.io/octopus/home/status/kitchen/door/:path"
+          topic: "cattle.io/octopus/home/status/kitchen/door_bytes/:path"
       properties:
         - name: "state"
           description: "The state of door"
@@ -27,17 +27,33 @@ spec:
           annotations:
             type: "enum"
             format: "open,close"
+          accessModes:
+            - ReadOnce
+          visitor:
+            contentType: bytes
         - name: "width"
           description: "The width of door"
           type: "float"
           annotations:
             unit: "meter"
+          accessModes:
+            - ReadOnce
+          visitor:
+            contentType: bytes
         - name: "height"
           description: "The height of door"
           type: "float"
-          annotations: 
+          annotations:
             unit: "meter"
+          accessModes:
+            - ReadOnce
+          visitor:
+            contentType: bytes
         - name: "material"
-          path: "production_material"
           description: "The material of light"
           type: "string"
+          accessModes:
+            - ReadOnce
+          visitor:
+            contentType: bytes
+            path: "production_material"

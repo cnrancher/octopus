@@ -54,6 +54,14 @@ type MQTTMessagePayloadOptions struct {
 	Retained *bool `json:"retained,omitempty"`
 }
 
+func (in *MQTTMessagePayloadOptions) GetQoSPtr() *byte {
+	if in != nil && in.QoS != nil {
+		return (*byte)(in.QoS)
+	}
+	var ret = byte(1)
+	return &ret
+}
+
 // MQTTWillMessageContent defines the content of will message.
 // +kubebuilder:validation:Type=string
 // +kubebuilder:object:generate=true
