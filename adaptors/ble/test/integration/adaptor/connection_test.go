@@ -36,6 +36,12 @@ var _ = Describe("verify Connection", func() {
 
 	AfterEach(func() {
 		mockCtrl.Finish()
+		if service != nil {
+			err = service.Close()
+			if err != nil {
+				GinkgoT().Logf("failed to stop service: %v", err)
+			}
+		}
 	})
 
 	Context("on Connect server", func() {
@@ -103,20 +109,16 @@ var _ = Describe("verify Connection", func() {
 						"namespace":"default"
 					},
 					"spec":{
-						"parameters":{
-							"syncInterval":"10s",
-							"timeout":"2s"
-						},
 						"protocol":{
-							"endpoint":"MJ_HT_V1"
+							"endpoint":"FAKED_TH"
 						},
 						"properties":[
 							{
-								"name":"data",
-								"description":"XiaoMi temp sensor with temperature and humidity data",
-								"accessMode":"BluetoothDevicePropertyNotifyOnly",
+								"name":"temperature_and_humidity",
+								"accessModes":["Notify"],
 								"visitor":{
-									"characteristicUUID":"226c000064764566756266734470666d"
+									"service":"226c0000-6476-4566-7562-66734470666d",
+									"characteristic":"226caa55-6476-4566-7562-66734470666d"
 								}
 							}
 						]
@@ -126,7 +128,7 @@ var _ = Describe("verify Connection", func() {
 			err = service.Connect(mockServer)
 			sts = status.Convert(err)
 			Expect(sts.Code()).To(Equal(grpccodes.InvalidArgument))
-			Expect(sts.Message()).To(Equal("failed to connect to BLE device: timeout to scan device in 2s"))
+			Expect(sts.Message()).To(Equal("failed to connect to Bluetooth device: failed to scan Bluetooth device FAKED_TH: GATT peripheral is not found"))
 		})
 
 	})

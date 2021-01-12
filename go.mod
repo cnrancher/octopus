@@ -4,14 +4,13 @@ go 1.13
 
 require (
 	github.com/256dpi/gomqtt v0.14.2
+	github.com/JuulLabs-OSS/ble v0.0.0-20200716215611-d4fcc9d598bb
 	github.com/Masterminds/goutils v1.1.0 // indirect
 	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/Masterminds/sprig v2.22.0+incompatible
 	github.com/Microsoft/hcsshim/test v0.0.0-20200923174857-380508768ed2 // indirect
-	github.com/bettercap/gatt v0.0.0-20191018133023-569d3d9372bb
 	github.com/containerd/cgroups v0.0.0-20200824123100-0b889c03f102 // indirect
 	github.com/containerd/containerd v1.4.1 // indirect
-	github.com/davecgh/go-spew v1.1.1
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/docker/docker v17.12.0-ce-rc1.0.20200528204242-89382f2f2074+incompatible
 	github.com/docker/go-connections v0.4.0
@@ -28,8 +27,6 @@ require (
 	github.com/iancoleman/strcase v0.1.2
 	github.com/json-iterator/go v1.1.8
 	github.com/mattn/go-isatty v0.0.12
-	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
-	github.com/mgutz/logxi v0.0.0-20161027140823-aebf8a7d67ab // indirect
 	github.com/mitchellh/copystructure v1.0.0 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/onsi/ginkgo v1.13.0
@@ -38,7 +35,6 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.1.0
 	github.com/rancher/k3d/v3 v3.0.2
-	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/cobra v1.0.1-0.20200629195214-2c5a0d300f8b
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.4.0

@@ -5,4 +5,4 @@ import (
 )
 
 // BluetoothDeviceLimSyncer is used to sync ble device to limb.
-type BluetoothDeviceLimSyncer func(in *v1alpha1.BluetoothDevice) error
+type BluetoothDeviceLimSyncer func(in *v1alpha1.BluetoothDevice, internalError error) error

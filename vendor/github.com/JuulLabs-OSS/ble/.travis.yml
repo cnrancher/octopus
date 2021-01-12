@@ -1,0 +1,24 @@
+language: go
+os:
+        - osx
+        - linux
+
+go:
+        - 1.8
+        - 1.9
+        - tip
+
+go_import_path: github.com/JuulLabs-OSS/ble
+
+install:
+        - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then go get ./...; fi
+        - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then GOOS=linux go get && GOOS=linux go get ./linux; fi
+
+
+script:
+        - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then go vet ./...; fi
+        - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then GOOS=linux go vet && GOOS=linux go vet ./linux/...; fi
+        - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then go test ./...; fi
+        - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then GOOS=linux go test && GOOS=linux go test ./linux/...; fi
+        - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then go build -v ./...; fi
+        - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then GOOS=linux go build -v && GOOS=linux go build -v ./linux/...; fi

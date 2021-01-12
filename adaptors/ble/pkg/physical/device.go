@@ -1,26 +1,23 @@
 package physical
 
 import (
+	"io"
 	"reflect"
 	"sync"
 	"time"
 
+	"github.com/JuulLabs-OSS/ble"
+	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/runtime"
 
+	"github.com/rancher/octopus/adaptors/ble/api/v1alpha1"
 	"github.com/rancher/octopus/adaptors/ble/pkg/metadata"
+	api "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
 	"github.com/rancher/octopus/pkg/adaptor/socket/handler"
 	"github.com/rancher/octopus/pkg/mqtt"
 	"github.com/rancher/octopus/pkg/util/object"
-
-	"github.com/bettercap/gatt"
-	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/types"
-
-	api "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
-
-	"github.com/rancher/octopus/adaptors/ble/api/v1alpha1"
 )
 
 // Device is an interface for device operations set.
@@ -32,29 +29,25 @@ type Device interface {
 }
 
 // NewDevice creates a Device.
-func NewDevice(log logr.Logger, meta metav1.ObjectMeta, toLimb BluetoothDeviceLimSyncer, gattDevice gatt.Device) Device {
+func NewDevice(log logr.Logger, meta metav1.ObjectMeta, toLimb BluetoothDeviceLimSyncer) Device {
 	log.Info("Created ")
 	return &bleDevice{
 		log: log,
 		instance: &v1alpha1.BluetoothDevice{
 			ObjectMeta: meta,
 		},
-		toLimb:     toLimb,
-		gattDevice: gattDevice,
+		toLimb: toLimb,
 	}
 }
 
 type bleDevice struct {
 	sync.Mutex
 
-	stop chan struct{}
-	wg   sync.WaitGroup
-
-	log        logr.Logger
-	instance   *v1alpha1.BluetoothDevice
-	name       types.NamespacedName
-	toLimb     BluetoothDeviceLimSyncer
-	gattDevice gatt.Device
+	log             logr.Logger
+	instance        *v1alpha1.BluetoothDevice
+	toLimb          BluetoothDeviceLimSyncer
+	stop            chan struct{}
+	bluetoothClient *BluetoothPeripheral
 
 	mqttClient mqtt.Client
 }
@@ -66,6 +59,7 @@ func (d *bleDevice) Configure(references api.ReferencesHandler, device *v1alpha1
 	defer d.Unlock()
 
 	var newSpec = device.Spec
+	var staleSpec = d.instance.Spec
 
 	// configures MQTT client if needed
 	var staleExtension, newExtension v1alpha1.BluetoothDeviceExtension
@@ -95,6 +89,59 @@ func (d *bleDevice) Configure(references api.ReferencesHandler, device *v1alpha1
 		}
 	}
 
+	// configures Bluetooth client
+	if !reflect.DeepEqual(staleSpec.Protocol, newSpec.Protocol) {
+		if d.bluetoothClient != nil {
+			if err := d.bluetoothClient.Close(); err != nil {
+				if err != io.EOF {
+					d.log.Error(err, "Error closing Bluetooth device connection")
+				}
+			}
+			d.bluetoothClient = nil
+		}
+
+		var peripherals, err = ScanBluetoothPeripherals(newSpec.Protocol.Endpoint, newSpec.Protocol.GetScanTimeout())
+		if err != nil {
+			return errors.Wrapf(err, "failed to scan Bluetooth device %s", newSpec.Protocol.Endpoint)
+		}
+
+		var autoReconnect = newSpec.Protocol.IsAutoReconnect()
+		var peripheral = peripherals[0]
+		peripheral.SetConnectionOptions(BluetoothPeripheralConnectionOptions{
+			AutoReconnect:                  autoReconnect,
+			MaxReconnectInterval:           newSpec.Protocol.GetMaxReconnectInterval(),
+			ConnectMTU:                     newSpec.Protocol.GetConnectionMTU(),
+			ConnectTimeout:                 newSpec.Protocol.GetConnectTimeout(),
+			OnlySubscribeNotificationValue: newSpec.Protocol.OnlySubscribeNotificationValue,
+			OnlyWriteValueWithoutResponse:  newSpec.Protocol.OnlyWriteValueWithoutResponse,
+			OnConnectionLost: func(_ ble.Client, cerr error) {
+				if autoReconnect {
+					d.log.Error(errors.Cause(cerr), "Bluetooth device connection is closed, please turn off the AutoReconnect if want to know this at the first time")
+					return
+				}
+
+				// NB(thxCode) feedbacks the EOF of Bluetooth device connection if turn off the auto reconnection.
+				var feedbackErr error
+				if cerr != ErrGATTPeripheralConnectionClosed {
+					feedbackErr = errors.Wrapf(cerr, "error for Bluetooth device connection")
+				} else {
+					feedbackErr = errors.New("Bluetooth device connection is closed")
+				}
+				if d.toLimb != nil {
+					if err := d.toLimb(nil, feedbackErr); err != nil {
+						d.log.Error(err, "failed to feedback the lost error of Bluetooth device connection")
+					}
+				}
+			},
+		})
+		d.bluetoothClient = peripheral
+		d.bluetoothClient.Start()
+
+		// NB(thxCode) since the client has been changed,
+		// we need to reset.
+		d.instance.Spec = v1alpha1.BluetoothDeviceSpec{}
+	}
+
 	return d.refresh(newSpec)
 }
 
@@ -103,6 +150,14 @@ func (d *bleDevice) Shutdown() {
 	defer d.Unlock()
 
 	d.stopFetch()
+	if d.bluetoothClient != nil {
+		if err := d.bluetoothClient.Close(); err != nil {
+			if errors.Cause(err) != io.EOF {
+				d.log.Error(err, "Error closing Bluetooth connection")
+			}
+		}
+		d.bluetoothClient = nil
+	}
 	if d.mqttClient != nil {
 		d.mqttClient.Disconnect()
 		d.mqttClient = nil
@@ -112,30 +167,185 @@ func (d *bleDevice) Shutdown() {
 
 // refresh refreshes the status with new spec.
 func (d *bleDevice) refresh(newSpec v1alpha1.BluetoothDeviceSpec) error {
-	var status = d.instance.Status
+	var newStatus v1alpha1.BluetoothDeviceStatus
+
+	var staleStatus = d.instance.Status
 	var staleSpec = d.instance.Spec
-	if !reflect.DeepEqual(staleSpec.Protocol, newSpec.Protocol) ||
-		!reflect.DeepEqual(staleSpec.Parameters, newSpec.Parameters) {
+	if !reflect.DeepEqual(staleSpec.Properties, newSpec.Properties) {
 		d.stopFetch()
 
-		var statusProps, err = d.scanDevice(newSpec)
-		if err != nil {
-			return err
+		var staleSpecPropsMap = mapSpecProperties(staleSpec.Properties)
+		var staleStatusPropsMap = mapStatusProperties(staleStatus.Properties)
+
+		// syncs properties
+		var statusProps = make([]v1alpha1.BluetoothDeviceStatusProperty, 0, len(newSpec.Properties))
+		for i := 0; i < len(newSpec.Properties); i++ {
+			var specPropPtr = &newSpec.Properties[i]
+			var statusProp v1alpha1.BluetoothDeviceStatusProperty
+			if staleStatusPropPtr, existed := staleStatusPropsMap[specPropPtr.Name]; existed {
+				statusProp = *staleStatusPropPtr
+			}
+
+			for _, accessMode := range specPropPtr.MergeAccessModes() {
+				switch accessMode {
+				case v1alpha1.BluetoothDevicePropertyAccessModeNotify:
+					var statusPropPtr, err = d.subscribeProperty(specPropPtr, i)
+					if err != nil {
+						return errors.Wrapf(err, "failed to notify property %s", specPropPtr.Name)
+					}
+					statusProp = *statusPropPtr
+				case v1alpha1.BluetoothDevicePropertyAccessModeWriteOnce:
+					if !reflect.DeepEqual(specPropPtr, staleSpecPropsMap[specPropPtr.Name]) {
+						var statusPropPtr, err = d.writeProperty(specPropPtr, statusProp.UpdatedAt)
+						if err != nil {
+							return errors.Wrapf(err, "failed to write property %s", specPropPtr.Name)
+						}
+						statusProp = *statusPropPtr
+					}
+				case v1alpha1.BluetoothDevicePropertyAccessModeWriteMany:
+					var statusPropPtr, err = d.writeProperty(specPropPtr, statusProp.UpdatedAt)
+					if err != nil {
+						return errors.Wrapf(err, "failed to write property %s", specPropPtr.Name)
+					}
+					statusProp = *statusPropPtr
+				case v1alpha1.BluetoothDevicePropertyAccessModeReadOnce:
+					if !reflect.DeepEqual(specPropPtr, staleSpecPropsMap[specPropPtr.Name]) {
+						var statusPropPtr, err = d.readProperty(specPropPtr)
+						if err != nil {
+							return errors.Wrapf(err, "failed to read property %s", specPropPtr.Name)
+						}
+						statusProp = *statusPropPtr
+					}
+				default: // BluetoothDevicePropertyAccessModeReadMany
+					var statusPropPtr, err = d.readProperty(specPropPtr)
+					if err != nil {
+						return errors.Wrapf(err, "failed to read property %s", specPropPtr.Name)
+					}
+					statusProp = *statusPropPtr
+				}
+			}
+
+			statusProps = append(statusProps, statusProp)
 		}
-		status = v1alpha1.BluetoothDeviceStatus{Properties: statusProps}
+		newStatus = v1alpha1.BluetoothDeviceStatus{Properties: statusProps}
+	} else {
+		newStatus = staleStatus
 	}
 
 	// fetches in backend
-	d.startFetch(newSpec.Parameters.GetSyncInterval())
+	d.startFetch(newSpec.Protocol.GetSyncInterval())
 
 	// records
 	d.instance.Spec = newSpec
-	d.instance.Status = status
+	d.instance.Status = newStatus
 	return d.sync()
 }
 
-// fetch is blocked, it is used to sync the ble device status periodically,
-// it's worth noting that it just reads the properties from bel device.
+// writeProperty writes data of a property to device.
+func (d *bleDevice) writeProperty(propPtr *v1alpha1.BluetoothDeviceProperty, updatedAt *metav1.Time) (*v1alpha1.BluetoothDeviceStatusProperty, error) {
+	if propPtr.Value != "" {
+		var data, err = convertValueToBytes(propPtr)
+		if err != nil {
+			return nil, err
+		}
+
+		err = d.bluetoothClient.WriteCharacteristic(propPtr.Visitor.Service, propPtr.Visitor.Characteristic, data)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to write")
+		}
+		d.log.V(4).Info("Write property", "property", propPtr.Name, "type", propPtr.Type, "value", propPtr.Value)
+		updatedAt = now() // updates the timestamp
+	}
+
+	if updatedAt == nil {
+		updatedAt = now() // records current timestamp
+	}
+	var statusPropPtr = &v1alpha1.BluetoothDeviceStatusProperty{
+		Name:        propPtr.Name,
+		Type:        propPtr.Type,
+		AccessModes: propPtr.AccessModes,
+		UpdatedAt:   updatedAt,
+	}
+	return statusPropPtr, nil
+}
+
+// readProperty reads data of a property from device.
+func (d *bleDevice) readProperty(propPtr *v1alpha1.BluetoothDeviceProperty) (*v1alpha1.BluetoothDeviceStatusProperty, error) {
+	var data, err = d.bluetoothClient.ReadCharacteristic(propPtr.Visitor.Service, propPtr.Visitor.Characteristic)
+	if err != nil {
+		return nil, err
+	}
+	value, operationResult, err := parseValueFromBytes(data, propPtr)
+	if err != nil {
+		return nil, err
+	}
+	d.log.V(4).Info("Read property", "property", propPtr.Name, "type", propPtr.Type, "value", value, "operationResult", operationResult)
+
+	var statusPropPtr = &v1alpha1.BluetoothDeviceStatusProperty{
+		Name:            propPtr.Name,
+		Type:            propPtr.Type,
+		AccessModes:     propPtr.AccessModes,
+		Value:           value,
+		OperationResult: operationResult,
+		UpdatedAt:       now(),
+	}
+	return statusPropPtr, nil
+}
+
+// subscribeProperty subscribes a property to receive the changes from device.
+func (d *bleDevice) subscribeProperty(propPtr *v1alpha1.BluetoothDeviceProperty, index int) (*v1alpha1.BluetoothDeviceStatusProperty, error) {
+	var receiver = func(data []byte) {
+		d.Lock()
+		defer d.Unlock()
+
+		if index >= len(d.instance.Status.Properties) {
+			return
+		}
+
+		var value, operationResult, err = parseValueFromBytes(data, propPtr)
+		if err != nil {
+			// TODO give a way to feedback this to limb.
+			d.log.Error(err, "Error converting the byte array to property value")
+			return
+		}
+		d.log.V(4).Info("Notify property", "property", propPtr.Name, "type", propPtr.Type, "value", value, "operationResult", operationResult)
+
+		var statusPropPtr = &v1alpha1.BluetoothDeviceStatusProperty{
+			Name:            propPtr.Name,
+			Type:            propPtr.Type,
+			AccessModes:     propPtr.AccessModes,
+			Value:           value,
+			OperationResult: operationResult,
+			UpdatedAt:       now(),
+		}
+		d.instance.Status.Properties[index] = *statusPropPtr
+
+		// TODO we need to debounce here
+		if err := d.sync(); err != nil {
+			d.log.Error(err, "Failed to sync")
+		}
+	}
+
+	var err = d.bluetoothClient.SubscribeCharacteristic(
+		propPtr.Visitor.Service,
+		propPtr.Visitor.Characteristic,
+		receiver,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	var statusPropPtr = &v1alpha1.BluetoothDeviceStatusProperty{
+		Name:        propPtr.Name,
+		Type:        propPtr.Type,
+		AccessModes: propPtr.AccessModes,
+		UpdatedAt:   now(),
+	}
+	return statusPropPtr, nil
+}
+
+// fetch is blocked, it is used to sync the Bluetooth device status periodically,
+// it's worth noting that it just reads or writes the "ReadMany/WriteMany" properties.
 func (d *bleDevice) fetch(interval time.Duration, stop <-chan struct{}) {
 	defer runtime.HandleCrash(handler.NewPanicsCleanupSocketHandler(metadata.Endpoint))
 
@@ -158,15 +368,43 @@ func (d *bleDevice) fetch(interval time.Duration, stop <-chan struct{}) {
 		func() {
 			defer d.Unlock()
 
-			var props, err = d.scanDevice(d.instance.Spec)
-			if err != nil {
-				// TODO give a way to feedback this to limb.
-				d.log.Error(err, "failed to scan device")
-			} else {
-				d.instance.Status.Properties = props
+			// NB(thxCode) when the `spec.protocol` changes,
+			// the `spec.properties` will be reset,
+			// after obtaining the lock, this `fetch` goroutine should end.
+			if len(d.instance.Status.Properties) != len(d.instance.Spec.Properties) {
+				return
+			}
+
+			for i, statusProp := range d.instance.Status.Properties {
+				var specPropPtr = &d.instance.Spec.Properties[i]
+
+				for _, accessMode := range specPropPtr.MergeAccessModes() {
+					switch accessMode {
+					case v1alpha1.BluetoothDevicePropertyAccessModeWriteMany:
+						var statusPropPtr, err = d.writeProperty(specPropPtr, statusProp.UpdatedAt)
+						if err != nil {
+							// TODO give a way to feedback this to limb.
+							d.log.Error(err, "Error writing property", "property", statusProp.Name)
+							continue
+						}
+						statusProp = *statusPropPtr
+					case v1alpha1.BluetoothDevicePropertyAccessModeReadMany:
+						var statusPropPtr, err = d.readProperty(specPropPtr)
+						if err != nil {
+							// TODO give a way to feedback this to limb.
+							d.log.Error(err, "Error reading property", "property", statusProp.Name)
+							continue
+						}
+						statusProp = *statusPropPtr
+					default:
+						continue
+					}
+				}
+
+				d.instance.Status.Properties[i] = statusProp
 			}
 			if err := d.sync(); err != nil {
-				d.log.Error(err, "failed to sync")
+				d.log.Error(err, "Failed to sync")
 			}
 		}()
 
@@ -178,46 +416,22 @@ func (d *bleDevice) fetch(interval time.Duration, stop <-chan struct{}) {
 	}
 }
 
-func (d *bleDevice) scanDevice(spec v1alpha1.BluetoothDeviceSpec) ([]v1alpha1.BluetoothDeviceStatusProperty, error) {
-	if d.gattDevice == nil {
-		return nil, nil
-	}
-
-	d.log.V(4).Info("Scanning device")
-
-	var ctrl = &BLEController{
-		endpoint:   spec.Protocol.Endpoint,
-		properties: spec.Properties,
-		done:       make(chan struct{}),
-		log:        d.log,
-	}
-	// register BLE device handlers.
-	d.gattDevice.Handle(
-		gatt.PeripheralDiscovered(ctrl.onPeripheralDiscovered),
-		gatt.PeripheralConnected(ctrl.onPeripheralConnected),
-		gatt.PeripheralDisconnected(ctrl.onPeriphDisconnected),
-	)
-	d.gattDevice.Init(ctrl.onStateChanged)
-
-	var timeout = time.NewTimer(spec.Parameters.GetTimeout())
-	defer timeout.Stop()
-	select {
-	case <-timeout.C:
-		return nil, errors.Errorf("timeout to scan device in %s", spec.Parameters.GetTimeout())
-	case <-ctrl.done:
-	}
-
-	d.log.V(4).Info("Finished scanning")
-	return ctrl.statusProps, nil
-}
-
+// stopFetch stops the asynchronous fetch.
 func (d *bleDevice) stopFetch() {
 	if d.stop != nil {
 		close(d.stop)
 		d.stop = nil
 	}
+
+	// unsubscribe all characteristics
+	if d.bluetoothClient != nil {
+		if err := d.bluetoothClient.ClearSubscriptions(); err != nil && err != ErrGATTPeripheralConnectionClosed {
+			d.log.Error(err, "Failed to unsubscribe all characteristics")
+		}
+	}
 }
 
+// startFetch starts the asynchronous fetch.
 func (d *bleDevice) startFetch(interval time.Duration) {
 	if d.stop == nil {
 		d.stop = make(chan struct{})
@@ -228,7 +442,7 @@ func (d *bleDevice) startFetch(interval time.Duration) {
 // sync combines all synchronization operations.
 func (d *bleDevice) sync() error {
 	if d.toLimb != nil {
-		if err := d.toLimb(d.instance); err != nil {
+		if err := d.toLimb(d.instance, nil); err != nil {
 			return err
 		}
 	}
@@ -239,4 +453,27 @@ func (d *bleDevice) sync() error {
 	}
 	d.log.V(1).Info("Synced")
 	return nil
+}
+
+func mapSpecProperties(specProps []v1alpha1.BluetoothDeviceProperty) map[string]*v1alpha1.BluetoothDeviceProperty {
+	var ret = make(map[string]*v1alpha1.BluetoothDeviceProperty, len(specProps))
+	for i := 0; i < len(specProps); i++ {
+		var prop = specProps[i]
+		ret[prop.Name] = &prop
+	}
+	return ret
+}
+
+func mapStatusProperties(statusProps []v1alpha1.BluetoothDeviceStatusProperty) map[string]*v1alpha1.BluetoothDeviceStatusProperty {
+	var ret = make(map[string]*v1alpha1.BluetoothDeviceStatusProperty, len(statusProps))
+	for i := 0; i < len(statusProps); i++ {
+		var prop = statusProps[i]
+		ret[prop.Name] = &prop
+	}
+	return ret
+}
+
+func now() *metav1.Time {
+	var ret = metav1.Now()
+	return &ret
 }

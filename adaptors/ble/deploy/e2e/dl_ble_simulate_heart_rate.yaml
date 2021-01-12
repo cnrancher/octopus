@@ -1,0 +1,114 @@
+apiVersion: edge.cattle.io/v1alpha1
+kind: DeviceLink
+metadata:
+  name: heart-rate
+spec:
+  adaptor:
+    node: edge-worker
+    name: adaptors.edge.cattle.io/ble
+  model:
+    apiVersion: "devices.edge.cattle.io/v1alpha1"
+    kind: "BluetoothDevice"
+  template:
+    metadata:
+      labels:
+        device: heart-rate
+    spec:
+      protocol:
+        endpoint: "Polar_H7"
+      properties:
+        ## Mocked Device Information Service 00010000-0001-1000-8000-00805F9B34FB
+        - name: systemID
+          type: string
+          accessModes:
+            - ReadOnce
+          visitor:
+            service: 00010000-0001-1000-8000-00805F9B34FB
+            characteristic: 2A23
+            contentType: text
+        - name: model
+          type: string
+          accessModes:
+            - ReadOnce
+          visitor:
+            service: 00010000-0001-1000-8000-00805F9B34FB
+            characteristic: 2A24
+            contentType: text
+        - name: serial
+          type: string
+          accessModes:
+            - ReadOnce
+          visitor:
+            service: 00010000-0001-1000-8000-00805F9B34FB
+            characteristic: 2A25
+            contentType: text
+        - name: firmware
+          type: string
+          accessModes:
+            - ReadOnce
+          visitor:
+            service: 00010000-0001-1000-8000-00805F9B34FB
+            characteristic: 2A26
+            contentType: text
+        - name: hardware
+          type: string
+          accessModes:
+            - ReadOnce
+          visitor:
+            service: 00010000-0001-1000-8000-00805F9B34FB
+            characteristic: 2A27
+            contentType: text
+        - name: software
+          type: string
+          accessModes:
+            - ReadOnce
+          visitor:
+            service: 00010000-0001-1000-8000-00805F9B34FB
+            characteristic: 2A28
+            contentType: text
+        - name: manufacturer
+          type: string
+          accessModes:
+            - ReadOnce
+          visitor:
+            service: 00010000-0001-1000-8000-00805F9B34FB
+            characteristic: 2A29
+            contentType: text
+        ## Mocked Battery Service 00020000-0001-1000-8000-00805F9B34FB
+        - name: battery
+          type: int8
+          accessModes:
+            - ReadMany
+          visitor:
+            service: 00020000-0001-1000-8000-00805F9B34FB
+            characteristic: 2A19
+        ## Mocked Heart Rate Service 00030000-0001-1000-8000-00805F9B34FB
+        - name: location
+          type: int8
+          accessModes:
+            - ReadOnce
+          visitor:
+            service: 00030000-0001-1000-8000-00805F9B34FB
+            characteristic: 2A38
+        - name: rate
+          type: float64
+          accessModes:
+            - Notify
+          visitor:
+            service: 00030000-0001-1000-8000-00805F9B34FB
+            characteristic: 2A37
+        - name: rateControlPoint
+          type: float64
+          accessModes:
+            - WriteMany
+          visitor:
+            service: 00030000-0001-1000-8000-00805F9B34FB
+            characteristic: 2A38
+          value: 75
+        - name: alert
+          type: boolean
+          accessModes:
+            - Notify
+          visitor:
+            service: 00030000-0001-1000-8000-00805F9B34FB
+            characteristic: 2A46
