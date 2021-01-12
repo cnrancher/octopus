@@ -52,6 +52,6 @@ function octopus::ginkgo::test() {
   fi
 
   octopus::log::info "ginkgo -r -v -trace -tags=test -failFast -slowSpecThreshold=60 -timeout=5m $*"
-  CGO_ENABLED=0 ginkgo -r -v -trace -tags=test \
+  ginkgo -r -v -trace -tags=test \
     -failFast -slowSpecThreshold=60 -timeout=5m "$@"
 }
