@@ -1,15 +1,12 @@
 package physical
 
 import (
-	"context"
-	"fmt"
 	"io"
 	"reflect"
 	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/gopcua/opcua"
 	"github.com/gopcua/opcua/ua"
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,7 +17,6 @@ import (
 	api "github.com/rancher/octopus/pkg/adaptor/api/v1alpha1"
 	"github.com/rancher/octopus/pkg/adaptor/socket/handler"
 	"github.com/rancher/octopus/pkg/mqtt"
-	"github.com/rancher/octopus/pkg/util/critical"
 	"github.com/rancher/octopus/pkg/util/object"
 )
 
@@ -51,7 +47,7 @@ type opcuaDevice struct {
 	instance    *v1alpha1.OPCUADevice
 	toLimb      OPCUADeviceLimbSyncer
 	stop        chan struct{}
-	opcuaClient *opcua.Client
+	opcuaClient *OPCUAClient
 
 	mqttClient mqtt.Client
 }
@@ -94,7 +90,7 @@ func (d *opcuaDevice) Configure(references api.ReferencesHandler, device *v1alph
 	}
 
 	// configures OPC-UA client
-	if !reflect.DeepEqual(staleSpec.Protocol, newSpec.Protocol) || !reflect.DeepEqual(staleSpec.Parameters, newSpec.Parameters) {
+	if !reflect.DeepEqual(staleSpec.Protocol, newSpec.Protocol) {
 		if d.opcuaClient != nil {
 			if err := d.opcuaClient.Close(); err != nil {
 				if err != io.EOF {
@@ -104,11 +100,15 @@ func (d *opcuaDevice) Configure(references api.ReferencesHandler, device *v1alph
 			d.opcuaClient = nil
 		}
 
-		var client, err = NewOPCUAClient(newSpec.Protocol, newSpec.Parameters.GetTimeout(), references)
+		var client, err = NewOPCUAClient(newSpec.Protocol, references)
 		if err != nil {
 			return errors.Wrap(err, "failed to create OPC-UA client")
 		}
 		d.opcuaClient = client
+
+		// NB(thxCode) since the client has been changed,
+		// we need to reset.
+		d.instance.Spec = v1alpha1.OPCUADeviceSpec{}
 	}
 
 	return d.refresh(newSpec)
@@ -118,7 +118,7 @@ func (d *opcuaDevice) Shutdown() {
 	d.Lock()
 	defer d.Unlock()
 
-	d.stopSubscribe()
+	d.stopFetch()
 	if d.opcuaClient != nil {
 		if err := d.opcuaClient.Close(); err != nil {
 			if err != io.EOF {
@@ -136,185 +136,294 @@ func (d *opcuaDevice) Shutdown() {
 
 // refresh refreshes the status with new spec.
 func (d *opcuaDevice) refresh(newSpec v1alpha1.OPCUADeviceSpec) error {
-	var status = d.instance.Status
+	var newStatus v1alpha1.OPCUADeviceStatus
+
+	var staleStatus = d.instance.Status
 	var staleSpec = d.instance.Spec
 	if !reflect.DeepEqual(staleSpec.Properties, newSpec.Properties) {
-		d.stopSubscribe()
+		d.stopFetch()
 
-		// configures properties
-		var specProps = newSpec.Properties
-		var statusProps = make([]v1alpha1.OPCUADeviceStatusProperty, 0, len(specProps))
-		for _, prop := range specProps {
-			if !prop.ReadOnly {
-				if err := d.writeProperty(prop.Type, prop.Visitor, prop.Value); err != nil {
-					return errors.Wrapf(err, "failed to write property %s", prop.Name)
-				}
-				d.log.V(4).Info("Write property", "property", prop.Name, "type", prop.Type)
+		var staleSpecPropsMap = mapSpecProperties(staleSpec.Properties)
+		var staleStatusPropsMap = mapStatusProperties(staleStatus.Properties)
+
+		// syncs properties
+		var statusProps = make([]v1alpha1.OPCUADeviceStatusProperty, 0, len(newSpec.Properties))
+		for i := 0; i < len(newSpec.Properties); i++ {
+			var specPropPtr = &newSpec.Properties[i]
+			var statusProp v1alpha1.OPCUADeviceStatusProperty
+			if staleStatusPropPtr, existed := staleStatusPropsMap[specPropPtr.Name]; existed {
+				statusProp = *staleStatusPropPtr
 			}
-			// TODO need to read property at first?
-			statusProps = append(statusProps, v1alpha1.OPCUADeviceStatusProperty{
-				Name:      prop.Name,
-				Type:      prop.Type,
-				UpdatedAt: now(),
-			})
+
+			for _, accessMode := range specPropPtr.MergeAccessModes() {
+				switch accessMode {
+				case v1alpha1.OPCUADevicePropertyAccessModeNotify:
+					var statusPropPtr, err = d.subscribeProperty(specPropPtr, i)
+					if err != nil {
+						return errors.Wrapf(err, "failed to notify property %s", specPropPtr.Name)
+					}
+					statusProp = *statusPropPtr
+				case v1alpha1.OPCUADevicePropertyAccessModeWriteOnce:
+					if !reflect.DeepEqual(specPropPtr, staleSpecPropsMap[specPropPtr.Name]) {
+						var statusPropPtr, err = d.writeProperty(specPropPtr, statusProp.UpdatedAt)
+						if err != nil {
+							return errors.Wrapf(err, "failed to write property %s", specPropPtr.Name)
+						}
+						statusProp = *statusPropPtr
+					}
+				case v1alpha1.OPCUADevicePropertyAccessModeWriteMany:
+					var statusPropPtr, err = d.writeProperty(specPropPtr, statusProp.UpdatedAt)
+					if err != nil {
+						return errors.Wrapf(err, "failed to write property %s", specPropPtr.Name)
+					}
+					statusProp = *statusPropPtr
+				case v1alpha1.OPCUADevicePropertyAccessModeReadOnce:
+					if !reflect.DeepEqual(specPropPtr, staleSpecPropsMap[specPropPtr.Name]) {
+						var statusPropPtr, err = d.readProperty(specPropPtr)
+						if err != nil {
+							return errors.Wrapf(err, "failed to read property %s", specPropPtr.Name)
+						}
+						statusProp = *statusPropPtr
+					}
+				default: // OPCUADevicePropertyAccessModeReadMany
+					var statusPropPtr, err = d.readProperty(specPropPtr)
+					if err != nil {
+						return errors.Wrapf(err, "failed to read property %s", specPropPtr.Name)
+					}
+					statusProp = *statusPropPtr
+				}
+			}
+
+			statusProps = append(statusProps, statusProp)
 		}
-		status = v1alpha1.OPCUADeviceStatus{Properties: statusProps}
+		newStatus = v1alpha1.OPCUADeviceStatus{Properties: statusProps}
+	} else {
+		newStatus = staleStatus
 	}
 
-	// subscribed in backend
-	if err := d.startSubscribe(newSpec.Parameters.GetSyncInterval(), newSpec.Properties); err != nil {
-		return errors.Wrap(err, "failed to subscribing")
+	// fetches in backend
+	if err := d.startFetch(newSpec.Protocol.GetSyncInterval()); err != nil {
+		return errors.Wrap(err, "failed to start fetch")
 	}
 
 	// records
 	d.instance.Spec = newSpec
-	d.instance.Status = status
+	d.instance.Status = newStatus
 	return d.sync()
 }
 
-// writeProperty writes data of a property to the corresponding OPC-UA node.
-func (d *opcuaDevice) writeProperty(dataType v1alpha1.OPCUADevicePropertyType, visitor v1alpha1.OPCUADevicePropertyVisitor, value string) error {
-	// NB(thxCode) don't write the property if the value is blank.
-	if value == "" {
-		return nil
-	}
+// writeProperty writes data of a property to device.
+func (d *opcuaDevice) writeProperty(propPtr *v1alpha1.OPCUADeviceProperty, updatedAt *metav1.Time) (*v1alpha1.OPCUADeviceStatusProperty, error) {
+	if propPtr.Value != "" {
+		var value, err = convertValueToVariant(propPtr)
+		if err != nil {
+			return nil, err
+		}
 
-	var data, err = StringToVariant(dataType, value)
-	if err != nil {
-		return errors.Wrapf(err, "failed to convert %s string to %s variant", value, dataType)
-	}
-
-	id, err := ua.ParseNodeID(visitor.NodeID)
-	if err != nil {
-		return errors.Wrapf(err, "failed to parse node ID %s", visitor.NodeID)
-	}
-	var req = &ua.WriteRequest{
-		NodesToWrite: []*ua.WriteValue{
-			{
-				NodeID:      id,
-				AttributeID: ua.AttributeIDValue,
-				Value: &ua.DataValue{
-					EncodingMask: ua.DataValueValue,
-					Value:        data,
-				},
+		err = d.opcuaClient.WriteDataValue(
+			propPtr.Visitor.NodeID,
+			&ua.DataValue{
+				EncodingMask: ua.DataValueValue,
+				Value:        value,
 			},
-		},
+		)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to write")
+		}
+		d.log.V(4).Info("Write property", "property", propPtr.Name, "type", propPtr.Type, "value", propPtr.Value)
+		updatedAt = now() // updates the timestamp
 	}
-	_, err = d.opcuaClient.Write(req)
-	if err != nil {
-		return errors.Wrapf(err, "failed to write")
+
+	if updatedAt == nil {
+		updatedAt = now() // records current timestamp
 	}
-	return nil
+	var statusPropPtr = &v1alpha1.OPCUADeviceStatusProperty{
+		Name:        propPtr.Name,
+		Type:        propPtr.Type,
+		AccessModes: propPtr.AccessModes,
+		UpdatedAt:   updatedAt,
+	}
+	return statusPropPtr, nil
 }
 
-// subscribe is blocked, it is used to watch the notification from OPC-UA server
-// and update the opcua device status.
-func (d *opcuaDevice) subscribe(ctx context.Context, notifyCh chan *opcua.PublishNotificationData) {
+// readProperty reads data of a property from device.
+func (d *opcuaDevice) readProperty(propPtr *v1alpha1.OPCUADeviceProperty) (*v1alpha1.OPCUADeviceStatusProperty, error) {
+	var data, err = d.opcuaClient.ReadDataValue(propPtr.Visitor.NodeID)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to read")
+	}
+
+	value, operationResult, err := parseValueFromVariant(data.Value, propPtr)
+	if err != nil {
+		return nil, err
+	}
+	d.log.V(4).Info("Read property", "property", propPtr.Name, "type", propPtr.Type, "value", value, "operationResult", operationResult)
+
+	var statusPropPtr = &v1alpha1.OPCUADeviceStatusProperty{
+		Name:            propPtr.Name,
+		Type:            propPtr.Type,
+		AccessModes:     propPtr.AccessModes,
+		Value:           value,
+		OperationResult: operationResult,
+		UpdatedAt:       now(),
+	}
+	return statusPropPtr, nil
+}
+
+// subscribeProperty subscribes a property to receive the changes from device.
+func (d *opcuaDevice) subscribeProperty(propPtr *v1alpha1.OPCUADeviceProperty, index int) (*v1alpha1.OPCUADeviceStatusProperty, error) {
+	var receiver = func(data *ua.DataValue) {
+		d.Lock()
+		defer d.Unlock()
+
+		if index >= len(d.instance.Status.Properties) {
+			return
+		}
+
+		var value, operationResult, err = parseValueFromVariant(data.Value, propPtr)
+		if err != nil {
+			// TODO give a way to feedback this to limb.
+			d.log.Error(err, "Error converting the byte array to property value")
+			return
+		}
+		d.log.V(4).Info("Notify property", "property", propPtr.Name, "type", propPtr.Type, "value", value, "operationResult", operationResult)
+
+		var statusPropPtr = &v1alpha1.OPCUADeviceStatusProperty{
+			Name:            propPtr.Name,
+			Type:            propPtr.Type,
+			AccessModes:     propPtr.AccessModes,
+			Value:           value,
+			OperationResult: operationResult,
+			UpdatedAt:       now(),
+		}
+		d.instance.Status.Properties[index] = *statusPropPtr
+
+		// TODO we need to debounce here
+		if err := d.sync(); err != nil {
+			d.log.Error(err, "Failed to sync")
+		}
+	}
+
+	var err = d.opcuaClient.RegisterDataValueSubscription(
+		propPtr.Visitor.NodeID,
+		receiver,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	var statusPropPtr = &v1alpha1.OPCUADeviceStatusProperty{
+		Name:        propPtr.Name,
+		Type:        propPtr.Type,
+		AccessModes: propPtr.AccessModes,
+		UpdatedAt:   now(),
+	}
+	return statusPropPtr, nil
+}
+
+// fetch is blocked, it is used to sync the OPU-UA device status periodically,
+// it's worth noting that it just reads or writes the "ReadMany/WriteMany" properties.
+func (d *opcuaDevice) fetch(interval time.Duration, stop <-chan struct{}) {
 	defer runtime.HandleCrash(handler.NewPanicsCleanupSocketHandler(metadata.Endpoint))
 
-	d.log.Info("Subscribing")
+	d.log.Info("Fetching")
 	defer func() {
-		d.log.Info("Finished subscription")
+		d.log.Info("Finished fetching")
 	}()
+
+	var ticker = time.NewTicker(interval)
+	defer ticker.Stop()
 
 	for {
 		select {
-		case <-ctx.Done():
+		case <-stop:
 			return
-		case res := <-notifyCh:
-			if res.Error != nil {
-				// TODO give a way to feedback this to limb.
-				d.log.Error(res.Error, "Received error from subscription")
-				continue
+		case <-ticker.C:
+		}
+
+		d.Lock()
+		func() {
+			defer d.Unlock()
+
+			// NB(thxCode) when the `spec.protocol` changes,
+			// the `spec.properties` will be reset,
+			// after obtaining the lock, this `fetch` goroutine should end.
+			if len(d.instance.Status.Properties) != len(d.instance.Spec.Properties) {
+				return
 			}
 
-			switch v := res.Value.(type) {
-			case *ua.DataChangeNotification:
-				d.Lock()
-				func() {
-					defer d.Unlock()
+			for i, statusProp := range d.instance.Status.Properties {
+				var specPropPtr = &d.instance.Spec.Properties[i]
 
-					var statusProps = d.instance.Status.Properties
-					for _, item := range v.MonitoredItems {
-						var idx = int(item.ClientHandle)
-						if idx >= len(statusProps) {
+				for _, accessMode := range specPropPtr.MergeAccessModes() {
+					switch accessMode {
+					case v1alpha1.OPCUADevicePropertyAccessModeWriteMany:
+						var statusPropPtr, err = d.writeProperty(specPropPtr, statusProp.UpdatedAt)
+						if err != nil {
+							// TODO give a way to feedback this to limb.
+							d.log.Error(err, "Error writing property", "property", statusProp.Name)
 							continue
 						}
-						var prop = statusProps[idx]
-						var variant = item.Value.Value
-						var value = VariantToString(variant.Type(), variant)
-						var propType = typeMap[variant.Type()]
-						d.log.V(4).Info("Received property", "property", item.ClientHandle, "type", propType)
-						statusProps[idx] = v1alpha1.OPCUADeviceStatusProperty{
-							Name:      prop.Name,
-							Value:     value,
-							Type:      propType,
-							UpdatedAt: now(),
+						statusProp = *statusPropPtr
+					case v1alpha1.OPCUADevicePropertyAccessModeReadMany:
+						var statusPropPtr, err = d.readProperty(specPropPtr)
+						if err != nil {
+							// TODO give a way to feedback this to limb.
+							d.log.Error(err, "Error reading property", "property", statusProp.Name)
+							continue
 						}
+						statusProp = *statusPropPtr
+					default:
+						continue
 					}
-					d.instance.Status.Properties = statusProps
-					if err := d.sync(); err != nil {
-						d.log.Error(err, "failed to sync")
-					}
-				}()
-			default:
-				d.log.V(4).Info(fmt.Sprintf("Received unknown property %+v", res.Value))
-			}
-		}
-	}
-}
-
-func (d *opcuaDevice) stopSubscribe() {
-	if d.stop != nil {
-		close(d.stop)
-		d.stop = nil
-	}
-}
-
-func (d *opcuaDevice) startSubscribe(subscribeInterval time.Duration, properties []v1alpha1.OPCUADeviceProperty) error {
-	if d.stop == nil {
-		d.stop = make(chan struct{})
-
-		// creates subscription
-		var notifyCh = make(chan *opcua.PublishNotificationData)
-		var sub, err = d.opcuaClient.Subscribe(&opcua.SubscriptionParameters{Interval: subscribeInterval}, notifyCh)
-		if err != nil {
-			return errors.Wrap(err, "failed to create subscription")
-		}
-		d.log.Info("Created subscription", "id", sub.SubscriptionID)
-
-		// creates monitoring request for all properties
-		for idx, prop := range properties {
-			var id, err = ua.ParseNodeID(prop.Visitor.NodeID)
-			if err != nil {
-				return errors.Wrapf(err, "failed to parse node ID %s", prop.Visitor.NodeID)
-			}
-
-			var handle = uint32(idx)
-			var miCreateRequest = opcua.NewMonitoredItemCreateRequestWithDefaults(id, ua.AttributeIDValue, handle)
-			res, err := sub.Monitor(ua.TimestampsToReturnBoth, miCreateRequest)
-			if err != nil {
-				return errors.Wrapf(err, "error monitoring property %s", prop.Name)
-			}
-			if res.Results[0].StatusCode != ua.StatusOK {
-				return errors.Errorf("failed to monitor property %s", prop.Name)
-			}
-			d.log.V(4).Info("Monitored property", "property", prop.Name)
-		}
-
-		// subscribes
-		var ctx = critical.Context(d.stop, func() {
-			var err = sub.Cancel()
-			if err != nil {
-				if err != io.EOF {
-					d.log.Error(err, "Failed to cancel subscription")
 				}
-			}
-		})
-		go sub.Run(ctx)
-		d.log.Info("Running subscription", "id", sub.SubscriptionID)
 
-		go d.subscribe(ctx, notifyCh)
+				d.instance.Status.Properties[i] = statusProp
+			}
+			if err := d.sync(); err != nil {
+				d.log.Error(err, "Failed to sync")
+			}
+		}()
+
+		select {
+		case <-d.stop:
+			return
+		default:
+		}
+	}
+}
+
+// stopFetch stops the asynchronous fetch.
+func (d *opcuaDevice) stopFetch() {
+	if d.stop == nil {
+		return
+	}
+
+	// closes fetching
+	close(d.stop)
+	d.stop = nil
+
+	// stops all UA subscriptions
+	if d.opcuaClient != nil {
+		d.opcuaClient.StopSubscriptions()
+	}
+}
+
+// startFetch starts the asynchronous fetch.
+func (d *opcuaDevice) startFetch(interval time.Duration) error {
+	if d.stop != nil {
+		return nil
+	}
+	d.stop = make(chan struct{})
+
+	// starts fetching
+	go d.fetch(interval, d.stop)
+
+	// starts all UA subscriptions
+	if d.opcuaClient != nil {
+		if err := d.opcuaClient.StartSubscriptions(d.stop); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -334,6 +443,24 @@ func (d *opcuaDevice) sync() error {
 	}
 	d.log.V(1).Info("Synced")
 	return nil
+}
+
+func mapSpecProperties(specProps []v1alpha1.OPCUADeviceProperty) map[string]*v1alpha1.OPCUADeviceProperty {
+	var ret = make(map[string]*v1alpha1.OPCUADeviceProperty, len(specProps))
+	for i := 0; i < len(specProps); i++ {
+		var prop = specProps[i]
+		ret[prop.Name] = &prop
+	}
+	return ret
+}
+
+func mapStatusProperties(statusProps []v1alpha1.OPCUADeviceStatusProperty) map[string]*v1alpha1.OPCUADeviceStatusProperty {
+	var ret = make(map[string]*v1alpha1.OPCUADeviceStatusProperty, len(statusProps))
+	for i := 0; i < len(statusProps); i++ {
+		var prop = statusProps[i]
+		ret[prop.Name] = &prop
+	}
+	return ret
 }
 
 func now() *metav1.Time {
