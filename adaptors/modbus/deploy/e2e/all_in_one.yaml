@@ -387,51 +387,56 @@ spec:
                     - message
                     type: object
                 type: object
-              parameters:
-                description: Specifies the parameters of device.
-                properties:
-                  syncInterval:
-                    default: 15s
-                    description: Specifies the amount of interval that synchronized
-                      to limb. The default value is "15s".
-                    type: string
-                  timeout:
-                    default: 10s
-                    description: Specifies the amount of timeout. The default value
-                      is "10s".
-                    type: string
-                type: object
               properties:
                 description: Specifies the properties of device.
                 items:
                   description: ModbusDeviceProperty defines the desired property of
                     ModbusDevice.
                   properties:
+                    accessModes:
+                      default:
+                      - ReadMany
+                      description: Specifies the access mode of property. The default
+                        value is "ReadMany".
+                      items:
+                        description: ModbusDevicePropertyAccessMode defines the mode
+                          for accessing a device property, default is "ReadMany".
+                        enum:
+                        - WriteOnce
+                        - WriteMany
+                        - ReadOnce
+                        - ReadMany
+                        type: string
+                      type: array
+                      x-kubernetes-list-type: set
                     description:
                       description: Specifies the description of property.
                       type: string
                     name:
                       description: Specifies the name of property.
                       type: string
-                    readOnly:
-                      description: Specifies if the property is readonly. The default
-                        value is "false".
-                      type: boolean
                     type:
                       description: Specifies the type of property.
                       enum:
+                      - int8
                       - int16
                       - int
                       - int32
                       - int64
+                      - uint8
                       - uint16
                       - uint
                       - uint32
                       - uint64
                       - float
+                      - float32
                       - double
+                      - float64
                       - boolean
+                      - string
                       - hexString
+                      - binaryString
+                      - base64String
                       type: string
                     value:
                       description: Specifies the value of property, only available
@@ -440,24 +445,16 @@ spec:
                     visitor:
                       description: Specifies the visitor of property.
                       properties:
-                        endianness:
-                          default: BigEndian
-                          description: Specifies the endianness of value.
-                          enum:
-                          - BigEndian
-                          - BigEndianSwap
-                          - LittleEndian
-                          - LittleEndianSwap
-                          type: string
-                        offset:
-                          description: Specifies the starting offset of register for
-                            read/write data.
+                        arithmeticOperationPrecision:
+                          description: Specifies the precision of the arithmetic operation
+                            result. The default is "2".
                           type: integer
-                        orderOfOperations:
-                          description: Specifies the operations in order if needed.
+                        arithmeticOperations:
+                          description: Specifies the arithmetic operations in order
+                            if needed, only available in arithmetic types.
                           items:
-                            description: ModbusDeviceArithmeticOperation defines the
-                              arithmetic operation of ModbusDevice.
+                            description: ModbusDevicePropertyValueArithmeticOperation
+                              defines the arithmetic operation of ModbusDevice.
                             properties:
                               type:
                                 description: Specifies the type of arithmetic operation.
@@ -477,6 +474,20 @@ spec:
                             type: object
                           type: array
                           x-kubernetes-list-type: atomic
+                        endianness:
+                          default: BigEndian
+                          description: Specifies the endianness of value, only available
+                            in basic types.
+                          enum:
+                          - BigEndian
+                          - BigEndianSwap
+                          - LittleEndian
+                          - LittleEndianSwap
+                          type: string
+                        offset:
+                          description: Specifies the starting offset of register for
+                            read/write data.
+                          type: integer
                         quantity:
                           default: 1
                           description: 'Specifies the quantity of register, the corresponding
@@ -511,13 +522,18 @@ spec:
                 description: Specifies the protocol for accessing the device.
                 properties:
                   rtu:
-                    description: Specifies the connection protocol as RTU
+                    description: Specifies the connection protocol as RTU.
                     properties:
                       baudRate:
                         default: 19200
                         description: Specifies the baud rate of connection, a measurement
                           of transmission speed. The default value is "19200".
                         type: integer
+                      connectTimeout:
+                        default: 10s
+                        description: Specifies the amount of timeout for connecting
+                          to the device. The default value is "10s".
+                        type: string
                       dataBits:
                         default: 8
                         description: Specifies the data bit of connection, selected
@@ -552,6 +568,11 @@ spec:
                         - 1
                         - 2
                         type: integer
+                      syncInterval:
+                        default: 10s
+                        description: Specifies the amount of interval for synchronizing
+                          the device. The default value is "10s".
+                        type: string
                       workerID:
                         description: Specifies the worker ID of device, it's from
                           1 to 247.
@@ -563,11 +584,21 @@ spec:
                     - workerID
                     type: object
                   tcp:
-                    description: Specifies the connection protocol as TCP
+                    description: Specifies the connection protocol as TCP.
                     properties:
+                      connectTimeout:
+                        default: 10s
+                        description: Specifies the amount of timeout for connecting
+                          to the device. The default value is "10s".
+                        type: string
                       endpoint:
                         description: Specifies the IP address of device, which is
                           in form of "ip:port".
+                        type: string
+                      syncInterval:
+                        default: 10s
+                        description: Specifies the amount of interval for synchronizing
+                          the device. The default value is "10s".
                         type: string
                       workerID:
                         description: Specifies the worker ID of device, it's from
@@ -592,27 +623,47 @@ spec:
                   description: ModbusDeviceStatusProperty defines the observed property
                     of ModbusDevice.
                   properties:
+                    accessModes:
+                      description: Reports the access mode of property.
+                      items:
+                        description: ModbusDevicePropertyAccessMode defines the mode
+                          for accessing a device property, default is "ReadMany".
+                        enum:
+                        - WriteOnce
+                        - WriteMany
+                        - ReadOnce
+                        - ReadMany
+                        type: string
+                      type: array
                     name:
                       description: Reports the name of property.
                       type: string
-                    operatedValue:
-                      description: Reports the operated value of property.
+                    operationResult:
+                      description: Reports the operation result of property if configured
+                        `arithmeticOperations`.
                       type: string
                     type:
                       description: Reports the type of property.
                       enum:
+                      - int8
                       - int16
                       - int
                       - int32
                       - int64
+                      - uint8
                       - uint16
                       - uint
                       - uint32
                       - uint64
                       - float
+                      - float32
                       - double
+                      - float64
                       - boolean
+                      - string
                       - hexString
+                      - binaryString
+                      - base64String
                       type: string
                     updatedAt:
                       description: Reports the updated timestamp of property.

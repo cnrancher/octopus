@@ -1,7 +1,7 @@
 apiVersion: edge.cattle.io/v1alpha1
 kind: DeviceLink
 metadata:
-  name: thermometer-tcp
+  name: simulate-thermometer
 spec:
   adaptor:
     node: edge-worker
@@ -14,56 +14,80 @@ spec:
       labels:
         device: modbus-tcp
     spec:
-      extension:
-        mqtt:
-          client:
-            server: tcp://test.mosquitto.org:1883
-          message:
-            # uses dynamic topic with namespaced name
-            topic: "cattle.io/octopus/:namespace/:name"
-      parameters:
-        syncInterval: 15s
-        timeout: 10s
       protocol:
         tcp:
           # replace the ip:port address if needed
           endpoint: octopus-simulator-modbus-tcp.octopus-simulator-system:5020
           workerID: 1
+          connectTimout: 15s
       properties:
+        - name: switch
+          description: switch to mock or not.
+          type: boolean
+          accessModes:
+            - WriteMany
+            - ReadOnce
+          visitor:
+            register: CoilRegister
+            offset: 1
+            quantity: 1
         - name: temperature
           description: temperature value, the source is in kevin degree.
-          readOnly: true
+          type: float
+          accessModes:
+            - ReadMany
           visitor:
             register: HoldingRegister
             offset: 0
             quantity: 2
-            orderOfOperations:
+            arithmeticOperations:
               # the source is kevin temperature,
               # change to celsius degree.
               - type: Subtract
                 value: "273.15"
-          type: float
         - name: humidity-percent
           description: humidity value, the source is relative humidity.
-          readOnly: true
+          type: float
+          accessModes:
+            - ReadMany
           visitor:
             register: HoldingRegister
             offset: 2
             quantity: 2
-          type: float
         - name: temperature-limitation
           description: the limiation of temperature value.
-          readOnly: false
+          type: int
+          accessModes:
+            - ReadOnce
+            - WriteOnce
           visitor:
             register: HoldingRegister
             offset: 4
             quantity: 2
-          type: int
         - name: hight-temperature-alarm
           description: reports alarm if the temperature reaches temperature-limitation.
-          readOnly: true
+          type: boolean
+          accessModes:
+            - ReadMany
           visitor:
             register: CoilRegister
             offset: 0
             quantity: 1
-          type: boolean
+        - name: battery
+          description: the battery of thermometer.
+          type: int8
+          accessModes:
+            - ReadMany
+          visitor:
+            register: HoldingRegister
+            offset: 6
+            quantity: 1
+        - name: manufacturer
+          description: the manufacturer of temperature value.
+          type: string
+          accessModes:
+            - ReadOnce
+          visitor:
+            register: HoldingRegister
+            offset: 7
+            quantity: 56
