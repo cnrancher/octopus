@@ -1,0 +1,104 @@
+apiVersion: edge.cattle.io/v1alpha1
+kind: DeviceLink
+metadata:
+  name: simulate-open62541
+spec:
+  adaptor:
+    node: edge-worker
+    name: adaptors.edge.cattle.io/opcua
+  model:
+    apiVersion: "devices.edge.cattle.io/v1alpha1"
+    kind: "OPCUADevice"
+  template:
+    metadata:
+      labels:
+        device: opcua
+    spec:
+      protocol:
+        # replace the address if needed
+        endpoint: opc.tcp://octopus-simulator-opcua.octopus-simulator-system:4840/
+        connectTimeout: 10s
+      properties:
+        - name: the answer
+          description: default is 42.
+          accessModes:
+            - ReadMany
+            - WriteOnce
+          visitor:
+            nodeID: ns=1;s=the.answer
+          type: int32
+        - name: example bytestring
+          description: default is "74657374313233"
+          accessModes:
+            - ReadOnce
+            - WriteOnce
+          visitor:
+            nodeID: ns=1;s=myByteString
+          type: hexString
+        - name: Boolean - 0
+          accessModes:
+            - Notify
+          visitor:
+            nodeID: ns=1;i=43001
+          type: boolean
+        - name: Int16 - 100
+          accessModes:
+            - Notify
+          visitor:
+            nodeID: ns=1;i=43101
+          type: int16
+        - name: Uint16 - 200
+          accessModes:
+            - Notify
+          visitor:
+            nodeID: ns=1;i=43201
+          type: uint16
+        - name: Int32- 300
+          accessModes:
+            - Notify
+          visitor:
+            nodeID: ns=1;i=43301
+          type: int32
+        - name: Uint32 - 400
+          accessModes:
+            - Notify
+          visitor:
+            nodeID: ns=1;i=43401
+          type: uint32
+        - name: Int64 - 500
+          accessModes:
+            - Notify
+          visitor:
+            nodeID: ns=1;i=43501
+          type: int64
+        - name: Uint64 - 600
+          accessModes:
+            - Notify
+          visitor:
+            nodeID: ns=1;i=43601
+          type: uint64
+        - name: Float - 700
+          accessModes:
+            - Notify
+          visitor:
+            nodeID: ns=1;i=43701
+          type: float
+        - name: Double - 800
+          accessModes:
+            - Notify
+          visitor:
+            nodeID: ns=1;i=43801
+          type: double
+        - name: String - 900
+          accessModes:
+            - Notify
+          visitor:
+            nodeID: ns=1;i=43901
+          type: string
+        - name: ByteString - 1100
+          accessModes:
+            - Notify
+          visitor:
+            nodeID: ns=1;i=44101
+          type: base64String
+          # or hexString/binaryString

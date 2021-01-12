@@ -90,16 +90,12 @@ var _ = Describe("verify Connection", func() {
 				Device: []byte(`
 				{
 					"apiVersion":"devices.edge.cattle.io/v1alpha1",
-					"kind":"OpcuaDevice",
+					"kind":"OPCUADevice",
 					"metadata":{
 						"name":"correct",
 						"namespace":"default"
 					},
 					"spec":{
-						"parameters":{
-							"syncInterval":"15s",
-							"timeout":"2s"
-						},
 						"protocol":{
 							"endpoint":"opc.tcp://127.0.0.1:53530/OPCUA/SimulationServer"
 						}
@@ -109,7 +105,7 @@ var _ = Describe("verify Connection", func() {
 			err = service.Connect(mockServer)
 			sts = status.Convert(err)
 			Expect(sts.Code()).To(Equal(grpccodes.InvalidArgument))
-			Expect(sts.Message()).To(Equal("failed to configure the device: failed to create OPC-UA client: failed to get OPC-UA endpoint: dial tcp 127.0.0.1:53530: connect: connection refused"))
+			Expect(sts.Message()).To(Equal("failed to configure the device: failed to create OPC-UA client: failed to dial OPC-UA endpoint: dial tcp 127.0.0.1:53530: connect: connection refused"))
 		})
 
 	})

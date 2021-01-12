@@ -13,7 +13,11 @@ func DecodeBase64String(str string) ([]byte, error) {
 	str = strings.ReplaceAll(str, "_", "/")
 	// normalizes to no padding format
 	str = strings.TrimRight(str, "=")
-	return base64.RawStdEncoding.DecodeString(str)
+	var b, err = base64.RawStdEncoding.DecodeString(str)
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
 }
 
 // DecodeBase64 decodes the input bytes, which can
@@ -29,4 +33,10 @@ func EncodeBase64(src []byte) []byte {
 	var ret = make([]byte, enc.EncodedLen(len(src)))
 	enc.Encode(ret, src)
 	return ret
+}
+
+// EncodeBase64ToString encodes the input bytes,
+// and then output standard format string.
+func EncodeBase64ToString(src []byte) string {
+	return UnsafeBytesToString(EncodeBase64(src))
 }

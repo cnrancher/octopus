@@ -375,51 +375,57 @@ spec:
                     - message
                     type: object
                 type: object
-              parameters:
-                description: Specifies the parameters of device.
-                properties:
-                  syncInterval:
-                    default: 15s
-                    description: Specifies the amount of interval that synchronized
-                      to limb. The default value is "15s".
-                    type: string
-                  timeout:
-                    default: 10s
-                    description: Specifies the amount of timeout. The default value
-                      is "10s".
-                    type: string
-                type: object
               properties:
                 description: Specifies the properties of device.
                 items:
                   description: OPCUADeviceProperty defines the desired property of
                     OPCUADevice.
                   properties:
+                    accessModes:
+                      default:
+                      - ReadMany
+                      description: Specifies the access mode of property. The default
+                        value is "ReadMany".
+                      items:
+                        description: OPCUADevicePropertyAccessMode defines the mode
+                          for accessing a device property, default is "ReadMany".
+                        enum:
+                        - Notify
+                        - WriteOnce
+                        - WriteMany
+                        - ReadOnce
+                        - ReadMany
+                        type: string
+                      type: array
+                      x-kubernetes-list-type: set
                     description:
                       description: Specifies the description of property.
                       type: string
                     name:
                       description: Specifies the name of property.
                       type: string
-                    readOnly:
-                      description: Specifies if the property is readonly. The default
-                        value is "false".
-                      type: boolean
                     type:
                       description: Specifies the type of property.
                       enum:
-                      - float
-                      - double
-                      - int64
-                      - int32
+                      - int8
                       - int16
-                      - uint64
-                      - uint32
+                      - int
+                      - int32
+                      - int64
+                      - uint8
                       - uint16
-                      - string
+                      - uint
+                      - uint32
+                      - uint64
+                      - float
+                      - float32
+                      - double
+                      - float64
                       - boolean
-                      - byteString
-                      - datetime
+                      - string
+                      - hexString
+                      - binaryString
+                      - base64String
                       type: string
                     value:
                       description: Specifies the value of property, only available
@@ -428,6 +434,37 @@ spec:
                     visitor:
                       description: Specifies the visitor of property.
                       properties:
+                        arithmeticOperationPrecision:
+                          description: Specifies the precision of the arithmetic operation
+                            result. The default is "2".
+                          maximum: 24
+                          minimum: 0
+                          type: integer
+                        arithmeticOperations:
+                          description: Specifies the arithmetic operations in order
+                            if needed, only available in arithmetic types.
+                          items:
+                            description: OPCUADevicePropertyValueArithmeticOperation
+                              defines the arithmetic operation of property value.
+                            properties:
+                              type:
+                                description: Specifies the type of arithmetic operation.
+                                enum:
+                                - Add
+                                - Subtract
+                                - Multiply
+                                - Divide
+                                type: string
+                              value:
+                                description: Specifies the value for arithmetic operation,
+                                  which is in form of float string.
+                                type: string
+                            required:
+                            - type
+                            - value
+                            type: object
+                          type: array
+                          x-kubernetes-list-type: atomic
                         browseName:
                           description: Specifies the name of OPC-UA node.
                           type: string
@@ -450,8 +487,8 @@ spec:
                 description: Specifies the protocol for accessing the device.
                 properties:
                   basicAuth:
-                    description: Specifies the username and password that the client
-                      connects to OPC-UA server.
+                    description: Specifies the username and password for the client
+                      authenticate to the OPC-UA server.
                     properties:
                       password:
                         description: Specifies the password for accessing OPC-UA server.
@@ -488,10 +525,77 @@ spec:
                         - name
                         type: object
                     type: object
+                  certificateAuth:
+                    description: Specifies the certificate for the client authenticates
+                      to the OPC-UA server.
+                    properties:
+                      certFilePEM:
+                        description: Specifies the PEM format content of the certificate(public
+                          key), which is used for the client accessing OPC-UA server.
+                        type: string
+                      certFilePEMRef:
+                        description: Specifies the relationship of DeviceLink's references
+                          to refer to the value as the client certificate file PEM
+                          content.
+                        properties:
+                          item:
+                            description: Specifies the item name of the referred reference.
+                            type: string
+                          name:
+                            description: Specifies the name of reference.
+                            type: string
+                        required:
+                        - item
+                        - name
+                        type: object
+                    type: object
+                  connectTimeout:
+                    default: 10s
+                    description: Specifies the amount of timeout for connecting to
+                      the OPC-UA server. The default value is "10s".
+                    type: string
                   endpoint:
                     description: Specifies the URL of OPC-UA server endpoint, which
                       is start with "opc.tcp://".
                     pattern: ^opc\.tcp://[^\s]*$
+                    type: string
+                  issuedTokenAuth:
+                    description: Specifies the issued token for the client authenticates
+                      to the OPC-UA server.
+                    properties:
+                      token:
+                        description: Specifies the token for accessing OPC-UA server.
+                        type: string
+                      tokenRef:
+                        description: Specifies the relationship of DeviceLink's references
+                          to refer to the value as the token.
+                        properties:
+                          item:
+                            description: Specifies the item name of the referred reference.
+                            type: string
+                          name:
+                            description: Specifies the name of reference.
+                            type: string
+                        required:
+                        - item
+                        - name
+                        type: object
+                    type: object
+                  publishingIntervalInSeconds:
+                    description: Specifies the amount of interval for the OPC-UA server
+                      publishing the changes. The default value is "5" seconds.
+                    maximum: 60
+                    minimum: 1
+                    type: integer
+                  renewInterval:
+                    default: 1h
+                    description: Specifies the amount of interval for renewing the
+                      connection. The default value is "1h".
+                    type: string
+                  requestTimeout:
+                    default: 10s
+                    description: Specifies the amount of timeout for sending a request
+                      to the OPC-UA server. The default value is "10s".
                     type: string
                   securityMode:
                     default: None
@@ -514,14 +618,18 @@ spec:
                     - Aes128Sha256RsaOaep
                     - Aes256Sha256RsaPss
                     type: string
+                  syncInterval:
+                    default: 10s
+                    description: Specifies the amount of interval for synchronizing
+                      the OPC-UA server. The default value is "10s".
+                    type: string
                   tlsConfig:
-                    description: Specifies the TLS configuration that the client connects
-                      to OPC-UA server.
+                    description: Specifies the TLS configuration for the client connect
+                      to the OPC-UA server.
                     properties:
                       certFilePEM:
                         description: Specifies the PEM format content of the certificate(public
-                          key), which is used for client authenticate to the OPC-UA
-                          server.
+                          key), which is used for client connect to the OPC-UA server.
                         type: string
                       certFilePEMRef:
                         description: Specifies the relationship of DeviceLink's references
@@ -540,8 +648,7 @@ spec:
                         type: object
                       keyFilePEM:
                         description: Specifies the PEM format content of the key(private
-                          key), which is used for client authenticate to the OPC-UA
-                          server.
+                          key), which is used for client connect to the OPC-UA server.
                         type: string
                       keyFilePEMRef:
                         description: Specifies the relationship of DeviceLink's references
@@ -573,24 +680,48 @@ spec:
                   description: OPCUADeviceStatusProperty defines the observed property
                     of OPCUADevice.
                   properties:
+                    accessModes:
+                      description: Reports the type of property.
+                      items:
+                        description: OPCUADevicePropertyAccessMode defines the mode
+                          for accessing a device property, default is "ReadMany".
+                        enum:
+                        - Notify
+                        - WriteOnce
+                        - WriteMany
+                        - ReadOnce
+                        - ReadMany
+                        type: string
+                      type: array
                     name:
                       description: Reports the name of property.
+                      type: string
+                    operationResult:
+                      description: Reports the operation result of property if configured
+                        `arithmeticOperations`.
                       type: string
                     type:
                       description: Reports the type of property.
                       enum:
-                      - float
-                      - double
-                      - int64
-                      - int32
+                      - int8
                       - int16
-                      - uint64
-                      - uint32
+                      - int
+                      - int32
+                      - int64
+                      - uint8
                       - uint16
-                      - string
+                      - uint
+                      - uint32
+                      - uint64
+                      - float
+                      - float32
+                      - double
+                      - float64
                       - boolean
-                      - byteString
-                      - datetime
+                      - string
+                      - hexString
+                      - binaryString
+                      - base64String
                       type: string
                     updatedAt:
                       description: Reports the updated timestamp of property.
