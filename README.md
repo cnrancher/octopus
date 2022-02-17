@@ -1,5 +1,7 @@
 # Octopus
 
+**Octopus is no longer being actively maintained.**
+
 [![Build Status](http://drone-pandaria.cnrancher.com/api/badges/cnrancher/octopus/status.svg)](http://drone-pandaria.cnrancher.com/cnrancher/octopus)
 [![Go Report Card](https://goreportcard.com/badge/github.com/cnrancher/octopus)](https://goreportcard.com/report/github.com/cnrancher/octopus)
 
