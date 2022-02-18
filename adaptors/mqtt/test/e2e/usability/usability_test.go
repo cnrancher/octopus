@@ -16,7 +16,6 @@ import (
 
 	"github.com/rancher/octopus/adaptors/mqtt/api/v1alpha1"
 	edgev1alpha1 "github.com/rancher/octopus/api/v1alpha1"
-	"github.com/rancher/octopus/pkg/util/converter"
 	"github.com/rancher/octopus/pkg/util/object"
 	. "github.com/rancher/octopus/test/framework/envtest/dsl"
 	"github.com/rancher/octopus/test/util/content"
@@ -74,14 +73,16 @@ var _ = Describe("verify usability", func() {
 							},
 							"properties": []map[string]interface{}{
 								{
-									"name":     "switch",
-									"type":     "boolean",
-									"readOnly": false,
+									"name":        "switch",
+									"type":        "boolean",
+									"accessModes": []string{"WriteOnce"},
 								},
 								{
 									"name": "luminance",
-									"path": "parameter_luminance",
 									"type": "int",
+									"visitor": map[string]interface{}{
+										"path": "parameter_luminance",
+									},
 								},
 							},
 						},
@@ -191,14 +192,16 @@ var _ = Describe("verify usability", func() {
 										},
 										"properties": []map[string]interface{}{
 											{
-												"name":     "switch",
-												"type":     "boolean",
-												"readOnly": false,
+												"name":        "switch",
+												"type":        "boolean",
+												"accessModes": []string{"WriteOnce"},
 											},
 											{
 												"name": "luminance",
-												"path": "parameter_luminance",
 												"type": "int",
+												"visitor": map[string]interface{}{
+													"path": "parameter_luminance",
+												},
 											},
 										},
 									},
@@ -296,12 +299,14 @@ var _ = Describe("verify usability", func() {
                         "name":"switch",
                         "type":"boolean",
                         "value":true,
-                        "readOnly":false
+                        "accessModes": ["WriteOnce"],
                     },
                     {
                         "name":"luminance",
-                        "path":"parameter_luminance",
-                        "type":"int"
+                        "type":"int",
+						"visitor": {
+                            "path": "parameter_luminance"
+                        }
                     }
                 ]
             }
@@ -328,15 +333,10 @@ var _ = Describe("verify usability", func() {
 						return false
 					}
 					for _, prop := range device.Status.Properties {
-						if prop.Name == "luminance" || prop.Value != nil {
-							var val, err = converter.DecodeBase64(prop.Value.Raw[1 : len(prop.Value.Raw)-1])
-							if err != nil {
-								GinkgoT().Log(err)
-								return false
-							}
-							if string(val) != tempVal {
+						if prop.Name == "luminance" {
+							if prop.Value != tempVal {
 								count--
-								tempVal = string(val)
+								tempVal = prop.Value
 								if count <= 0 {
 									return true
 								}
@@ -388,16 +388,20 @@ var _ = Describe("verify usability", func() {
 									"properties": []map[string]interface{}{
 										{
 											"name":        "subscribeValue",
-											"path":        "subscribe_value",
 											"type":        "string",
 											"description": "subscribe from broker",
+											"visitor": map[string]interface{}{
+												"path": "subscribe_value",
+											},
 										},
 										{
 											"name":        "publishValue",
-											"path":        "publish_value",
 											"type":        "string",
 											"description": "publish to broker",
-											"readOnly":    false,
+											"accessModes": []string{"WriteMany"},
+											"visitor": map[string]interface{}{
+												"path": "publish_value",
+											},
 										},
 									},
 								},
@@ -478,13 +482,8 @@ var _ = Describe("verify usability", func() {
 						}
 
 						for _, prop := range device.Status.Properties {
-							if prop.Name == "subscribeValue" && prop.Value != nil {
-								var val, err = converter.DecodeBase64(prop.Value.Raw[1 : len(prop.Value.Raw)-1])
-								if err != nil {
-									GinkgoT().Log(err)
-									return false
-								}
-								return string(val) == "hello"
+							if prop.Name == "subscribeValue" {
+								return prop.Value == "hello"
 							}
 						}
 						return false
@@ -508,17 +507,21 @@ var _ = Describe("verify usability", func() {
                 "properties":[
                     {
                         "name":"publishValue",
-                        "path":"publish_value",
-                        "type":"string",
                         "description":"publish to broker",
+                        "type":"string",
                         "value":"hello",
-                        "readOnly":false
+                        "accessModes": ["WriteOnce"],
+                        "visitor": {
+                            "path": "publish_value"
+                        }
                     },
                     {
                         "name":"subscribeValue",
-                        "path":"subscribe_value",
                         "type":"string",
-                        "description":"subscribe from broker"
+                        "description":"subscribe from broker",
+                        "visitor": {
+                            "path": "subscribe_value"
+                        }
                     }
                 ]
             }

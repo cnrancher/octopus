@@ -1,7 +1,7 @@
 apiVersion: edge.cattle.io/v1alpha1
 kind: DeviceLink
 metadata:
-  name: kitchen-monitor
+  name: simulate-kitchen-monitor
 spec:
   adaptor:
     node: edge-worker
@@ -22,13 +22,19 @@ spec:
           topic: "cattle.io/octopus/home/status/kitchen/:path"
       properties:
         - name: "doorState"
-          path: "door/state"
           description: "The state of door"
           type: "string"
           annotations:
             type: "enum"
             format: "open,close"
+          accessModes:
+            - Notify
+          visitor:
+            path: "door/state"
         - name: "isLightOn"
           description: "The state of light"
-          path: "light/switch"
           type: "boolean"
+          accessModes:
+            - Notify
+          visitor:
+            path: "light/switch"

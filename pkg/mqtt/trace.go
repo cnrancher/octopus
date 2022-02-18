@@ -27,7 +27,7 @@ func (l printer) Printf(format string, v ...interface{}) {
 func SetLogger(logger logr.Logger) {
 	log = printer{logger: logger.WithName("mqtt.client").V(5)}
 
-	logger = logger.WithName("mqtt.client")
+	logger = logger.WithName("mqtt.underlay.client")
 	mqtt.DEBUG = printer{logger: logger.V(6)}
 	mqtt.WARN = printer{logger: logger}
 	mqtt.ERROR = printer{logger: logger}
@@ -36,6 +36,6 @@ func SetLogger(logger logr.Logger) {
 	if loggerWrapper, ok := logger.(zap.LoggerWrapper); ok {
 		mqtt.WARN = printer{logger: zap.WrapAsWarnInfoLogr(loggerWrapper.ToZapLogger())}
 		mqtt.ERROR = printer{logger: zap.WrapAsErrorInfoLogr(loggerWrapper.ToZapLogger())}
-		mqtt.CRITICAL = printer{logger: zap.WrapAsFatalInfoLogr(loggerWrapper.ToZapLogger())}
+		mqtt.CRITICAL = printer{logger: zap.WrapAsErrorInfoLogr(loggerWrapper.ToZapLogger())}
 	}
 }
