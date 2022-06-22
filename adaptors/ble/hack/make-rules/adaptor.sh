@@ -112,8 +112,18 @@ function build() {
 
     local os=${os_arch[0]}
     local arch=${os_arch[1]}
-    GOOS=${os} GOARCH=${arch} CGO_ENABLED=0 go build \
-      -ldflags "${version_flags} ${flags} ${ext_flags}" \
+
+    local ldflags
+    local cgo
+    if [[ "${os}" == "darwin" ]]; then
+    	ldflags="${version_flags} ${flags}"
+    	cgo=1
+		else
+			ldflags="${version_flags} ${flags} ${ext_flags}"
+			cgo=0
+    fi
+    GOOS=${os} GOARCH=${arch} CGO_ENABLED=${cgo} go build \
+      -ldflags "${ldflags}" \
       -o "${CURR_DIR}/bin/${adaptor}_${os}_${arch}" \
       "${CURR_DIR}/cmd/${adaptor}/main.go"
   done
@@ -264,11 +274,16 @@ function verify() {
   [[ "${2:-}" != "only" ]] && test "$@"
   local adaptor="${1}"
 
-  local os="${OS:-$(go env GOOS)}"
-  local arch="${ARCH:-$(go env GOARCH)}"
   octopus::log::info "running integration tests for adaptor ${adaptor}..."
 
-  octopus::ginkgo::test "${CURR_DIR}/test/integration"
+	local os="${OS:-$(go env GOOS)}"
+	local arch="${ARCH:-$(go env GOARCH)}"
+	if [[ "${os}" == "darwin" ]]; then
+		cgo=1
+	else
+		cgo=0
+	fi
+  GOOS=${os} GOARCH=${arch} CGO_ENABLED=${cgo} octopus::ginkgo::test "${CURR_DIR}/test/integration"
 
   octopus::log::info "...done"
 }
